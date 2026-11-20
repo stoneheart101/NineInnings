@@ -52,10 +52,6 @@ export function createDesk(prompt) {
     error: '',
     notice: '',
     coachName: '',
-    factorId: '',
-    challengeId: '',
-    qr: '',
-    secret: '',
   }
   let pendingError = ''
 
@@ -82,12 +78,6 @@ export function createDesk(prompt) {
     return data
   }
 
-  async function needsFactor() {
-    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (error) throw error
-    return data.nextLevel === 'aal2' && data.currentLevel !== 'aal2'
-  }
-
   async function settle(session) {
     if (!session) {
       const error = pendingError || (state.mode === 'menu' || state.mode === 'boot' ? state.error : '')
@@ -96,29 +86,12 @@ export function createDesk(prompt) {
       return
     }
     pendingError = ''
-    if (await needsFactor()) {
-      await beginChallenge()
-      return
-    }
     const profile = await profileFor(session.user.id)
     if (!profile?.coach_name) {
       setMode('coach')
       return
     }
     setMode('home', { coachName: profile.coach_name })
-  }
-
-  async function beginChallenge() {
-    const listed = await supabase.auth.mfa.listFactors()
-    if (listed.error) throw listed.error
-    const factor = listed.data.totp.find((item) => item.status === 'verified')
-    if (!factor) {
-      setMode('home')
-      return
-    }
-    const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id })
-    if (challenge.error) throw challenge.error
-    setMode('mfa', { factorId: factor.id, challengeId: challenge.data.id })
   }
 
   async function onEvent(event, session) {
@@ -133,13 +106,6 @@ export function createDesk(prompt) {
     } catch (error) {
       setMode(state.mode === 'boot' ? 'menu' : state.mode, { error: explain(error) })
     }
-  }
-
-  function menuButton(label, mode) {
-    const button = el('button', '', label)
-    button.type = 'button'
-    button.addEventListener('click', () => setMode(mode))
-    return button
   }
 
   function form(onSubmit, ...nodes) {
@@ -193,28 +159,6 @@ export function createDesk(prompt) {
       box.append(button, el('p', '', 'WHICH?'))
       return box
     },
-    mfa() {
-      const code = field('mfa-code', 'CODE', 'text', {
-        autocomplete: 'one-time-code',
-        inputMode: 'numeric',
-        pattern: '[0-9]{6}',
-        maxLength: 6,
-      })
-      return form(async (data) => {
-        const result = await supabase.auth.mfa.verify({
-          factorId: state.factorId,
-          challengeId: state.challengeId,
-          code: String(data.get('mfa-code')).trim(),
-        })
-        if (result.error) {
-          state.error = explain(result.error)
-          await beginChallenge()
-          state.error = explain(result.error)
-          return
-        }
-        await settle(result.data.session ?? (await supabase.auth.getSession()).data.session)
-      }, el('p', '', 'AUTHENTICATOR CODE'), code.wrap, actions(['ENTER']))
-    },
     coach() {
       const name = field('coach-name', 'COACH NAME', 'text', {
         autocomplete: 'nickname',
@@ -241,7 +185,7 @@ export function createDesk(prompt) {
           return
         }
         if (!result.data?.length) {
-          state.error = 'THAT NAME WAS NOT SAVED. SIGN IN WITH THE AUTHENTICATOR CODE FIRST.'
+          state.error = 'THAT NAME WAS NOT SAVED.'
           return
         }
         setMode('home', { coachName })
@@ -257,54 +201,8 @@ export function createDesk(prompt) {
       box.append(
         el('p', '', `COACH: ${state.coachName}`),
         signOutButton,
-        menuButton('2- AUTHENTICATOR', 'authenticator'),
         el('p', '', 'WHICH?'),
       )
-      return box
-    },
-    authenticator() {
-      const box = el('div', 'choices')
-      box.append(el('p', '', 'AUTHENTICATOR'), actions(
-        ['ADD', () => enroll()],
-        ['REMOVE', () => removeFactor()],
-        ['BACK', () => setMode('home')],
-      ))
-      return box
-    },
-    enroll() {
-      const box = el('div', '')
-      box.append(el('p', '', 'SCAN THIS, OR TYPE THE SECRET'))
-      if (state.qr.startsWith('data:image/')) {
-        const image = document.createElement('img')
-        image.className = 'qr'
-        image.alt = 'Authenticator QR code'
-        image.src = state.qr
-        box.append(image)
-      }
-      box.append(el('p', 'secret', state.secret))
-      const code = field('enroll-code', 'CODE', 'text', {
-        autocomplete: 'one-time-code',
-        inputMode: 'numeric',
-        pattern: '[0-9]{6}',
-        maxLength: 6,
-      })
-      box.append(form(async (data) => {
-        const challenge = await supabase.auth.mfa.challenge({ factorId: state.factorId })
-        if (challenge.error) {
-          state.error = explain(challenge.error)
-          return
-        }
-        const result = await supabase.auth.mfa.verify({
-          factorId: state.factorId,
-          challengeId: challenge.data.id,
-          code: String(data.get('enroll-code')).trim(),
-        })
-        if (result.error) {
-          state.error = explain(result.error)
-          return
-        }
-        setMode('home', { notice: 'AUTHENTICATOR ADDED. THE NEXT SIGN-IN WILL ASK FOR A CODE.' })
-      }, code.wrap, actions(['VERIFY'], ['CANCEL', cancelEnroll])))
       return box
     },
   }
@@ -335,56 +233,10 @@ export function createDesk(prompt) {
     setMode('menu')
   }
 
-  async function enroll() {
-    state.busy = true
-    paint()
-    const result = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      friendlyName: 'Nine Innings',
-    })
-    state.busy = false
-    if (result.error) {
-      setMode('authenticator', { error: explain(result.error) })
-      return
-    }
-    setMode('enroll', {
-      factorId: result.data.id,
-      qr: result.data.totp?.qr_code || '',
-      secret: result.data.totp?.secret || '',
-    })
-  }
-
-  async function cancelEnroll() {
-    if (state.factorId) {
-      await supabase.auth.mfa.unenroll({ factorId: state.factorId })
-    }
-    setMode('home')
-  }
-
-  async function removeFactor() {
-    const listed = await supabase.auth.mfa.listFactors()
-    if (listed.error) {
-      setMode('authenticator', { error: explain(listed.error) })
-      return
-    }
-    const factor = listed.data.totp.find((item) => item.status === 'verified')
-    if (!factor) {
-      setMode('authenticator', { notice: 'NO AUTHENTICATOR IS ENROLLED.' })
-      return
-    }
-    const removed = await supabase.auth.mfa.unenroll({ factorId: factor.id })
-    if (removed.error) {
-      setMode('authenticator', { error: explain(removed.error) })
-      return
-    }
-    await supabase.auth.refreshSession()
-    setMode('home', { notice: 'AUTHENTICATOR REMOVED.' })
-  }
-
   document.addEventListener('keydown', (event) => {
     if (state.mode !== 'menu' && state.mode !== 'home') return
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
-    const choice = { 1: 0, 2: 1 }[event.key]
+    const choice = { 1: 0 }[event.key]
     if (choice == null) return
     const button = prompt.querySelectorAll('button')[choice]
     button?.click()

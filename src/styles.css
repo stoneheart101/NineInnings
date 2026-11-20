@@ -195,19 +195,6 @@ input:focus-visible {
   max-width: 62ch;
 }
 
-.secret {
-  margin: 6px 0;
-  word-break: break-all;
-}
-
-.qr {
-  width: 140px;
-  height: 140px;
-  background: #f4ffe8;
-  image-rendering: pixelated;
-  margin: 6px 0;
-}
-
 @media (max-width: 720px) {
   :root {
     font-size: 20px;
