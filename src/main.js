@@ -2,11 +2,13 @@ import '@fontsource/vt323'
 import './styles.css'
 import { drawField } from './field.js'
 import { createDesk } from './auth.js'
+import { mountBackendTest } from './backend-test.js'
 import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
 const prompt = drawField(field)
 const desk = createDesk(prompt)
+mountBackendTest(field)
 
 const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
 const queryParams = new URLSearchParams(window.location.search)
