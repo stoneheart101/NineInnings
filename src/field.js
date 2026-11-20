@@ -13,7 +13,7 @@ export function drawField(root) {
   board.innerHTML = `
     <thead>
       <tr>
-        <th>NINE INNINGS</th>
+        <th class="title">NINE INNINGS</th>
         ${INNINGS.map((inning) => `<th>${inning}</th>`).join('')}
         <th>R</th><th>H</th><th>E</th>
       </tr>
@@ -33,38 +33,38 @@ export function drawField(root) {
   const info = document.createElement('div')
   info.className = 'info'
   info.innerHTML = `
-    <p><span>BATTER:</span> <b>.274</b></p>
+    <p><span class="label">BATTER</span> <span class="label">AVG.=</span><b>.274</b></p>
     <p class="indent">A SAMPLE</p>
-    <p><span>ON DECK:</span></p>
+    <p><span class="label">ON DECK</span></p>
     <p class="indent">B SAMPLE</p>
-    <p><span>PITCHER:</span></p>
+    <p><span class="label">PITCHER</span></p>
     <p class="indent">C SAMPLE</p>
-    <p><span>VISITOR BULLPEN:</span></p>
+    <p><span class="label">VISITOR BULLPEN</span></p>
     <p class="gap"></p>
-    <p><span>HOME BULLPEN:</span></p>
+    <p><span class="label">HOME BULLPEN</span></p>
   `
 
   const diamond = document.createElement('div')
   diamond.className = 'diamond'
   diamond.innerHTML = `
-    <svg viewBox="0 0 220 200" role="img" aria-label="Sample baseball diamond">
-      <polygon points="110,168 176,102 110,36 44,102" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="110" y1="168" x2="28" y2="168" stroke="currentColor" stroke-width="2"/>
-      <line x1="110" y1="168" x2="192" y2="168" stroke="currentColor" stroke-width="2"/>
-      <circle cx="110" cy="102" r="3" fill="currentColor"/>
-      <circle cx="110" cy="168" r="3" fill="currentColor"/>
-      <circle cx="176" cy="102" r="3" fill="currentColor"/>
-      <circle cx="110" cy="36" r="3" fill="currentColor"/>
-      <circle cx="44" cy="102" r="3" fill="currentColor"/>
-      <text x="104" y="184">C</text>
-      <text x="116" y="106">P</text>
-      <text x="182" y="106">1</text>
-      <text x="104" y="30">2</text>
-      <text x="28" y="106">3</text>
-      <text x="70" y="78">S</text>
-      <text x="48" y="58">L</text>
-      <text x="104" y="58">F</text>
-      <text x="158" y="58">R</text>
+    <svg viewBox="0 0 320 250" role="img" aria-label="Sample baseball diamond">
+      <polygon points="24,22 296,22 232,156 160,228 88,156" fill="#3dff45" stroke="#fff" stroke-width="2"/>
+      <polygon points="160,204 214,148 160,92 106,148" fill="none" stroke="#fff" stroke-width="2"/>
+      <polygon points="160,214 170,204 170,196 150,196 150,204" fill="#fff"/>
+      <rect x="-6" y="-6" width="12" height="12" fill="#fff" transform="translate(214,148) rotate(45)"/>
+      <rect x="-6" y="-6" width="12" height="12" fill="#fff" transform="translate(160,92) rotate(45)"/>
+      <rect x="-6" y="-6" width="12" height="12" fill="#fff" transform="translate(106,148) rotate(45)"/>
+      <g fill="#fff">
+        <g transform="translate(160,208)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+        <g transform="translate(160,148)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+        <g transform="translate(228,156)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+        <g transform="translate(176,104)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+        <g transform="translate(128,118)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+        <g transform="translate(92,156)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+        <g transform="translate(78,78)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+        <g transform="translate(160,58)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+        <g transform="translate(242,78)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
+      </g>
     </svg>
     <div class="outs" aria-label="Outs 0">
       <span>O</span><span>U</span><span>T</span><span>S</span>
