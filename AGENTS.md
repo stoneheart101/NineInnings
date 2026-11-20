@@ -4,8 +4,8 @@
 
 Every layout, type, color, and interaction change is reviewed for a narrow phone and a short landscape screen. A desktop-only screen is unfinished.
 
-- The page scrolls once. On a small or short screen, do not put a second scroll inside the game screen.
-- The inning scoreboard may scroll sideways on its own. The rest of the page does not.
+- A vertical phone shows the whole screen at once. Do not add page scrolling or a sideways scoreboard scroll.
+- Keep the lineup beside the diamond on a phone. Stacking them makes the page too tall.
 - Touch targets are at least 44px when the pointer is coarse.
 - Inputs stay at least 16px so a phone browser does not zoom the page when a field is focused.
 - Use `dvh` and safe-area insets. Do not lock the screen to a 4:3 box when the viewport is short or narrow.

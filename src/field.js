@@ -1,8 +1,8 @@
 const INNINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 const CLUBS = [
-  { name: 'VISITORS', runs: 0, hits: 0, errors: 0 },
-  { name: 'HOME', runs: 0, hits: 0, errors: 0 },
+  { name: 'VISITORS', short: 'VIS', runs: 0, hits: 0, errors: 0 },
+  { name: 'HOME', short: 'HOME', runs: 0, hits: 0, errors: 0 },
 ]
 
 export function drawField(root) {
@@ -17,7 +17,7 @@ export function drawField(root) {
   board.innerHTML = `
     <thead>
       <tr>
-        <th class="title">NINE INNINGS</th>
+        <th class="title"><span class="desk">NINE INNINGS</span><span class="phone">NI</span></th>
         ${INNINGS.map((inning) => `<th>${inning}</th>`).join('')}
         <th>R</th><th>H</th><th>E</th>
       </tr>
@@ -26,7 +26,7 @@ export function drawField(root) {
       ${CLUBS.map(
         (club) => `
         <tr>
-          <th>${club.name}</th>
+          <th><span class="desk">${club.name}</span><span class="phone">${club.short}</span></th>
           ${INNINGS.map(() => '<td></td>').join('')}
           <td>${club.runs}</td><td>${club.hits}</td><td>${club.errors}</td>
         </tr>`,
@@ -43,9 +43,9 @@ export function drawField(root) {
     <p class="indent">B SAMPLE</p>
     <p><span class="label">PITCHER</span></p>
     <p class="indent">C SAMPLE</p>
-    <p><span class="label">VISITOR BULLPEN</span></p>
+    <p><span class="label"><span class="desk">VISITOR BULLPEN</span><span class="phone">V BULLPEN</span></span></p>
     <p class="gap"></p>
-    <p><span class="label">HOME BULLPEN</span></p>
+    <p><span class="label"><span class="desk">HOME BULLPEN</span><span class="phone">H BULLPEN</span></span></p>
   `
 
   const diamond = document.createElement('div')
@@ -58,7 +58,7 @@ export function drawField(root) {
       <rect x="-6" y="-6" width="12" height="12" fill="#fff" transform="translate(214,148) rotate(45)"/>
       <rect x="-6" y="-6" width="12" height="12" fill="#fff" transform="translate(160,92) rotate(45)"/>
       <rect x="-6" y="-6" width="12" height="12" fill="#fff" transform="translate(106,148) rotate(45)"/>
-      <g fill="#fff">
+      <g fill="var(--player)">
         <g transform="translate(160,208)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
         <g transform="translate(160,148)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
         <g transform="translate(228,156)"><circle cy="-7" r="3.4"/><rect x="-3.4" y="-3" width="6.8" height="9"/></g>
