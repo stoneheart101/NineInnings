@@ -8,13 +8,9 @@ function redirectTo() {
 
 function explain(error) {
   if (!error) return ''
-  const code = error.code || ''
   const message = error.message || 'SOMETHING WENT WRONG.'
-  if (code === 'email_address_not_authorized' || /not authorized/i.test(message)) {
-    return 'MAIL IS NOT SET UP FOR THAT ADDRESS YET. SAVE A CUSTOM SMTP SENDER ON THE PROJECT FIRST.'
-  }
-  if (code === 'over_email_send_rate_limit' || /rate limit/i.test(message)) {
-    return 'THE MAIL LIMIT FOR THIS PROJECT HAS BEEN REACHED. TRY AGAIN LATER.'
+  if (/provider is not enabled/i.test(message)) {
+    return 'GOOGLE SIGN-IN IS NOT TURNED ON FOR THIS PROJECT.'
   }
   return message.toUpperCase()
 }
@@ -60,8 +56,8 @@ export function createDesk(prompt) {
     challengeId: '',
     qr: '',
     secret: '',
-    recovering: false,
   }
+  let pendingError = ''
 
   function paint() {
     prompt.replaceChildren()
@@ -94,13 +90,12 @@ export function createDesk(prompt) {
 
   async function settle(session) {
     if (!session) {
-      setMode('menu')
+      const error = pendingError || (state.mode === 'menu' || state.mode === 'boot' ? state.error : '')
+      pendingError = ''
+      setMode('menu', { error })
       return
     }
-    if (state.recovering) {
-      setMode('recovery')
-      return
-    }
+    pendingError = ''
     if (await needsFactor()) {
       await beginChallenge()
       return
@@ -128,13 +123,7 @@ export function createDesk(prompt) {
 
   async function onEvent(event, session) {
     try {
-      if (event === 'PASSWORD_RECOVERY') {
-        state.recovering = true
-        setMode('recovery')
-        return
-      }
       if (event === 'SIGNED_OUT') {
-        state.recovering = false
         setMode('menu')
         return
       }
@@ -195,99 +184,14 @@ export function createDesk(prompt) {
     },
     menu() {
       const box = el('div', 'choices')
-      box.append(
-        menuButton('1- SIGN IN', 'signin'),
-        menuButton('2- NEW ACCOUNT', 'signup'),
-        menuButton('3- FORGOT PASSWORD', 'forgot'),
-        el('p', '', 'WHICH?'),
-      )
+      const button = el('button', '', '1- SIGN IN WITH GOOGLE')
+      button.type = 'button'
+      button.disabled = state.busy
+      button.addEventListener('click', () => {
+        signInWithGoogle()
+      })
+      box.append(button, el('p', '', 'WHICH?'))
       return box
-    },
-    signin() {
-      const email = field('sign-email', 'EMAIL', 'email', { autocomplete: 'username' })
-      const password = field('sign-password', 'PASSWORD', 'password', {
-        autocomplete: 'current-password',
-        minLength: 8,
-      })
-      return form(async (data) => {
-        const result = await supabase.auth.signInWithPassword({
-          email: String(data.get('sign-email')).trim(),
-          password: String(data.get('sign-password')),
-        })
-        if (result.error) {
-          state.error = explain(result.error)
-          return
-        }
-        await settle(result.data.session)
-      }, el('p', '', 'SIGN IN'), email.wrap, password.wrap, actions(['ENTER'], ['BACK', () => setMode('menu')]))
-    },
-    signup() {
-      const email = field('new-email', 'EMAIL', 'email', { autocomplete: 'username' })
-      const password = field('new-password', 'PASSWORD', 'password', {
-        autocomplete: 'new-password',
-        minLength: 8,
-      })
-      return form(async (data) => {
-        const result = await supabase.auth.signUp({
-          email: String(data.get('new-email')).trim(),
-          password: String(data.get('new-password')),
-          options: { emailRedirectTo: redirectTo() },
-        })
-        if (result.error) {
-          state.error = explain(result.error)
-          return
-        }
-        if (result.data.session) {
-          await settle(result.data.session)
-          return
-        }
-        setMode('check-mail', {
-          notice: 'CHECK THAT INBOX FOR THE CONFIRMATION LINK.',
-        })
-      }, el('p', '', 'NEW ACCOUNT'), email.wrap, password.wrap, actions(['ENTER'], ['BACK', () => setMode('menu')]))
-    },
-    forgot() {
-      const email = field('reset-email', 'EMAIL', 'email', { autocomplete: 'username' })
-      return form(async (data) => {
-        const result = await supabase.auth.resetPasswordForEmail(String(data.get('reset-email')).trim(), {
-          redirectTo: redirectTo(),
-        })
-        if (result.error) {
-          state.error = explain(result.error)
-          return
-        }
-        state.notice = 'IF AN ACCOUNT USES THAT ADDRESS, CHECK THE MAIL FOR A RESET LINK.'
-        state.error = ''
-      }, el('p', '', 'FORGOT PASSWORD'), email.wrap, actions(['SEND'], ['BACK', () => setMode('menu')]))
-    },
-    'check-mail'() {
-      const box = el('div', '')
-      box.append(el('p', '', 'CHECK YOUR MAIL'), actions(['BACK', () => setMode('menu')]))
-      return box
-    },
-    recovery() {
-      const password = field('recovery-password', 'NEW PASSWORD', 'password', {
-        autocomplete: 'new-password',
-        minLength: 8,
-      })
-      const again = field('recovery-again', 'AGAIN', 'password', {
-        autocomplete: 'new-password',
-        minLength: 8,
-      })
-      return form(async (data) => {
-        const next = String(data.get('recovery-password'))
-        if (next !== String(data.get('recovery-again'))) {
-          state.error = 'THOSE PASSWORDS DO NOT MATCH.'
-          return
-        }
-        const result = await supabase.auth.updateUser({ password: next })
-        if (result.error) {
-          state.error = explain(result.error)
-          return
-        }
-        state.recovering = false
-        await settle(result.data.user ? (await supabase.auth.getSession()).data.session : null)
-      }, el('p', '', 'CHOOSE A NEW PASSWORD'), password.wrap, again.wrap, actions(['SAVE']))
     },
     mfa() {
       const code = field('mfa-code', 'CODE', 'text', {
@@ -353,34 +257,10 @@ export function createDesk(prompt) {
       box.append(
         el('p', '', `COACH: ${state.coachName}`),
         signOutButton,
-        menuButton('2- CHANGE PASSWORD', 'password'),
-        menuButton('3- AUTHENTICATOR', 'authenticator'),
+        menuButton('2- AUTHENTICATOR', 'authenticator'),
         el('p', '', 'WHICH?'),
       )
       return box
-    },
-    password() {
-      const password = field('change-password', 'NEW PASSWORD', 'password', {
-        autocomplete: 'new-password',
-        minLength: 8,
-      })
-      const again = field('change-again', 'AGAIN', 'password', {
-        autocomplete: 'new-password',
-        minLength: 8,
-      })
-      return form(async (data) => {
-        const next = String(data.get('change-password'))
-        if (next !== String(data.get('change-again'))) {
-          state.error = 'THOSE PASSWORDS DO NOT MATCH.'
-          return
-        }
-        const result = await supabase.auth.updateUser({ password: next })
-        if (result.error) {
-          state.error = explain(result.error)
-          return
-        }
-        setMode('home', { notice: 'PASSWORD CHANGED.' })
-      }, el('p', '', 'CHANGE PASSWORD'), password.wrap, again.wrap, actions(['SAVE'], ['BACK', () => setMode('home')]))
     },
     authenticator() {
       const box = el('div', 'choices')
@@ -429,6 +309,20 @@ export function createDesk(prompt) {
     },
   }
 
+  async function signInWithGoogle() {
+    state.busy = true
+    state.error = ''
+    paint()
+    const result = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: redirectTo() },
+    })
+    if (result.error) {
+      state.busy = false
+      setMode('menu', { error: explain(result.error) })
+    }
+  }
+
   async function signOut() {
     state.busy = true
     const { error } = await supabase.auth.signOut()
@@ -438,7 +332,6 @@ export function createDesk(prompt) {
       paint()
       return
     }
-    state.recovering = false
     setMode('menu')
   }
 
@@ -491,7 +384,7 @@ export function createDesk(prompt) {
   document.addEventListener('keydown', (event) => {
     if (state.mode !== 'menu' && state.mode !== 'home') return
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
-    const choice = { 1: 0, 2: 1, 3: 2 }[event.key]
+    const choice = { 1: 0, 2: 1 }[event.key]
     if (choice == null) return
     const button = prompt.querySelectorAll('button')[choice]
     button?.click()
@@ -500,8 +393,8 @@ export function createDesk(prompt) {
   return {
     onEvent,
     paint,
-    expectRecovery() {
-      state.recovering = true
+    note(message) {
+      pendingError = message
     },
   }
 }
