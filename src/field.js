@@ -8,6 +8,10 @@ const CLUBS = [
 export function drawField(root) {
   root.replaceChildren()
 
+  const boardWrap = document.createElement('div')
+  boardWrap.className = 'board-wrap'
+  boardWrap.tabIndex = 0
+  boardWrap.setAttribute('aria-label', 'Inning scoreboard')
   const board = document.createElement('table')
   board.className = 'board'
   board.innerHTML = `
@@ -48,7 +52,7 @@ export function drawField(root) {
   diamond.className = 'diamond'
   diamond.innerHTML = `
     <svg viewBox="0 0 320 250" role="img" aria-label="Sample baseball diamond">
-      <polygon points="24,22 296,22 232,156 160,228 88,156" fill="#3dff45" stroke="#fff" stroke-width="2"/>
+      <polygon points="24,22 296,22 232,156 160,228 88,156" fill="var(--field)" stroke="#fff" stroke-width="2"/>
       <polygon points="160,204 214,148 160,92 106,148" fill="none" stroke="#fff" stroke-width="2"/>
       <polygon points="160,214 170,204 170,196 150,196 150,204" fill="#fff"/>
       <rect x="-6" y="-6" width="12" height="12" fill="#fff" transform="translate(214,148) rotate(45)"/>
@@ -80,6 +84,7 @@ export function drawField(root) {
   prompt.id = 'prompt'
   prompt.className = 'prompt'
 
-  root.append(board, play, prompt)
+  boardWrap.append(board)
+  root.append(boardWrap, play, prompt)
   return prompt
 }
