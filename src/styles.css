@@ -265,6 +265,48 @@ input:focus-visible {
   color: inherit;
 }
 
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  max-width: 100%;
+}
+
+.days label {
+  gap: 6px;
+  margin: 0;
+}
+
+.days input {
+  width: 1.15em;
+  height: 1.15em;
+  flex: 0 0 auto;
+  border: 0;
+  padding: 0;
+  accent-color: var(--mark);
+}
+
+input.num {
+  width: 6ch;
+  flex: 0 0 6ch;
+}
+
+.season-card {
+  margin: 8px 0;
+  max-width: 100%;
+}
+
+.season-card p {
+  margin: 0;
+}
+
+@media (pointer: coarse) {
+  .days label {
+    min-height: 44px;
+    align-items: center;
+  }
+}
+
 .row {
   display: flex;
   gap: 16px;
