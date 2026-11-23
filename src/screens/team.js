@@ -1,5 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
+import { closePopup, mountPopup } from '../popup.js'
 
 const STATS = [
   ['contact', 'CONTACT'],
@@ -59,7 +60,7 @@ export function closeTeam() {
   supabase.removeChannel(current)
 }
 
-export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, onOpenClubhouse, setTabs }) {
+export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, onOpenClubhouse, setTabs, setTeam }) {
   closeTeam()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -70,6 +71,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     error: '',
     releaseError: '',
     releaseKid: '',
+    confirmKid: '',
     lineup: {},
     lineupError: '',
     lineupBusy: false,
@@ -82,6 +84,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
 
   function paint() {
     if (prompt.dataset.paint !== token) return
+    closePopup()
     prompt.replaceChildren()
     const tabs = [{ label: 'BACK', onClick: onBack }]
     if (state.loaded && state.mine && state.team) {
@@ -107,29 +110,31 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
 
     if (!state.loaded) return
     if (state.missing || !state.team) {
+      setTeam?.(null)
       box.append(el('p', '', 'THAT TEAM IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
       prompt.append(box)
       return
     }
     if (!state.mine) {
+      setTeam?.(null)
       box.append(el('p', '', 'THAT TEAM IS NOT YOURS'))
       prompt.append(box)
       return
     }
 
     const season = seasonOf(state.team)
-    box.append(
-      el('p', 'season-title', state.team.name),
-      el('p', 'season-status', season?.name || 'SEASON'),
-      el('p', '', `${counted(state.team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(state.team.reputation, 'REPUTATION', 'REPUTATION')}`),
-    )
+    setTeam?.({
+      name: state.team.name,
+      season: season?.name || 'SEASON',
+      purse: `${counted(state.team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(state.team.reputation, 'REPUTATION', 'REPUTATION')}`,
+    })
     const cap = Number(season?.roster_cap)
     if (Number.isInteger(cap) && state.kids.length >= cap) {
       box.append(el('p', 'season-role', 'THE BENCH IS FULL'))
     }
     if (state.error) box.append(el('p', 'alert', state.error))
-    prompt.append(box)
+    if (box.childNodes.length) prompt.append(box)
     prompt.append(lineupBlock())
 
     const board = el('div', 'choices')
@@ -142,21 +147,56 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       board.append(list)
     }
     prompt.append(board)
+    const pending = state.kids.find((kid) => kid.id === state.confirmKid)
+    if (pending) {
+      mountPopup(prompt, {
+        title: `RELEASE ${kidLabel(pending)}?`,
+        actions: [
+          { label: 'RELEASE', onClick: () => onRelease(pending.id) },
+          {
+            label: 'BACK',
+            onClick() {
+              state.confirmKid = ''
+              paint()
+            },
+          },
+        ],
+        onClose() {
+          state.confirmKid = ''
+          paint()
+        },
+      })
+    }
+  }
+
+  function kidLabel(kid) {
+    const nick = kid.nickname ? ` "${kid.nickname}"` : ''
+    return `${kidName(kid)}${nick}`
   }
 
   function kidCard(kid) {
     const card = el('div', 'kid-card')
-    card.append(el('span', 'season-name', kidName(kid)))
-    if (kid.nickname) card.append(el('span', '', `"${kid.nickname}"`))
+    const head = el('div', 'kid-head')
+    const title = el('span', 'kid-title')
+    title.append(el('span', 'season-name', kidLabel(kid)))
+    if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
+    else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
+    head.append(title)
+    const release = el('button', '', 'RELEASE')
+    release.type = 'button'
+    release.disabled = state.busy
+    release.addEventListener('click', () => {
+      if (state.busy) return
+      state.confirmKid = kid.id
+      state.releaseError = ''
+      paint()
+    })
+    head.append(release)
+    card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
-    const release = el('button', '', 'RELEASE')
-    release.type = 'button'
-    release.disabled = state.busy
-    release.addEventListener('click', () => onRelease(kid.id))
-    card.append(release)
     if (state.releaseError && state.releaseKid === kid.id) {
       card.append(el('p', 'alert', state.releaseError))
     }
@@ -165,12 +205,19 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
 
   function lineupBlock() {
     const block = el('div', 'lineup')
-    block.append(el('p', 'section', 'LINEUP'))
     const form = el('form', 'lineup-card')
     form.addEventListener('submit', (event) => {
       event.preventDefault()
       onSaveLineup()
     })
+    const head = el('div', 'lineup-head')
+    head.append(el('p', 'section', 'LINEUP'))
+    const save = el('button', '', 'SAVE THE LINEUP')
+    save.type = 'submit'
+    save.disabled = state.lineupBusy
+    head.append(save)
+    form.append(head)
+    const box = el('div', 'lineup-box')
     for (const [slot, label] of SLOTS) {
       const row = el('label', 'lineup-slot')
       row.append(document.createTextNode(label))
@@ -189,12 +236,9 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
         syncLineupOptions(select)
       })
       row.append(select)
-      form.append(row)
+      box.append(row)
     }
-    const save = el('button', '', 'SAVE THE LINEUP')
-    save.type = 'submit'
-    save.disabled = state.lineupBusy
-    form.append(save)
+    form.append(box)
     if (state.lineupError) form.append(el('p', 'alert', state.lineupError))
     block.append(form)
     return block
@@ -268,6 +312,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
 
   async function onRelease(playerId) {
     if (state.busy) return
+    state.confirmKid = ''
     state.busy = true
     state.releaseError = ''
     state.releaseKid = playerId
@@ -348,7 +393,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     const [kids, draft, lineup] = await Promise.all([
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, flavor, base_stats, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, created_at')
         .eq('team_id', teamId)
         .order('family_name', { ascending: true })
         .order('given_name', { ascending: true })

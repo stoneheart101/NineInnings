@@ -73,16 +73,47 @@ body {
   min-width: 0;
 }
 
-.brand {
-  margin: 0;
+.team-info {
   flex: 1 1 auto;
   min-width: 0;
+  display: grid;
+}
+
+.team-info[hidden] {
+  display: none;
+}
+
+.team-info p {
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(22px, 5cqi, 1.15em);
+}
+
+.team-season {
+  color: var(--mark);
+}
+
+.corner {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+}
+
+.brand {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font: inherit;
   font-weight: 400;
-  line-height: 1;
+  line-height: 1.05;
 }
 
 .logo {
@@ -99,16 +130,17 @@ body {
 
 .user-menu {
   position: relative;
-  margin-left: auto;
   min-width: 0;
+  max-width: 100%;
 }
 
 .coach-toggle {
   display: block;
-  max-width: min(16ch, 34vw);
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: right;
   color: var(--mark);
 }
 
@@ -473,7 +505,28 @@ button.team-card,
   display: grid;
   gap: 2px;
   width: 100%;
-  max-width: 40rem;
+}
+
+.lineup-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.lineup-head button {
+  margin: 0 0 0 auto;
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.lineup-box {
+  width: 100%;
+  border: 2px solid #d0d0d0;
+  padding: 6px 10px;
+  display: grid;
+  gap: 2px;
 }
 
 .lineup-slot {
@@ -542,6 +595,58 @@ button.team-card,
   .shelf-buy select {
     min-height: 44px;
   }
+}
+
+.packed-list {
+  display: grid;
+  width: 100%;
+}
+
+.packed-list p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.popup-back {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  background: rgb(0 0 0 / 0.88);
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+}
+
+.popup {
+  width: min(40rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+  border: 2px solid #d0d0d0;
+  background: #000;
+  padding: 8px 12px 12px;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.popup-title {
+  margin: 0;
+}
+
+.popup-actions {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  justify-items: start;
+}
+
+.popup-actions button {
+  text-align: left;
 }
 
 .row {

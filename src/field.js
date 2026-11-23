@@ -33,10 +33,14 @@ export function drawField(root, { onSignOut } = {}) {
   const header = el('header', 'header')
   const logo = el('div', 'logo')
   logo.innerHTML = DIAMOND
+  const teamInfo = el('div', 'team-info')
+  teamInfo.hidden = true
+  const corner = el('div', 'corner')
   const brand = el('h1', 'brand', 'NineInnings')
   const userMenu = el('div', 'user-menu')
   userMenu.hidden = true
-  header.append(logo, brand, userMenu)
+  corner.append(brand, userMenu)
+  header.append(logo, teamInfo, corner)
 
   const tabs = el('nav', 'tabs')
   tabs.hidden = true
@@ -68,6 +72,20 @@ export function drawField(root, { onSignOut } = {}) {
     const toggle = userMenu.querySelector('.coach-toggle')
     if (panel) panel.hidden = true
     if (toggle) toggle.setAttribute('aria-expanded', 'false')
+  }
+
+  function setTeam(info) {
+    teamInfo.replaceChildren()
+    if (!info?.name) {
+      teamInfo.hidden = true
+      return
+    }
+    teamInfo.hidden = false
+    teamInfo.append(
+      el('p', 'team-name', info.name),
+      el('p', 'team-season', info.season || 'SEASON'),
+      el('p', 'team-purse', info.purse || ''),
+    )
   }
 
   function setCoach(name) {
@@ -130,5 +148,5 @@ export function drawField(root, { onSignOut } = {}) {
     userMenu.querySelector('.coach-toggle')?.focus()
   })
 
-  return { prompt, setCoach, setTabs }
+  return { prompt, setCoach, setTeam, setTabs }
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { closePopup, mountPopup } from '../popup.js'
 
 const SLOTS = [
   [1, 'MOUND'],
@@ -50,11 +51,6 @@ function costLine(item) {
   return parts.join(' AND ')
 }
 
-function slotLabel(slot) {
-  const found = SLOTS.find(([number]) => number === Number(slot))
-  return found ? found[1] : ''
-}
-
 function draftIsOpen(season, draft) {
   if (season?.status !== 'drafting' || !draft) return false
   const order = Array.isArray(draft.order) ? draft.order : []
@@ -62,7 +58,7 @@ function draftIsOpen(season, draft) {
   return order.length > 0 && Number.isInteger(pickIndex) && pickIndex < order.length
 }
 
-export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, onOpenRoster, setTabs }) {
+export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, onOpenRoster, setTabs, setTeam }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -71,7 +67,10 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     error: '',
     shelf: [],
     packed: [],
-    batSlot: '',
+    kids: [],
+    lineup: {},
+    picking: '',
+    rosterError: '',
     buyError: '',
     buyItem: '',
     buyBusy: false,
@@ -83,6 +82,7 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
 
   function paint() {
     if (prompt.dataset.paint !== token) return
+    closePopup()
     prompt.replaceChildren()
     const tabs = [{ label: 'BACK', onClick: onBack }]
     if (state.loaded && state.mine && state.team) {
@@ -108,26 +108,29 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
 
     if (!state.loaded) return
     if (state.missing || !state.team) {
+      setTeam?.(null)
       box.append(el('p', '', 'THAT TEAM IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
       prompt.append(box)
       return
     }
     if (!state.mine) {
+      setTeam?.(null)
       box.append(el('p', '', 'THAT TEAM IS NOT YOURS'))
       prompt.append(box)
       return
     }
 
     const season = seasonOf(state.team)
-    box.append(
-      el('p', 'season-title', state.team.name),
-      el('p', 'season-status', season?.name || 'SEASON'),
-      el('p', '', `${counted(state.team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(state.team.reputation, 'REPUTATION', 'REPUTATION')}`),
-    )
+    setTeam?.({
+      name: state.team.name,
+      season: season?.name || 'SEASON',
+      purse: `${counted(state.team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(state.team.reputation, 'REPUTATION', 'REPUTATION')}`,
+    })
     if (state.error) box.append(el('p', 'alert', state.error))
-    prompt.append(box)
+    if (box.childNodes.length) prompt.append(box)
     prompt.append(shelfBlock())
+    if (state.picking) mountBatPopup()
   }
 
   function orderedShelf() {
@@ -150,8 +153,8 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     if (!state.packed.length) {
       block.append(el('p', '', 'NO ITEMS PACKED'))
     } else {
-      const packed = el('div', 'shelf-list')
-      for (const row of state.packed) packed.append(packedCard(row))
+      const packed = el('div', 'packed-list')
+      for (const row of state.packed) packed.append(el('p', '', packedLine(row)))
       block.append(packed)
     }
     block.append(el('p', 'section', 'THE SHELF'))
@@ -161,19 +164,12 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     return block
   }
 
-  function packedCard(row) {
-    const card = el('div', 'kid-card')
+  function packedLine(row) {
     const item = linkedItem(row) || state.shelf.find((entry) => entry.id === row.item_id)
-    const head = el('div', 'kid-head')
-    const title = el('span', 'kid-title')
-    title.append(el('span', 'season-name', item?.name || 'ITEM'))
-    head.append(title)
-    card.append(head)
+    const name = item?.name || 'ITEM'
     const games = Number(row.remaining_games)
-    if (Number.isInteger(games)) card.append(el('span', '', counted(games, 'GAME LEFT', 'GAMES LEFT')))
-    const slot = row.effect?.slot
-    if (Number.isInteger(slot) && slotLabel(slot)) card.append(el('span', '', slotLabel(slot)))
-    return card
+    if (!Number.isInteger(games)) return name
+    return `${name} - ${counted(games, 'GAME LEFT', 'GAMES LEFT')}`
   }
 
   function costRow(item) {
@@ -193,44 +189,78 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     head.append(title)
     const buy = el('button', '', 'BUY')
     buy.type = 'button'
-    buy.disabled = state.buyBusy || !canAfford(item) || (needsSlot(item) && !state.batSlot)
-    buy.addEventListener('click', () => onBuy(item))
+    buy.disabled = state.buyBusy || !canAfford(item)
+    buy.addEventListener('click', () => {
+      if (needsSlot(item)) {
+        if (state.buyBusy || !canAfford(item)) return
+        state.picking = item.id
+        state.buyError = ''
+        paint()
+        return
+      }
+      onBuy(item)
+    })
     head.append(buy)
     card.append(head)
     if (item.blurb) card.append(el('span', '', item.blurb))
     card.append(costRow(item))
     card.append(el('span', '', durationLabel(item.duration)))
-    if (needsSlot(item)) {
-      const buyRow = el('div', 'shelf-buy')
-      const slotSelect = document.createElement('select')
-      slotSelect.dataset.bat = item.id
-      slotSelect.disabled = state.buyBusy || !canAfford(item)
-      const blank = document.createElement('option')
-      blank.value = ''
-      blank.textContent = 'SLOT'
-      slotSelect.append(blank)
-      for (const [slot, label] of SLOTS) {
-        const option = document.createElement('option')
-        option.value = String(slot)
-        option.textContent = label
-        slotSelect.append(option)
-      }
-      slotSelect.value = state.batSlot
-      slotSelect.addEventListener('change', () => {
-        state.batSlot = slotSelect.value
-        buy.disabled = state.buyBusy || !canAfford(item) || !state.batSlot
-      })
-      buyRow.append(slotSelect)
-      card.append(buyRow)
-    }
     if (state.buyError && state.buyItem === item.id) card.append(el('p', 'alert', state.buyError))
     return card
   }
 
-  async function onBuy(item) {
+  function kidLabel(kid) {
+    const name = [kid.given_name, kid.family_name].filter(Boolean).join(' ') || 'KID'
+    const nick = kid.nickname ? ` "${kid.nickname}"` : ''
+    return `${name}${nick}`
+  }
+
+  function batChoices() {
+    const choices = []
+    for (const [slot, label] of SLOTS) {
+      const playerId = state.lineup[slot]
+      if (!playerId) continue
+      const kid = state.kids.find((entry) => entry.id === playerId)
+      if (!kid) continue
+      choices.push({ slot, label: `${kidLabel(kid)} - ${label}` })
+    }
+    return choices
+  }
+
+  function mountBatPopup() {
+    const choices = batChoices()
+    const item = state.shelf.find((entry) => entry.id === state.picking)
+    mountPopup(prompt, {
+      title: 'WHO GETS THE BAT?',
+      note: choices.length ? '' : (state.rosterError || 'THE LINEUP IS EMPTY'),
+      actions: [
+        ...choices.map((choice) => ({
+          label: choice.label,
+          onClick() {
+            if (!item) return
+            onBuy(item, choice.slot)
+          },
+        })),
+        {
+          label: 'BACK',
+          onClick() {
+            state.picking = ''
+            paint()
+          },
+        },
+      ],
+      onClose() {
+        state.picking = ''
+        paint()
+      },
+    })
+  }
+
+  async function onBuy(item, chosenSlot) {
     if (state.buyBusy || !state.team || !canAfford(item)) return
-    const slot = needsSlot(item) ? Number(state.batSlot) : null
+    const slot = needsSlot(item) ? Number(chosenSlot) : null
     if (needsSlot(item) && (!Number.isInteger(slot) || slot < 1 || slot > 9)) return
+    state.picking = ''
     state.buyBusy = true
     state.buyError = ''
     state.buyItem = item.id
@@ -288,11 +318,13 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
       state.draftOpen = false
       state.shelf = []
       state.packed = []
+      state.kids = []
+      state.lineup = {}
       state.loaded = true
       paint()
       return
     }
-    const [draft, shelf, packed] = await Promise.all([
+    const [draft, shelf, packed, kids, lineup] = await Promise.all([
       supabase
         .from('draft_state')
         .select('pick_index,order')
@@ -306,6 +338,14 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
         .select('id, item_id, remaining_games, bought_at, effect, clubhouse_items(name, duration)')
         .eq('team_id', teamId)
         .order('bought_at', { ascending: true }),
+      supabase
+        .from('players')
+        .select('id, given_name, family_name, nickname')
+        .eq('team_id', teamId),
+      supabase
+        .from('lineups')
+        .select('slot, player_id')
+        .eq('team_id', teamId),
     ])
     if (prompt.dataset.paint !== token) return
     if (shelf.error) {
@@ -320,6 +360,18 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     } else {
       state.packed = packed.data || []
       if (!shelf.error && !state.buyBusy) state.buyError = ''
+    }
+    state.lineup = {}
+    if (kids.error || lineup.error) {
+      state.kids = []
+      state.rosterError = 'THE LINEUP DID NOT LOAD.'
+    } else {
+      state.kids = kids.data || []
+      state.rosterError = ''
+      const onTeam = new Set(state.kids.map((kid) => kid.id))
+      for (const row of lineup.data || []) {
+        if (onTeam.has(row.player_id)) state.lineup[row.slot] = row.player_id
+      }
     }
     const season = seasonOf(team.data)
     state.draftOpen = draft.error ? season?.status === 'drafting' : draftIsOpen(season, draft.data)

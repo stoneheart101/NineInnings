@@ -8,11 +8,12 @@ import { renderSeason } from './screens/season.js'
 import { closeDraft, renderDraft } from './screens/draft.js'
 import { closeTeam, renderTeam } from './screens/team.js'
 import { renderClubhouse } from './screens/clubhouse.js'
+import { closePopup } from './popup.js'
 import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
-const { prompt, setCoach, setTabs } = drawField(field, {
+const { prompt, setCoach, setTeam, setTabs } = drawField(field, {
   onSignOut: async () => {
     const { error } = await supabase.auth.signOut()
     if (!error) return ''
@@ -38,10 +39,16 @@ async function loadRules() {
 
 function renderDesk() {
   setCoach(coachName)
+  closePopup()
   closeDraft()
   closeTeam()
-  if (!coachName) return
+  if (!coachName) {
+    setTeam(null)
+    return
+  }
   const route = routeFromHash(window.location.hash)
+  const onTeam = typeof route === 'string' && route.startsWith('/teams/')
+  if (!onTeam) setTeam(null)
   if (route === '/seasons') {
     renderSeasons(prompt, {
       onBack: () => go('/'),
@@ -80,6 +87,7 @@ function renderDesk() {
       onOpenDraft: (id) => go(`/seasons/${id}/draft`),
       onOpenRoster: () => go(`/teams/${teamId}`),
       setTabs,
+      setTeam,
     })
     return
   }
@@ -92,6 +100,7 @@ function renderDesk() {
       onOpenDraft: (id) => go(`/seasons/${id}/draft`),
       onOpenClubhouse: () => go(`/teams/${teamId}/clubhouse`),
       setTabs,
+      setTeam,
     })
     return
   }
@@ -139,6 +148,8 @@ supabase.auth.onAuthStateChange((event, session) => {
       rulesVersion = null
       closeDraft()
       closeTeam()
+      closePopup()
+      setTeam(null)
       setCoach('')
     }
     desk.onEvent(event, session)
