@@ -44,6 +44,7 @@ export function renderDraft(prompt, { seasonId, onBack }) {
     pickError: '',
     pickKid: '',
     busy: false,
+    more: false,
     missing: false,
     loaded: false,
   }
@@ -81,21 +82,35 @@ export function renderDraft(prompt, { seasonId, onBack }) {
       box.append(el('p', '', 'THE DRAFT HAS NOT STARTED'))
     } else if (clock) {
       box.append(el('p', 'season-role', `ON THE CLOCK: ${teamName(clock)}`))
-      const rounds = Number(state.draft.rounds) || 0
-      const perRound = rounds > 0 && order.length % rounds === 0 ? order.length / rounds : 0
-      if (!perRound) box.append(orderList(order, 0, pickIndex))
-      else {
-        for (let round = 0; round < rounds; round += 1) {
-          box.append(el('p', '', `ROUND ${round + 1}`))
-          box.append(orderList(order.slice(round * perRound, (round + 1) * perRound), round * perRound, pickIndex))
-        }
-      }
     } else if (order.length) {
       box.append(el('p', 'season-role', 'THE DRAFT IS COMPLETE'))
     }
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)
+    if (clock && order.length) prompt.append(orderMore(order, pickIndex))
     if (state.draft) prompt.append(board(order, clock))
+  }
+
+  function orderMore(order, pickIndex) {
+    const node = el('div', 'choices')
+    const more = el('button', '', state.more ? 'LESS...' : 'MORE...')
+    more.type = 'button'
+    more.addEventListener('click', () => {
+      state.more = !state.more
+      paint()
+    })
+    node.append(more)
+    if (!state.more) return node
+    const rounds = Number(state.draft.rounds) || 0
+    const perRound = rounds > 0 && order.length % rounds === 0 ? order.length / rounds : 0
+    if (!perRound) node.append(orderList(order, 0, pickIndex))
+    else {
+      for (let round = 0; round < rounds; round += 1) {
+        node.append(el('p', '', `ROUND ${round + 1}`))
+        node.append(orderList(order.slice(round * perRound, (round + 1) * perRound), round * perRound, pickIndex))
+      }
+    }
+    return node
   }
 
   function orderList(ids, start, pickIndex) {
@@ -149,8 +164,20 @@ export function renderDraft(prompt, { seasonId, onBack }) {
 
   function kidCard(kid, myTurn) {
     const card = el('div', 'kid-card')
-    card.append(el('span', 'season-name', kidName(kid)))
-    if (kid.nickname) card.append(el('span', '', `"${kid.nickname}"`))
+    const head = el('div', 'kid-head')
+    const title = el('span', 'kid-title')
+    const nick = kid.nickname ? ` "${kid.nickname}"` : ''
+    title.append(el('span', 'season-name', `${kidName(kid)}${nick}`))
+    if (kid.sex === 'M' || kid.sex === 'F') title.append(el('span', 'season-role', kid.sex))
+    head.append(title)
+    if (myTurn) {
+      const pick = el('button', '', 'PICK')
+      pick.type = 'button'
+      pick.disabled = state.busy
+      pick.addEventListener('click', () => onPick(kid.id))
+      head.append(pick)
+    }
+    card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) {
@@ -158,13 +185,6 @@ export function renderDraft(prompt, { seasonId, onBack }) {
       stats.append(el('span', 'kid-stat', `${label} ${Number.isInteger(value) ? value : '-'}`))
     }
     card.append(stats)
-    if (myTurn) {
-      const pick = el('button', '', 'PICK')
-      pick.type = 'button'
-      pick.disabled = state.busy
-      pick.addEventListener('click', () => onPick(kid.id))
-      card.append(pick)
-    }
     if (state.pickError && state.pickKid === kid.id) card.append(el('p', 'alert', state.pickError))
     return card
   }
@@ -210,7 +230,7 @@ export function renderDraft(prompt, { seasonId, onBack }) {
         .maybeSingle(),
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, flavor, base_stats, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, created_at')
         .eq('season_id', seasonId)
         .order('family_name', { ascending: true })
         .order('given_name', { ascending: true })

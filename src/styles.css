@@ -350,9 +350,35 @@ button.team-card,
   margin: 8px 0 4px;
 }
 
-.kid-card button {
-  margin-top: 6px;
-  justify-self: start;
+.kid-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  width: 100%;
+  border-bottom: 1px solid var(--mark);
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.kid-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4em;
+  min-width: 0;
+}
+
+.kid-head .season-name {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.kid-head button {
+  margin: 0 0 0 auto;
+  flex: 0 0 auto;
+  text-align: right;
 }
 
 .kid-stats {
