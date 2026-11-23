@@ -427,6 +427,42 @@ button.game-match {
   color: var(--mark);
 }
 
+.side-box,
+.box-score {
+  width: 100%;
+  box-sizing: border-box;
+  border: 2px solid #d0d0d0;
+  padding: 8px 10px;
+  margin-top: 0.75em;
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  justify-self: stretch;
+}
+
+.side-box > .section:first-child,
+.box-score > .section:first-child {
+  margin-top: 0;
+}
+
+.side-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  width: 100%;
+  margin-top: 0.75em;
+  justify-self: stretch;
+}
+
+button.action {
+  border: 2px solid var(--mark);
+  padding: 8px 16px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
 .subtabs {
   display: flex;
   flex-wrap: wrap;

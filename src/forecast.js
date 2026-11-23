@@ -15,14 +15,15 @@ function forecastSentence(game) {
 export function forecastLine(game) {
   const chances = game?.weather?.chances
   if (Array.isArray(chances)) {
-    const parts = []
-    for (const row of chances) {
+    const ranked = []
+    chances.forEach((row, index) => {
       const type = typeof row?.type === 'string' ? row.type.trim().toUpperCase() : ''
       const percent = Number(row?.percent)
-      if (!type || !Number.isInteger(percent) || percent < 10) continue
-      parts.push(`${type} ${percent}%`)
-    }
-    if (parts.length) return parts.join(' · ')
+      if (!type || !Number.isInteger(percent) || percent < 10) return
+      ranked.push({ type, percent, index })
+    })
+    ranked.sort((left, right) => right.percent - left.percent || left.index - right.index)
+    if (ranked.length) return ranked.map((row) => `${row.type} ${row.percent}%`).join(' · ')
   }
   return forecastSentence(game)
 }

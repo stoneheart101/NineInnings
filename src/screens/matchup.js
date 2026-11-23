@@ -73,6 +73,72 @@ function cardNodes(card) {
   return nodes
 }
 
+function whole(value) {
+  return Number.isInteger(value) ? value : null
+}
+
+function sideOk(side) {
+  return Boolean(side)
+    && typeof side.name === 'string'
+    && side.name.trim()
+    && whole(side.runs) != null
+    && whole(side.hits) != null
+    && whole(side.errors) != null
+}
+
+function lineOk(row) {
+  return Boolean(row)
+    && typeof row.name === 'string'
+    && row.name.trim()
+    && ['ab', 'h', 'r', 'rbi', 'bb', 'k', 'outs'].every((key) => whole(row[key]) != null)
+}
+
+function kidLine(row) {
+  const bits = [`${row.ab} AB`, `${row.h} H`, `${row.r} R`, `${row.rbi} RBI`, `${row.bb} BB`, `${row.k} K`]
+  if (row.outs > 0) bits.push(`${row.outs} OUTS`)
+  return `${row.name} — ${bits.join(', ')}`
+}
+
+function scoreNodes(result) {
+  const innings = Array.isArray(result?.innings) ? result.innings : null
+  const lines = Array.isArray(result?.lines) ? result.lines : null
+  const away = result?.away
+  const home = result?.home
+  const inningsOk = Boolean(innings?.length) && innings.every((inn) => {
+    const homeMark = inn?.home
+    return whole(inn?.inning) != null
+      && whole(inn?.away) != null
+      && (homeMark == null || whole(homeMark) != null)
+  })
+  if (!inningsOk || !lines || !sideOk(away) || !sideOk(home) || lines.some((row) => !lineOk(row))) {
+    return [el('p', 'alert', 'THE LINE DID NOT LOAD')]
+  }
+  const head = innings.map((inn) => String(inn.inning))
+  const mark = (value) => (value == null ? 'x' : String(value))
+  const row = (side, key) => [side.name, ...innings.map((inn) => mark(inn[key])), String(side.runs), String(side.hits), String(side.errors)].join(' ')
+  const nodes = [
+    el('p', 'line-row', ['INNING', ...head, 'R', 'H', 'E'].join(' ')),
+    el('p', 'line-row', row(away, 'away')),
+    el('p', 'line-row', row(home, 'home')),
+  ]
+  const groups = [
+    [away.name, lines.filter((row) => row.team_id === away.team_id)],
+    [home.name, lines.filter((row) => row.team_id === home.team_id)],
+  ]
+  const placed = groups[0][1].length + groups[1][1].length
+  if (!placed && lines.length) {
+    nodes.push(el('p', 'section', 'THE LINE'))
+    for (const line of lines) nodes.push(el('p', '', kidLine(line)))
+    return nodes
+  }
+  for (const [name, rows] of groups) {
+    if (!rows.length) continue
+    nodes.push(el('p', 'section', name))
+    for (const line of rows) nodes.push(el('p', '', kidLine(line)))
+  }
+  return nodes
+}
+
 export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubhouse, setTabs, setTeam }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -103,6 +169,20 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
 
   function mineLocked() {
     return playing() && state.locks.some((row) => row.team_id === state.myTeam.id)
+  }
+
+  function bothLocked() {
+    const game = state.game
+    if (!game) return false
+    const ids = new Set(state.locks.map((row) => row.team_id))
+    return ids.has(game.away_team_id) && ids.has(game.home_team_id)
+  }
+
+  function canPlay() {
+    return Boolean(state.season)
+      && state.season.commissioner_id === state.userId
+      && state.game?.status === 'scheduled'
+      && bothLocked()
   }
 
   function paint() {
@@ -149,37 +229,60 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
       box.append(el('p', 'game-forecast', forecastLine(game)))
     }
 
+    if (game.status === 'final' || game.result) {
+      const score = el('div', 'box-score')
+      for (const node of scoreNodes(game.result)) score.append(node)
+      box.append(score)
+    }
+    if (canPlay()) {
+      const actions = el('div', 'side-actions')
+      const play = el('button', 'action', 'PLAY THIS ONE')
+      play.type = 'button'
+      play.disabled = state.busy
+      play.addEventListener('click', onPlay)
+      actions.append(play)
+      box.append(actions)
+    }
+
     if (playing()) {
       const foeId = state.myTeam.id === game.home_team_id ? game.away_team_id : game.home_team_id
       const foe = state.teams.find((team) => team.id === foeId)
       const foeLocked = state.locks.some((row) => row.team_id === foeId)
-      box.append(el('p', 'section', 'YOUR CARD'))
+      const mineBox = el('div', 'side-box')
+      mineBox.append(el('p', 'section', 'YOUR CARD'))
       if (state.card) {
-        box.append(el('p', 'season-status', 'THE CARD IS LOCKED'))
-        for (const node of cardNodes(state.card)) box.append(node)
+        mineBox.append(el('p', 'season-status', 'THE CARD IS LOCKED'))
+        for (const node of cardNodes(state.card)) mineBox.append(node)
       } else if (mineLocked()) {
-        box.append(el('p', 'alert', 'THE CARD DID NOT LOAD'))
+        mineBox.append(el('p', 'alert', 'THE CARD DID NOT LOAD'))
       } else if (game.status !== 'scheduled') {
-        box.append(el('p', '', 'THE GAME HAS ALREADY BEEN PLAYED'))
+        mineBox.append(el('p', '', 'THE GAME HAS ALREADY BEEN PLAYED'))
       } else if (state.lineupFailed) {
-        box.append(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
+        mineBox.append(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
       } else if (state.itemsFailed) {
-        box.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
+        mineBox.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
       } else {
-        for (const node of cardNodes(state.live)) box.append(node)
-        box.append(el('p', '', 'LOCK COPIES THIS CARD FOR THE GAME'))
-        const lock = el('button', '', 'LOCK')
+        for (const node of cardNodes(state.live)) mineBox.append(node)
+        mineBox.append(el('p', '', 'LOCK COPIES THIS CARD FOR THE GAME'))
+        const actions = el('div', 'side-actions')
+        const lock = el('button', 'action', 'LOCK')
         lock.type = 'button'
         lock.disabled = state.busy
         lock.addEventListener('click', onLock)
-        box.append(lock)
+        actions.append(lock)
+        mineBox.append(actions)
       }
-      box.append(el('p', '', `${foe?.name || 'TEAM'} IS ${foeLocked ? 'LOCKED' : 'STILL OPEN'}`))
+      box.append(mineBox)
+      const foeBox = el('div', 'side-box')
+      foeBox.append(el('p', '', `${foe?.name || 'TEAM'} IS ${foeLocked ? 'LOCKED' : 'STILL OPEN'}`))
+      box.append(foeBox)
     } else {
       for (const id of [game.away_team_id, game.home_team_id]) {
         const team = state.teams.find((item) => item.id === id)
         const locked = state.locks.some((row) => row.team_id === id)
-        box.append(el('p', '', `${team?.name || 'TEAM'} IS ${locked ? 'LOCKED' : 'STILL OPEN'}`))
+        const side = el('div', 'side-box')
+        side.append(el('p', '', `${team?.name || 'TEAM'} IS ${locked ? 'LOCKED' : 'STILL OPEN'}`))
+        box.append(side)
       }
     }
 
@@ -193,6 +296,23 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
     const team = state.teams.find((item) => item.id === id)
     const mine = team?.coach_id === state.userId
     return el('span', mine ? 'mine' : '', team?.name || 'TEAM')
+  }
+
+  async function onPlay() {
+    if (state.busy) return
+    state.busy = true
+    state.error = ''
+    paint()
+    const { data, error } = await supabase.rpc('play_game_now', { game_id: gameId })
+    if (prompt.dataset.paint !== token) return
+    state.busy = false
+    if (error) {
+      state.error = (error.message || 'THE GAME DID NOT PLAY.').toUpperCase()
+      paint()
+      return
+    }
+    state.game = { ...state.game, status: 'final', result: data }
+    paint()
   }
 
   async function onLock() {
@@ -218,7 +338,7 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
   async function load() {
     const [session, gameRes, lockRes, cardRes] = await Promise.all([
       supabase.auth.getSession(),
-      supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, weather, is_practice').eq('id', gameId).maybeSingle(),
+      supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, weather, is_practice, result').eq('id', gameId).maybeSingle(),
       supabase.from('lineup_locks').select('game_id, team_id, locked_at').eq('game_id', gameId),
       supabase.rpc('own_locked_card', { game_id: gameId }),
     ])
@@ -246,7 +366,7 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
     state.game = gameRes.data
     state.missing = false
     const [seasonRes, teamsRes] = await Promise.all([
-      supabase.from('seasons').select('id, name').eq('id', state.game.season_id).maybeSingle(),
+      supabase.from('seasons').select('id, name, commissioner_id').eq('id', state.game.season_id).maybeSingle(),
       supabase.from('teams').select('id, name, coach_id, bottlecaps, reputation, season_id').eq('season_id', state.game.season_id).order('created_at', { ascending: true }),
     ])
     if (prompt.dataset.paint !== token) return
