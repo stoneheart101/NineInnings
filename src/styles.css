@@ -324,9 +324,17 @@ button.team-card,
 .season-card .season-name,
 .team-card .season-name,
 .kid-card .season-name {
-  border-bottom: 1px solid var(--mark);
   padding-bottom: 2px;
   margin-bottom: 4px;
+}
+
+.season-card .season-name,
+.team-card .season-name {
+  border-bottom: 1px solid var(--mark);
+}
+
+.kid-card .season-name {
+  border-bottom: 2px solid #000;
 }
 
 .screen-name {
@@ -397,7 +405,7 @@ button.team-card,
   justify-content: space-between;
   gap: 8px 12px;
   width: 100%;
-  border-bottom: 1px solid var(--mark);
+  border-bottom: 2px solid #000;
   padding-bottom: 2px;
   margin-bottom: 4px;
 }
