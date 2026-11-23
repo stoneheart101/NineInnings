@@ -2,7 +2,6 @@ import '@fontsource/vt323'
 import './styles.css'
 import { drawField } from './field.js'
 import { createDesk } from './auth.js'
-import { mountBackendTest } from './backend-test.js'
 import { renderHome } from './screens/home.js'
 import { renderSeasons } from './screens/seasons.js'
 import { renderSeason } from './screens/season.js'
@@ -11,7 +10,6 @@ import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
 const prompt = drawField(field)
-const backend = mountBackendTest(field)
 
 // The home desk keeps the field. Any other signed-in route is real work.
 function syncLayout() {
@@ -90,11 +88,6 @@ document.addEventListener('keydown', (event) => {
   if (event.metaKey || event.ctrlKey || event.altKey) return
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
   if (document.querySelector('dialog[open]')) return
-  if (field.classList.contains('testing')) {
-    const box = field.querySelector('.backend-test [data-keys]')
-    pressKey(event, box)
-    return
-  }
   pressKey(event, prompt.querySelector('[data-keys]'))
 })
 
@@ -124,7 +117,6 @@ supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       coachName = ''
       rulesVersion = null
-      backend.close()
       syncLayout()
     }
     desk.onEvent(event, session)

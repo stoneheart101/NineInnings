@@ -416,91 +416,8 @@ button.team-card,
 }
 
 .prompt,
-.board-wrap,
-.backend-open {
+.board-wrap {
   flex-shrink: 0;
-}
-
-.backend-open {
-  align-self: flex-start;
-  color: var(--mark);
-  white-space: nowrap;
-}
-
-.backend-test {
-  display: none;
-  color: var(--ink);
-  background: transparent;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.backend-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.backend-head h2 {
-  margin: 0;
-  color: var(--mark);
-  font: inherit;
-  font-weight: 400;
-}
-
-.backend-schedule,
-.backend-next,
-.backend-remain,
-.backend-status {
-  margin: 0;
-  flex-shrink: 0;
-}
-
-.backend-remain {
-  color: var(--field);
-}
-
-.backend-status {
-  overflow-wrap: anywhere;
-}
-
-.pick-columns,
-.pick {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.pick-columns {
-  color: var(--mark);
-  border-bottom: 1px solid var(--mark);
-  flex-shrink: 0;
-}
-
-.picks {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.pick {
-  padding: 4px 0;
-  border-bottom: 1px solid #333;
-}
-
-.pick time {
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-.pick-empty {
-  padding: 8px 0;
 }
 
 /* Density follows the field width, not a device breakpoint. See AGENTS.md. */
@@ -529,43 +446,31 @@ button.team-card,
 }
 
 /* Real work keeps a one-line strip and gives the page to the task. */
-#field.working,
-#field.testing {
+#field.working {
   overflow: hidden;
 }
 
-.screen:has(#field.working),
-.screen:has(#field.testing) {
+.screen:has(#field.working) {
   overflow: hidden;
 }
 
-#field.working .mast,
-#field.testing .mast {
+#field.working .mast {
   display: flex;
   flex: 0 0 auto;
 }
 
-#field.testing .backend-open,
 #field.working .board-wrap,
-#field.working .play,
-#field.testing .board-wrap,
-#field.testing .play,
-#field.testing .prompt {
+#field.working .play {
   display: none;
 }
 
-#field.working .prompt,
-#field.testing .backend-test {
+#field.working .prompt {
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   max-height: none;
   overflow: auto;
   overscroll-behavior: contain;
-}
-
-#field.testing .backend-test {
-  display: flex;
 }
 
 
