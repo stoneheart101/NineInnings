@@ -342,6 +342,19 @@ button.team-card,
   border-color: var(--mark);
 }
 
+.draft-roster,
+.draft-pool {
+  display: grid;
+  gap: clamp(8px, 1.6vw, 14px);
+  width: 100%;
+  margin: 8px 0 4px;
+}
+
+.kid-card button {
+  margin-top: 6px;
+  justify-self: start;
+}
+
 .kid-stats {
   display: flex;
   flex-wrap: wrap;
