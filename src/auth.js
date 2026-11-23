@@ -55,11 +55,17 @@ export function createDesk(prompt, hooks) {
   }
   let pendingError = ''
 
+  function useTabs(items) {
+    hooks.setTabs?.(items)
+  }
+
   function paint() {
     if (state.mode === 'ready') return
+    prompt.dataset.paint = String(Math.random())
     prompt.replaceChildren()
     const view = views[state.mode] || views.menu
-    prompt.append(view())
+    const node = view()
+    if (node) prompt.append(node)
     if (state.error) prompt.append(el('p', 'alert', state.error))
     if (state.notice) prompt.append(el('p', 'alert', state.notice))
   }
@@ -149,21 +155,21 @@ export function createDesk(prompt, hooks) {
 
   const views = {
     boot() {
+      useTabs([])
       return el('p', '', 'READY')
     },
     menu() {
-      const box = el('div', 'choices')
-      box.dataset.keys = 'on'
-      const button = el('button', '', '1- SIGN IN WITH GOOGLE')
-      button.type = 'button'
-      button.disabled = state.busy
-      button.addEventListener('click', () => {
-        signInWithGoogle()
-      })
-      box.append(button, el('p', '', 'WHICH?'))
-      return box
+      useTabs([{
+        label: 'SIGN IN WITH GOOGLE',
+        disabled: state.busy,
+        onClick() {
+          signInWithGoogle()
+        },
+      }])
+      return null
     },
     coach() {
+      useTabs([])
       const name = field('coach-name', 'COACH NAME', 'text', {
         autocomplete: 'nickname',
         maxLength: 24,

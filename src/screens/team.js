@@ -39,7 +39,7 @@ export function closeTeam() {
   supabase.removeChannel(current)
 }
 
-export function renderTeam(prompt, { teamId, onBack, onOpenSeason }) {
+export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
   closeTeam()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -59,17 +59,19 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason }) {
   function paint() {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
-    const box = el('div', 'choices')
-    box.dataset.keys = 'on'
-    const back = el('button', '', '1- BACK')
-    back.type = 'button'
-    back.addEventListener('click', onBack)
-    box.append(back)
-
-    if (!state.loaded) {
-      prompt.append(box)
-      return
+    const tabs = [{ label: 'BACK', onClick: onBack }]
+    if (state.loaded && state.mine && state.team) {
+      tabs.push({
+        label: 'THE SEASON',
+        onClick() {
+          onOpenSeason?.(state.team.season_id)
+        },
+      })
     }
+    setTabs?.(tabs)
+    const box = el('div', 'choices')
+
+    if (!state.loaded) return
     if (state.missing || !state.team) {
       box.append(el('p', '', 'THAT TEAM IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
@@ -83,10 +85,6 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason }) {
     }
 
     const season = seasonOf(state.team)
-    const seasonButton = el('button', '', '2- THE SEASON')
-    seasonButton.type = 'button'
-    seasonButton.addEventListener('click', () => onOpenSeason?.(state.team.season_id))
-    box.append(seasonButton)
     box.append(
       el('p', 'season-title', state.team.name),
       el('p', 'season-status', season?.name || 'SEASON'),

@@ -38,9 +38,30 @@ export function drawField(root, { onSignOut } = {}) {
   userMenu.hidden = true
   header.append(logo, brand, userMenu)
 
+  const tabs = el('nav', 'tabs')
+  tabs.hidden = true
+  tabs.setAttribute('aria-label', 'Menu')
+
   const prompt = el('div', 'prompt')
   prompt.id = 'prompt'
-  root.append(header, prompt)
+  root.append(header, tabs, prompt)
+
+  function setTabs(items) {
+    tabs.replaceChildren()
+    const list = Array.isArray(items) ? items.filter((item) => item?.label) : []
+    if (!list.length) {
+      tabs.hidden = true
+      return
+    }
+    tabs.hidden = false
+    for (const item of list) {
+      const button = el('button', item.on ? 'on' : '', item.label)
+      button.type = 'button'
+      if (item.disabled) button.disabled = true
+      if (item.onClick) button.addEventListener('click', item.onClick)
+      tabs.append(button)
+    }
+  }
 
   function closeMenu() {
     const panel = userMenu.querySelector('.coach-menu')
@@ -109,5 +130,5 @@ export function drawField(root, { onSignOut } = {}) {
     userMenu.querySelector('.coach-toggle')?.focus()
   })
 
-  return { prompt, setCoach }
+  return { prompt, setCoach, setTabs }
 }

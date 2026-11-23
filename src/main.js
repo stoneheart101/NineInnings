@@ -11,7 +11,7 @@ import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
-const { prompt, setCoach } = drawField(field, {
+const { prompt, setCoach, setTabs } = drawField(field, {
   onSignOut: async () => {
     const { error } = await supabase.auth.signOut()
     if (!error) return ''
@@ -45,6 +45,7 @@ function renderDesk() {
     renderSeasons(prompt, {
       onBack: () => go('/'),
       onOpen: (id) => go(`/seasons/${id}`),
+      setTabs,
     })
     return
   }
@@ -53,6 +54,7 @@ function renderDesk() {
     renderDraft(prompt, {
       seasonId,
       onBack: () => go(`/seasons/${seasonId}`),
+      setTabs,
     })
     return
   }
@@ -63,6 +65,7 @@ function renderDesk() {
       onBack: () => go('/seasons'),
       onOpenDraft: () => go(`/seasons/${seasonId}/draft`),
       onOpenTeam: (id) => go(`/teams/${id}`),
+      setTabs,
     })
     return
   }
@@ -72,6 +75,7 @@ function renderDesk() {
       teamId,
       onBack: () => go('/'),
       onOpenSeason: (id) => go(`/seasons/${id}`),
+      setTabs,
     })
     return
   }
@@ -79,6 +83,7 @@ function renderDesk() {
     rulesVersion,
     onSeasons: () => go('/seasons'),
     onOpenTeam: (id) => go(`/teams/${id}`),
+    setTabs,
   })
 }
 
@@ -89,6 +94,7 @@ function go(path) {
 }
 
 const desk = createDesk(prompt, {
+  setTabs,
   onNamed(name) {
     coachName = name
     if (routeFromHash(window.location.hash) == null) {
@@ -98,23 +104,6 @@ const desk = createDesk(prompt, {
     loadRules()
   },
 })
-
-document.addEventListener('keydown', (event) => {
-  if (event.metaKey || event.ctrlKey || event.altKey) return
-  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
-  if (document.querySelector('dialog[open]')) return
-  pressKey(event, prompt.querySelector('[data-keys]'))
-})
-
-function pressKey(event, box) {
-  if (!box) return
-  const index = Number(event.key) - 1
-  if (!Number.isInteger(index) || index < 0) return
-  const button = box.querySelectorAll('button')[index]
-  if (!button) return
-  event.preventDefault()
-  button.click()
-}
 
 window.addEventListener('hashchange', () => {
   renderDesk()
@@ -132,6 +121,8 @@ supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       coachName = ''
       rulesVersion = null
+      closeDraft()
+      closeTeam()
       setCoach('')
     }
     desk.onEvent(event, session)

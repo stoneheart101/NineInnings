@@ -38,7 +38,7 @@ function coachName(team) {
   return profile?.coach_name || 'COACH'
 }
 
-export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam }) {
+export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, setTabs }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -58,26 +58,36 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
   function paint() {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
-    const box = el('div', 'choices')
-    box.dataset.keys = 'on'
-
-    const back = el('button', '', '1- BACK')
-    back.type = 'button'
-    back.addEventListener('click', onBack)
-    box.append(back)
-
-    if (!state.loaded) {
-      prompt.append(box)
-      return
+    const season = state.loaded && !state.missing ? state.season : null
+    const myTeam = season ? state.teams.find((team) => team.coach_id === state.userId) : null
+    const forming = season?.status === 'forming'
+    const tabs = [{ label: 'BACK', onClick: onBack }]
+    if (season?.status === 'drafting') {
+      tabs.push({ label: 'THE DRAFT', onClick: () => onOpenDraft?.() })
     }
+    if (myTeam) {
+      tabs.push({ label: 'THE ROSTER', onClick: () => onOpenTeam?.(myTeam.id) })
+    }
+    if (forming && season.commissioner_id === state.userId) {
+      tabs.push({ label: 'START THE DRAFT', disabled: state.busy, onClick: onStart })
+    }
+    setTabs?.(tabs)
+
+    if (!state.loaded) return
     if (state.missing || !state.season) {
+      const box = el('div', 'choices')
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
       prompt.append(box)
       return
     }
 
-    const season = state.season
+    if (forming && season.commissioner_id === state.userId) {
+      const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
+      if (draftNote) prompt.append(el('p', 'alert', draftNote))
+    }
+
+    const box = el('div', 'choices')
     const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
     const practice = season.practice_every_days === 1
       ? 'EVERY 1 DAY'
@@ -110,35 +120,13 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
       box.append(list)
     }
 
-    const myTeam = state.teams.find((team) => team.coach_id === state.userId)
-    const forming = season.status === 'forming'
-    let nextKey = 2
     if (forming && !myTeam) {
-      box.append(form(nextKey))
-      nextKey += 1
+      box.append(form())
     } else if (!myTeam) {
       box.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
     }
     if (forming && season.commissioner_id === state.userId) {
-      box.append(callForm(nextKey))
-      nextKey += 1
-      box.append(startButton(nextKey))
-      nextKey += 1
-      const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
-      if (draftNote) box.append(el('p', 'alert', draftNote))
-    }
-    if (season.status === 'drafting') {
-      const open = el('button', '', `${nextKey}- THE DRAFT`)
-      open.type = 'button'
-      open.addEventListener('click', () => onOpenDraft?.())
-      box.append(open)
-      nextKey += 1
-    }
-    if (myTeam) {
-      const roster = el('button', '', `${nextKey}- THE ROSTER`)
-      roster.type = 'button'
-      roster.addEventListener('click', () => onOpenTeam?.(myTeam.id))
-      box.append(roster)
+      box.append(callForm())
     }
     if (state.kids) {
       const pool = state.kids.filter((kid) => !kid.team_id)
@@ -159,7 +147,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     prompt.append(box)
   }
 
-  function form(key) {
+  function form() {
     const node = document.createElement('form')
     node.className = 'name-team'
     const name = document.createElement('input')
@@ -172,7 +160,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     const nameLabel = el('label')
     nameLabel.append(el('span', '', 'NAME'), name)
 
-    const save = el('button', '', `${key}- NAME THE TEAM`)
+    const save = el('button', '', 'NAME THE TEAM')
     save.type = 'submit'
     save.disabled = state.busy
     node.append(el('p', '', 'NAME YOUR TEAM'), nameLabel, save)
@@ -180,15 +168,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     return node
   }
 
-  function startButton(key) {
-    const button = el('button', '', `${key}- START THE DRAFT`)
-    button.type = 'button'
-    button.disabled = state.busy
-    button.addEventListener('click', onStart)
-    return button
-  }
-
-  function callForm(key) {
+  function callForm() {
     const node = document.createElement('form')
     node.className = 'call-kids'
     const count = document.createElement('input')
@@ -203,7 +183,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     count.value = state.count
     const countLabel = el('label')
     countLabel.append(el('span', '', 'HOW MANY'), count)
-    const save = el('button', '', `${key}- CALL THE KIDS`)
+    const save = el('button', '', 'CALL THE KIDS')
     save.type = 'submit'
     save.disabled = state.busy
     node.append(el('p', '', 'CALL THE KIDS'), el('p', '', '1 TO 40 AT A TIME'), countLabel, save)

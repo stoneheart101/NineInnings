@@ -16,7 +16,7 @@ function seasonName(team) {
   return season?.name || 'SEASON'
 }
 
-export function renderHome(prompt, { rulesVersion, onSeasons, onOpenTeam }) {
+export function renderHome(prompt, { rulesVersion, onSeasons, onOpenTeam, setTabs }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = { teams: null, error: '' }
@@ -47,14 +47,8 @@ export function renderHome(prompt, { rulesVersion, onSeasons, onOpenTeam }) {
       head.append(list)
     }
     if (state.error) head.append(el('p', 'alert', state.error))
-
-    const box = el('div', 'choices')
-    box.dataset.keys = 'on'
-    const seasons = el('button', '', '1- SEASONS')
-    seasons.type = 'button'
-    seasons.addEventListener('click', onSeasons)
-    box.append(seasons, el('p', '', 'WHICH?'))
-    prompt.append(head, box)
+    setTabs?.([{ label: 'SEASONS', onClick: onSeasons }])
+    prompt.append(head)
   }
 
   async function load() {

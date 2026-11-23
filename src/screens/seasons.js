@@ -20,7 +20,7 @@ function cleanName(value) {
   return value.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
-export function renderSeasons(prompt, { onBack, onOpen }) {
+export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -40,14 +40,23 @@ export function renderSeasons(prompt, { onBack, onOpen }) {
   function paint() {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
+    const showForm = state.loaded && (state.seasons.length === 0 || state.opening)
+    const tabs = [{ label: 'BACK', onClick: onBack }]
+    if (state.loaded && !showForm) {
+      tabs.push({
+        label: 'OPEN A SEASON',
+        onClick() {
+          state.opening = true
+          state.error = ''
+          paint()
+          prompt.querySelector('[name="season-name"]')?.focus()
+        },
+      })
+    }
+    setTabs?.(tabs)
+
     const box = el('div', 'choices')
-    box.dataset.keys = 'on'
-
-    const back = el('button', '', '1- BACK')
-    back.type = 'button'
-    back.addEventListener('click', onBack)
-
-    box.append(el('p', '', 'SEASONS'), back)
+    box.append(el('p', '', 'SEASONS'))
 
     if (state.loaded && !state.seasons.length) {
       box.append(el('p', '', 'NO SEASONS YET'))
@@ -83,20 +92,7 @@ export function renderSeasons(prompt, { onBack, onOpen }) {
       box.append(list)
     }
 
-    const showForm = state.loaded && (state.seasons.length === 0 || state.opening)
-    if (showForm) {
-      box.append(form())
-    } else if (state.loaded) {
-      const open = el('button', 'open-season-toggle', '2- OPEN A SEASON')
-      open.type = 'button'
-      open.addEventListener('click', () => {
-        state.opening = true
-        state.error = ''
-        paint()
-        prompt.querySelector('[name="season-name"]')?.focus()
-      })
-      box.append(open)
-    }
+    if (showForm) box.append(form())
 
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)
@@ -137,7 +133,7 @@ export function renderSeasons(prompt, { onBack, onOpen }) {
       numberField('rounds', 'DRAFT ROUNDS', state.rounds, 1, 15),
     )
 
-    const open = el('button', '', '2- OPEN')
+    const open = el('button', '', 'OPEN')
     open.type = 'submit'
     open.disabled = state.busy
     node.append(open)

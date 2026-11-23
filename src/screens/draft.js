@@ -30,7 +30,7 @@ export function closeDraft() {
   supabase.removeChannel(current)
 }
 
-export function renderDraft(prompt, { seasonId, onBack }) {
+export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
   closeDraft()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -57,17 +57,10 @@ export function renderDraft(prompt, { seasonId, onBack }) {
   function paint() {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
+    setTabs?.([{ label: 'BACK', onClick: onBack }])
     const box = el('div', 'choices')
-    box.dataset.keys = 'on'
-    const back = el('button', '', '1- BACK')
-    back.type = 'button'
-    back.addEventListener('click', onBack)
-    box.append(back)
 
-    if (!state.loaded) {
-      prompt.append(box)
-      return
-    }
+    if (!state.loaded) return
     if (state.missing || !state.season) {
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
