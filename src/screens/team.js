@@ -74,6 +74,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     confirmKid: '',
     lineup: {},
     lineupError: '',
+    lineupKid: '',
     lineupBusy: false,
     busy: false,
     missing: false,
@@ -134,8 +135,8 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       box.append(el('p', 'season-role', 'THE BENCH IS FULL'))
     }
     if (state.error) box.append(el('p', 'alert', state.error))
+    if (state.lineupError && !state.lineupKid) box.append(el('p', 'alert', state.lineupError))
     if (box.childNodes.length) prompt.append(box)
-    prompt.append(lineupBlock())
 
     const board = el('div', 'choices')
     if (!state.kids.length) {
@@ -184,7 +185,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     head.append(title)
     const release = el('button', '', 'RELEASE')
     release.type = 'button'
-    release.disabled = state.busy
+    release.disabled = state.busy || state.lineupBusy
     release.addEventListener('click', () => {
       if (state.busy) return
       state.confirmKid = kid.id
@@ -197,116 +198,86 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
+    card.append(positionPicker(kid))
+    if (state.lineupError && state.lineupKid === kid.id) {
+      card.append(el('p', 'alert', state.lineupError))
+    }
     if (state.releaseError && state.releaseKid === kid.id) {
       card.append(el('p', 'alert', state.releaseError))
     }
     return card
   }
 
-  function lineupBlock() {
-    const block = el('div', 'lineup')
-    const form = el('form', 'lineup-card')
-    form.addEventListener('submit', (event) => {
-      event.preventDefault()
-      onSaveLineup()
-    })
-    const head = el('div', 'lineup-head')
-    head.append(el('p', 'section', 'LINEUP'))
-    const save = el('button', '', 'SAVE THE LINEUP')
-    save.type = 'submit'
-    save.disabled = state.lineupBusy
-    head.append(save)
-    form.append(head)
-    const box = el('div', 'lineup-box')
+  function slotFor(playerId) {
+    for (const [slot, id] of Object.entries(state.lineup)) {
+      if (id === playerId) return Number(slot)
+    }
+    return 0
+  }
+
+  function positionPicker(kid) {
+    const row = el('label', 'lineup-slot')
+    const select = document.createElement('select')
+    select.dataset.player = kid.id
+    select.disabled = state.busy || state.lineupBusy
+    const bench = document.createElement('option')
+    bench.value = ''
+    bench.textContent = 'BENCH'
+    select.append(bench)
     for (const [slot, label] of SLOTS) {
-      const row = el('label', 'lineup-slot')
-      row.append(document.createTextNode(label))
-      const select = document.createElement('select')
-      select.dataset.slot = String(slot)
-      select.disabled = state.lineupBusy
-      fillSelect(select, slot)
-      select.addEventListener('change', () => {
-        const chosen = select.value
-        state.lineup[slot] = chosen
-        if (chosen) {
-          for (const other of Object.keys(state.lineup)) {
-            if (Number(other) !== slot && state.lineup[other] === chosen) state.lineup[other] = ''
-          }
-        }
-        syncLineupOptions(select)
-      })
-      row.append(select)
-      box.append(row)
-    }
-    form.append(box)
-    if (state.lineupError) form.append(el('p', 'alert', state.lineupError))
-    block.append(form)
-    return block
-  }
-
-  function takenElsewhere(slot) {
-    const taken = new Set()
-    for (const [other, playerId] of Object.entries(state.lineup)) {
-      if (Number(other) !== slot && playerId) taken.add(playerId)
-    }
-    return taken
-  }
-
-  function fillSelect(select, slot) {
-    const current = state.lineup[slot] || ''
-    const taken = takenElsewhere(slot)
-    select.replaceChildren()
-    const empty = document.createElement('option')
-    empty.value = ''
-    empty.textContent = 'EMPTY'
-    select.append(empty)
-    for (const kid of state.kids) {
-      if (taken.has(kid.id) && kid.id !== current) continue
       const option = document.createElement('option')
-      option.value = kid.id
-      const nickname = kid.nickname ? ` "${kid.nickname}"` : ''
-      option.textContent = `${kidName(kid)}${nickname}`
+      option.value = String(slot)
+      option.textContent = label
       select.append(option)
     }
-    select.value = current && [...select.options].some((option) => option.value === current) ? current : ''
+    const current = slotFor(kid.id)
+    select.value = current ? String(current) : ''
+    select.addEventListener('change', () => onPosition(kid.id, select.value))
+    row.append(select)
+    return row
   }
 
-  function syncLineupOptions(skip) {
-    const form = prompt.querySelector('form.lineup-card')
-    if (!form) return
-    for (const select of form.querySelectorAll('select')) {
-      if (select === skip) continue
-      fillSelect(select, Number(select.dataset.slot))
-    }
-  }
-
-  function slotsFromForm() {
+  function slotsFromLineup(lineup) {
     const slots = {}
-    const form = prompt.querySelector('form.lineup-card')
-    for (const [slot] of SLOTS) {
-      const select = form?.querySelector(`[data-slot="${slot}"]`)
-      const value = select?.value || ''
-      state.lineup[slot] = value
-      slots[String(slot)] = value || null
+    for (const [slot] of SLOTS) slots[String(slot)] = null
+    for (const [slot, playerId] of Object.entries(lineup)) {
+      const number = Number(slot)
+      if (number >= 1 && number <= 9 && playerId) slots[String(number)] = playerId
     }
     return slots
   }
 
-  async function onSaveLineup() {
-    if (state.lineupBusy || !state.team) return
-    const slots = slotsFromForm()
+  async function onPosition(playerId, raw) {
+    if (state.lineupBusy || state.busy || !state.team) return
+    const slot = raw === '' ? 0 : Number(raw)
+    if (raw !== '' && (!Number.isInteger(slot) || slot < 1 || slot > 9)) return
+    const slots = slotsFromLineup(state.lineup)
+    for (const key of Object.keys(slots)) {
+      if (slots[key] === playerId) slots[key] = null
+    }
+    if (slot) slots[String(slot)] = playerId
+    state.lineup = {}
+    for (const [key, id] of Object.entries(slots)) {
+      if (id) state.lineup[Number(key)] = id
+    }
     state.lineupBusy = true
     state.lineupError = ''
+    state.lineupKid = playerId
     paint()
     const { error } = await supabase.rpc('set_lineup', { team_id: state.team.id, slots })
     if (prompt.dataset.paint !== token) return
     state.lineupBusy = false
     if (error) {
-      state.lineupError = (error.message || 'THE LINEUP STAYED.').toUpperCase()
+      const message = (error.message || 'THE LINEUP STAYED.').toUpperCase()
+      await load()
+      if (prompt.dataset.paint !== token) return
+      state.lineupError = message
+      state.lineupKid = playerId
       paint()
       return
     }
     state.lineupError = ''
+    state.lineupKid = ''
     await load()
   }
 

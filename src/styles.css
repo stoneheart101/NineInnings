@@ -439,6 +439,7 @@ button.team-card,
 
 .kid-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px 12px;
@@ -464,7 +465,10 @@ button.team-card,
 
 .kid-head button {
   margin: 0 0 0 auto;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
   text-align: right;
 }
 
@@ -496,41 +500,17 @@ button.team-card,
   width: 100%;
 }
 
-.lineup {
-  width: 100%;
-  margin-bottom: 0.75em;
-}
-
-.lineup-card {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-}
-
-.lineup-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px 12px;
-  width: 100%;
-}
-
-.lineup-head button {
-  margin: 0 0 0 auto;
-  flex: 0 0 auto;
-  text-align: right;
-}
-
-.lineup-box {
-  width: 100%;
-  border: 2px solid #d0d0d0;
-  padding: 6px 10px;
-  display: grid;
-  gap: 2px;
-}
-
 .lineup-slot {
   width: 100%;
+}
+
+.kid-card .lineup-slot {
+  margin: 8px 0 0;
+}
+
+.kid-card .lineup-slot select {
+  width: 100%;
+  flex: 1 1 auto;
 }
 
 .lineup-slot select,
@@ -567,14 +547,6 @@ button.team-card,
   gap: clamp(14px, 2.4vw, 24px);
   width: 100%;
   margin: 4px 0 8px;
-}
-
-.shelf-cost {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.4em;
-  width: 100%;
 }
 
 .shelf-buy {

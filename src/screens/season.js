@@ -39,6 +39,13 @@ function coachName(team) {
   return profile?.coach_name || 'COACH'
 }
 
+function draftIsOpen(season, draft) {
+  if (season?.status !== 'drafting' || !draft) return false
+  const order = Array.isArray(draft.order) ? draft.order : []
+  const pickIndex = Number(draft.pick_index)
+  return order.length > 0 && Number.isInteger(pickIndex) && pickIndex < order.length
+}
+
 export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, setTabs }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -53,6 +60,8 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     kids: null,
     count: '',
     draftError: '',
+    draft: null,
+    draftFailed: false,
     loaded: false,
   }
 
@@ -62,8 +71,9 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     const season = state.loaded && !state.missing ? state.season : null
     const myTeam = season ? state.teams.find((team) => team.coach_id === state.userId) : null
     const forming = season?.status === 'forming'
+    const draftOpen = season?.status === 'drafting' && (state.draftFailed || draftIsOpen(season, state.draft))
     const tabs = [{ label: 'BACK', onClick: onBack }]
-    if (season?.status === 'drafting') {
+    if (draftOpen) {
       tabs.push({ label: 'THE DRAFT', onClick: () => onOpenDraft?.() })
     }
     if (myTeam) {
@@ -282,7 +292,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
   }
 
   async function load() {
-    const [session, season, teams, kids] = await Promise.all([
+    const [session, season, teams, kids, draft] = await Promise.all([
       supabase.auth.getSession(),
       supabase
         .from('seasons')
@@ -300,19 +310,30 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
         .eq('season_id', seasonId)
         .order('created_at', { ascending: true })
         .order('id', { ascending: true }),
+      supabase
+        .from('draft_state')
+        .select('pick_index,order')
+        .eq('season_id', seasonId)
+        .maybeSingle(),
     ])
     if (prompt.dataset.paint !== token) return
     state.userId = session.data.session?.user?.id ?? ''
     state.kids = null
+    state.draftFailed = Boolean(draft.error)
+    state.draft = draft.error ? null : draft.data
     if (season.error || teams.error) {
       state.error = ((season.error || teams.error).message || 'THE SEASON DID NOT LOAD.').toUpperCase()
       state.season = null
       state.teams = []
       state.missing = false
+      state.draft = null
+      state.draftFailed = false
     } else if (!season.data) {
       state.missing = true
       state.season = null
       state.teams = []
+      state.draft = null
+      state.draftFailed = false
     } else {
       state.missing = false
       state.season = season.data

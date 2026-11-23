@@ -157,10 +157,15 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
       for (const row of state.packed) packed.append(el('p', '', packedLine(row)))
       block.append(packed)
     }
-    block.append(el('p', 'section', 'THE SHELF'))
-    const shelf = el('div', 'shelf-list')
-    for (const item of orderedShelf()) shelf.append(shelfCard(item))
-    block.append(shelf)
+    block.append(el('p', 'section', 'AVAILABLE'))
+    const available = orderedShelf()
+    if (!available.length) {
+      block.append(el('p', '', 'NONE AVAILABLE'))
+    } else {
+      const shelf = el('div', 'shelf-list')
+      for (const item of available) shelf.append(shelfCard(item))
+      block.append(shelf)
+    }
     return block
   }
 
@@ -172,12 +177,9 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     return `${name} - ${counted(games, 'GAME LEFT', 'GAMES LEFT')}`
   }
 
-  function costRow(item) {
-    const row = el('span', 'shelf-cost')
-    row.append(el('span', 'season-role', 'COST'))
+  function buyLabel(item) {
     const price = costLine(item)
-    if (price) row.append(document.createTextNode(` ${price}`))
-    return row
+    return price ? `BUY FOR ${price}` : 'BUY'
   }
 
   function shelfCard(item) {
@@ -187,7 +189,7 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     const title = el('span', 'kid-title')
     title.append(el('span', 'season-name', item.name))
     head.append(title)
-    const buy = el('button', '', 'BUY')
+    const buy = el('button', '', buyLabel(item))
     buy.type = 'button'
     buy.disabled = state.buyBusy || !canAfford(item)
     buy.addEventListener('click', () => {
@@ -203,7 +205,6 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     head.append(buy)
     card.append(head)
     if (item.blurb) card.append(el('span', '', item.blurb))
-    card.append(costRow(item))
     card.append(el('span', '', durationLabel(item.duration)))
     if (state.buyError && state.buyItem === item.id) card.append(el('p', 'alert', state.buyError))
     return card
@@ -271,7 +272,7 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     if (prompt.dataset.paint !== token) return
     state.buyBusy = false
     if (error) {
-      state.buyError = (error.message || 'THAT ITEM STAYED ON THE SHELF.').toUpperCase()
+      state.buyError = (error.message || 'THAT ITEM WAS NOT PACKED.').toUpperCase()
       paint()
       return
     }
@@ -349,7 +350,7 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     ])
     if (prompt.dataset.paint !== token) return
     if (shelf.error) {
-      state.buyError = (shelf.error.message || 'THE SHELF DID NOT LOAD.').toUpperCase()
+      state.buyError = (shelf.error.message || 'THE AVAILABLE ITEMS DID NOT LOAD.').toUpperCase()
       state.shelf = []
     } else {
       state.shelf = shelf.data || []
