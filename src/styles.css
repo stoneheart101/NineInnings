@@ -532,6 +532,10 @@ button.team-card,
   color: var(--ink);
 }
 
+.lineup-slot select option.taken {
+  color: #8a8a8a;
+}
+
 .lineup-slot select:disabled,
 .shelf-buy select:disabled {
   cursor: wait;

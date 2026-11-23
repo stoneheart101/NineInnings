@@ -228,6 +228,8 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       const option = document.createElement('option')
       option.value = String(slot)
       option.textContent = label
+      const holder = state.lineup[slot]
+      if (holder && holder !== kid.id) option.className = 'taken'
       select.append(option)
     }
     const current = slotFor(kid.id)
@@ -259,12 +261,15 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     if (state.lineupBusy || state.busy || !state.team) return
     const slot = raw === '' ? 0 : Number(raw)
     if (raw !== '' && (!Number.isInteger(slot) || slot < 1 || slot > 9)) return
-    if (slotFor(playerId) === slot) return
+    const previous = slotFor(playerId)
+    if (previous === slot) return
     const slots = slotsFromLineup(state.lineup)
+    const occupant = slot ? slots[String(slot)] : null
     for (const key of Object.keys(slots)) {
       if (slots[key] === playerId) slots[key] = null
     }
     if (slot) slots[String(slot)] = playerId
+    if (occupant && occupant !== playerId && previous) slots[String(previous)] = occupant
     state.lineup = {}
     for (const [key, id] of Object.entries(slots)) {
       if (id) state.lineup[Number(key)] = id
