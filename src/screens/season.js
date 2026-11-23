@@ -2,6 +2,7 @@ import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 const STATS = [
   ['contact', 'CONTACT'],
   ['power', 'POWER'],
@@ -46,12 +47,27 @@ function draftIsOpen(season, draft) {
   return order.length > 0 && Number.isInteger(pickIndex) && pickIndex < order.length
 }
 
-function statusLabel(season, draft) {
-  if (season?.status !== 'drafting' || !draft) return season.status.toUpperCase()
+function draftComplete(season, draft) {
+  if (season?.status !== 'drafting' || !draft) return false
   const order = Array.isArray(draft.order) ? draft.order : []
   const pickIndex = Number(draft.pick_index)
-  const complete = order.length > 0 && Number.isInteger(pickIndex) && pickIndex >= order.length
-  return complete ? 'THE DRAFT IS COMPLETE' : season.status.toUpperCase()
+  return order.length > 0 && Number.isInteger(pickIndex) && pickIndex >= order.length
+}
+
+function statusLabel(season, draft) {
+  if (draftComplete(season, draft)) return 'THE DRAFT IS COMPLETE'
+  return season.status.toUpperCase()
+}
+
+function dayLabel(when) {
+  return `${DAYS[when.getUTCDay()]} ${MONTHS[when.getUTCMonth()]} ${when.getUTCDate()}`
+}
+
+function forecastSentence(game) {
+  const sentence = game?.weather?.sentence
+  if (typeof sentence !== 'string') return 'THE FORECAST IS NOT HERE'
+  const line = sentence.trim().toUpperCase()
+  return line || 'THE FORECAST IS NOT HERE'
 }
 
 export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, setTabs }) {
@@ -70,6 +86,9 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     draftError: '',
     draft: null,
     draftFailed: false,
+    games: [],
+    gamesFailed: false,
+    playError: '',
     loaded: false,
   }
 
@@ -91,6 +110,15 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     if (forming && season.commissioner_id === state.userId) {
       tabs.push({ label: 'START THE DRAFT', disabled: state.busy, onClick: onStart })
     }
+    const canStart = Boolean(
+      season
+      && !state.draftFailed
+      && draftComplete(season, state.draft)
+      && season.commissioner_id === state.userId,
+    )
+    if (canStart) {
+      tabs.push({ label: 'PLAY BALL', disabled: state.busy, onClick: onPlay })
+    }
     setTabs?.(tabs)
     prompt.append(el('h2', 'screen-name', 'SEASON'))
 
@@ -107,6 +135,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
       const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
       if (draftNote) prompt.append(el('p', 'alert', draftNote))
     }
+    if (canStart && state.playError) prompt.append(el('p', 'alert', state.playError))
 
     const box = el('div', 'choices')
     const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
@@ -124,6 +153,8 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     if (season.commissioner_id === state.userId) {
       box.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
     }
+    const schedule = scheduleBlock(season)
+    if (schedule) box.append(schedule)
 
     box.append(el('p', 'section', 'TEAMS'))
     if (!state.teams.length) {
@@ -166,6 +197,49 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
 
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)
+  }
+
+  function teamName(id) {
+    return state.teams.find((team) => team.id === id)?.name || 'TEAM'
+  }
+
+  function scheduleBlock(season) {
+    if (state.gamesFailed && season.status === 'active') {
+      return el('p', 'alert', 'THE SCHEDULE DID NOT LOAD')
+    }
+    const games = state.games || []
+    if (!games.length) {
+      if (season.status === 'active') return el('p', '', 'NO GAMES YET')
+      return null
+    }
+    const wrap = el('div', 'schedule')
+    wrap.append(el('p', 'section', 'THE SCHEDULE'))
+    const days = new Map()
+    for (const game of games) {
+      const when = new Date(game.starts_at)
+      if (Number.isNaN(when.getTime())) continue
+      const key = when.toISOString().slice(0, 10)
+      if (!days.has(key)) days.set(key, { when, games: [] })
+      days.get(key).games.push(game)
+    }
+    for (const day of days.values()) {
+      const block = el('div', 'game-day')
+      const playing = new Set()
+      block.append(el('p', 'game-date', dayLabel(day.when)))
+      for (const game of day.games) {
+        playing.add(game.home_team_id)
+        playing.add(game.away_team_id)
+        block.append(
+          el('p', 'game-match', `${teamName(game.away_team_id)} VS ${teamName(game.home_team_id)}`),
+          el('p', 'game-forecast', forecastSentence(game)),
+        )
+      }
+      for (const team of state.teams) {
+        if (!playing.has(team.id)) block.append(el('p', 'game-bye', `${team.name} HAS A BYE`))
+      }
+      wrap.append(block)
+    }
+    return wrap
   }
 
   function form() {
@@ -222,6 +296,22 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
     return card
+  }
+
+  async function onPlay() {
+    if (state.busy) return
+    state.busy = true
+    state.playError = ''
+    paint()
+    const { error } = await supabase.rpc('play_ball', { season_id: seasonId })
+    if (prompt.dataset.paint !== token) return
+    state.busy = false
+    if (error) {
+      state.playError = (error.message || 'PLAY BALL DID NOT START.').toUpperCase()
+      paint()
+      return
+    }
+    await load()
   }
 
   async function onStart() {
@@ -300,7 +390,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
   }
 
   async function load() {
-    const [session, season, teams, kids, draft] = await Promise.all([
+    const [session, season, teams, kids, draft, games] = await Promise.all([
       supabase.auth.getSession(),
       supabase
         .from('seasons')
@@ -323,16 +413,27 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
         .select('pick_index,order')
         .eq('season_id', seasonId)
         .maybeSingle(),
+      supabase
+        .from('games')
+        .select('id, home_team_id, away_team_id, starts_at, status, weather, is_practice')
+        .eq('season_id', seasonId)
+        .eq('is_practice', false)
+        .order('starts_at', { ascending: true })
+        .order('id', { ascending: true }),
     ])
     if (prompt.dataset.paint !== token) return
     state.userId = session.data.session?.user?.id ?? ''
     state.kids = null
     state.draftFailed = Boolean(draft.error)
     state.draft = draft.error ? null : draft.data
+    state.gamesFailed = Boolean(games.error)
+    state.games = games.error ? [] : (games.data || [])
     if (season.error || teams.error) {
       state.error = ((season.error || teams.error).message || 'THE SEASON DID NOT LOAD.').toUpperCase()
       state.season = null
       state.teams = []
+      state.games = []
+      state.gamesFailed = false
       state.missing = false
       state.draft = null
       state.draftFailed = false
@@ -340,6 +441,8 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
       state.missing = true
       state.season = null
       state.teams = []
+      state.games = []
+      state.gamesFailed = false
       state.draft = null
       state.draftFailed = false
     } else {
