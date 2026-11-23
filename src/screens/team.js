@@ -232,7 +232,15 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     }
     const current = slotFor(kid.id)
     select.value = current ? String(current) : ''
-    select.addEventListener('change', () => onPosition(kid.id, select.value))
+    select.addEventListener('change', () => {
+      if (state.lineupBusy || state.busy) return
+      const chosen = select.value
+      // Replacing the selects inside this event also changes the next kid.
+      setTimeout(() => {
+        if (prompt.dataset.paint !== token || state.lineupBusy || state.busy) return
+        onPosition(kid.id, chosen)
+      }, 0)
+    })
     row.append(select)
     return row
   }
@@ -251,6 +259,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     if (state.lineupBusy || state.busy || !state.team) return
     const slot = raw === '' ? 0 : Number(raw)
     if (raw !== '' && (!Number.isInteger(slot) || slot < 1 || slot > 9)) return
+    if (slotFor(playerId) === slot) return
     const slots = slotsFromLineup(state.lineup)
     for (const key of Object.keys(slots)) {
       if (slots[key] === playerId) slots[key] = null

@@ -46,6 +46,14 @@ function draftIsOpen(season, draft) {
   return order.length > 0 && Number.isInteger(pickIndex) && pickIndex < order.length
 }
 
+function statusLabel(season, draft) {
+  if (season?.status !== 'drafting' || !draft) return season.status.toUpperCase()
+  const order = Array.isArray(draft.order) ? draft.order : []
+  const pickIndex = Number(draft.pick_index)
+  const complete = order.length > 0 && Number.isInteger(pickIndex) && pickIndex >= order.length
+  return complete ? 'THE DRAFT IS COMPLETE' : season.status.toUpperCase()
+}
+
 export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, setTabs }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -109,7 +117,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     const rounds = season.draft_rounds === 1 ? '1 ROUND' : `${season.draft_rounds} ROUNDS`
     box.append(
       el('p', 'season-title', season.name),
-      el('p', 'season-status', season.status.toUpperCase()),
+      el('p', 'season-status', statusLabel(season, state.draftFailed ? null : state.draft)),
       el('p', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
       el('p', '', `${practice} · ${weeks} · ${rounds}`),
     )

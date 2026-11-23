@@ -20,6 +20,14 @@ function cleanName(value) {
   return value.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
+function statusLabel(season, draft) {
+  if (season?.status !== 'drafting' || !draft) return season.status.toUpperCase()
+  const order = Array.isArray(draft.order) ? draft.order : []
+  const pickIndex = Number(draft.pick_index)
+  const complete = order.length > 0 && Number.isInteger(pickIndex) && pickIndex >= order.length
+  return complete ? 'THE DRAFT IS COMPLETE' : season.status.toUpperCase()
+}
+
 export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -35,6 +43,7 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
     rounds: '10',
     loaded: false,
     opening: false,
+    drafts: {},
   }
 
   function paint() {
@@ -80,7 +89,7 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
         const rounds = season.draft_rounds === 1 ? '1 ROUND' : `${season.draft_rounds} ROUNDS`
         card.append(
           el('span', 'season-name', season.name),
-          el('span', 'season-status', season.status.toUpperCase()),
+          el('span', 'season-status', statusLabel(season, state.drafts[season.id])),
           el('span', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
           el('span', '', `${practice} · ${weeks} · ${rounds}`),
         )
@@ -213,14 +222,21 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
   }
 
   async function load() {
-    const [session, seasons] = await Promise.all([
+    const [session, seasons, drafts] = await Promise.all([
       supabase.auth.getSession(),
       supabase
         .from('seasons')
         .select('id, name, commissioner_id, status, official_weekdays, practice_every_days, weeks, draft_rounds')
         .order('created_at', { ascending: false }),
+      supabase
+        .from('draft_state')
+        .select('season_id, pick_index, order'),
     ])
     state.userId = session.data.session?.user?.id ?? ''
+    state.drafts = {}
+    if (!drafts.error) {
+      for (const row of drafts.data || []) state.drafts[row.season_id] = row
+    }
     if (seasons.error) {
       state.error = (seasons.error.message || 'THE SEASONS DID NOT LOAD.').toUpperCase()
       state.seasons = []
