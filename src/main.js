@@ -5,6 +5,7 @@ import { createDesk } from './auth.js'
 import { mountBackendTest } from './backend-test.js'
 import { renderHome } from './screens/home.js'
 import { renderSeasons } from './screens/seasons.js'
+import { renderSeason } from './screens/season.js'
 import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
 
@@ -39,13 +40,24 @@ function renderDesk() {
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
   if (route === '/seasons') {
-    renderSeasons(prompt, { onBack: () => go('/') })
+    renderSeasons(prompt, {
+      onBack: () => go('/'),
+      onOpen: (id) => go(`/seasons/${id}`),
+    })
+    return
+  }
+  if (typeof route === 'string' && route.startsWith('/seasons/')) {
+    renderSeason(prompt, {
+      seasonId: route.slice('/seasons/'.length),
+      onBack: () => go('/seasons'),
+    })
     return
   }
   renderHome(prompt, {
     coachName,
     rulesVersion,
     onSeasons: () => go('/seasons'),
+    onOpenSeason: (id) => go(`/seasons/${id}`),
     onSignOut: async () => {
       const { error } = await supabase.auth.signOut()
       if (!error) return

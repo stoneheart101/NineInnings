@@ -20,7 +20,9 @@ function cleanName(value) {
   return value.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
-export function renderSeasons(prompt, { onBack }) {
+export function renderSeasons(prompt, { onBack, onOpen }) {
+  const token = String(Math.random())
+  prompt.dataset.paint = token
   const state = {
     seasons: [],
     userId: '',
@@ -36,6 +38,7 @@ export function renderSeasons(prompt, { onBack }) {
   }
 
   function paint() {
+    if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
     const box = el('div', 'choices')
     box.dataset.keys = 'on'
@@ -52,6 +55,14 @@ export function renderSeasons(prompt, { onBack }) {
       const list = el('div', 'season-list')
       for (const season of state.seasons) {
         const card = el('div', 'season-card')
+        card.tabIndex = 0
+        card.setAttribute('role', 'link')
+        card.addEventListener('click', () => onOpen(season.id))
+        card.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          onOpen(season.id)
+        })
         const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
         const practice = season.practice_every_days === 1
           ? 'EVERY 1 DAY'
@@ -59,13 +70,13 @@ export function renderSeasons(prompt, { onBack }) {
         const weeks = season.weeks === 1 ? '1 WEEK' : `${season.weeks} WEEKS`
         const rounds = season.draft_rounds === 1 ? '1 ROUND' : `${season.draft_rounds} ROUNDS`
         card.append(
-          el('p', 'season-name', season.name),
-          el('p', 'season-status', season.status.toUpperCase()),
-          el('p', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
-          el('p', '', `${practice} · ${weeks} · ${rounds}`),
+          el('span', 'season-name', season.name),
+          el('span', 'season-status', season.status.toUpperCase()),
+          el('span', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
+          el('span', '', `${practice} · ${weeks} · ${rounds}`),
         )
         if (season.commissioner_id === state.userId) {
-          card.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
+          card.append(el('span', 'season-role', 'YOU ARE THE COMMISSIONER'))
         }
         list.append(card)
       }

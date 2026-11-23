@@ -252,6 +252,19 @@ input:focus-visible {
     background: var(--mark);
     color: #000;
   }
+
+  .season-card:hover,
+  .season-card:focus-visible {
+    border-color: var(--mark);
+  }
+
+  button.team-card:hover .season-status,
+  button.team-card:focus-visible .season-status,
+  button.team-card:hover .season-name,
+  button.team-card:focus-visible .season-name {
+    color: #000;
+    border-bottom-color: #000;
+  }
 }
 
 @media (pointer: coarse) {
@@ -317,7 +330,8 @@ input.num {
   flex: 0 0 6ch;
 }
 
-.season-list {
+.season-list,
+.team-list {
   display: grid;
   gap: clamp(14px, 2.4vw, 24px);
   width: 100%;
@@ -325,20 +339,39 @@ input.num {
   margin: 12px 0 4px;
 }
 
-.season-card {
+.season-card,
+.team-card {
   width: 100%;
   max-width: 100%;
   border: 2px solid #d0d0d0;
   padding: 6px 10px 8px;
   display: grid;
   gap: 1px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-align: left;
 }
 
-.season-card p {
+button.team-card,
+.season-card[role='link'] {
+  cursor: pointer;
+}
+
+.season-card span,
+.team-card span,
+.season-card p,
+.team-card p {
   margin: 0;
 }
 
-.season-card .season-name {
+.season-card .season-name,
+.team-card .season-name {
+  border-bottom: 1px solid var(--mark);
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.season-title {
   border-bottom: 1px solid var(--mark);
   padding-bottom: 2px;
   margin-bottom: 4px;
@@ -349,7 +382,8 @@ input.num {
   color: var(--mark);
 }
 
-.choices form.open-season {
+.choices form.open-season,
+.choices form.name-team {
   width: 100%;
   justify-self: stretch;
   margin-top: 18px;
