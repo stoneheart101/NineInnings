@@ -84,7 +84,17 @@ export function drawField(root) {
   prompt.id = 'prompt'
   prompt.className = 'prompt'
 
+  const mast = document.createElement('div')
+  mast.className = 'mast'
+  mast.innerHTML = `
+    <p class="mast-title"><span class="desk">NINE INNINGS</span><span class="phone">NI</span></p>
+    <p class="mast-line">
+      ${CLUBS.map((club) => `<span><span class="label">${club.short}</span> ${club.runs}</span>`).join('')}
+      <span><span class="label">OUTS</span> 0</span>
+    </p>
+  `
+
   boardWrap.append(board)
-  root.append(boardWrap, play, prompt)
+  root.append(mast, boardWrap, play, prompt)
   return prompt
 }

@@ -181,11 +181,37 @@ body {
 }
 
 .prompt {
-  /* Slot follows the viewport, not the menu, so the diamond stays put. */
+  /* Simple menus keep a stable slot so the diamond does not jump. */
   flex: 0 0 clamp(140px, 26dvh, 260px);
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+}
+
+.mast {
+  display: none;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  flex-wrap: wrap;
+  min-width: 0;
+  border: 1px solid #d0d0d0;
+  padding: 2px 8px;
+  font-size: clamp(16px, 3.4cqi, 1em);
+}
+
+.mast p {
+  margin: 0;
+}
+
+.mast-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.mast .label {
+  color: var(--mark);
 }
 
 .prompt p,
@@ -329,29 +355,17 @@ input.num {
 .backend-open {
   align-self: flex-start;
   color: var(--mark);
+  white-space: nowrap;
 }
 
 .backend-test {
+  display: none;
   color: var(--ink);
-  background: #000;
-  border: 3px solid #f2f2f2;
-  width: min(42rem, calc(100vw - 1.25rem));
-  max-width: calc(100vw - 1.25rem);
-  max-height: min(85dvh, calc(100dvh - 1.25rem));
-  margin: auto;
-  padding:
-    max(12px, env(safe-area-inset-top))
-    max(12px, env(safe-area-inset-right))
-    max(12px, env(safe-area-inset-bottom))
-    max(12px, env(safe-area-inset-left));
-  display: flex;
+  background: transparent;
+  min-width: 0;
+  min-height: 0;
   flex-direction: column;
   gap: 8px;
-  overflow: auto;
-}
-
-.backend-test::backdrop {
-  background: rgb(0 0 0 / 75%);
 }
 
 .backend-head {
@@ -404,9 +418,6 @@ input.num {
   list-style: none;
   margin: 0;
   padding: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  max-height: min(50dvh, 28rem);
 }
 
 .pick {
@@ -446,6 +457,46 @@ input.num {
   .info .gap {
     height: 0.35em;
   }
+}
+
+/* Real work keeps a one-line strip and gives the page to the task. */
+#field.working,
+#field.testing {
+  overflow: hidden;
+}
+
+.screen:has(#field.working),
+.screen:has(#field.testing) {
+  overflow: hidden;
+}
+
+#field.working .mast,
+#field.testing .mast {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+#field.testing .backend-open,
+#field.working .board-wrap,
+#field.working .play,
+#field.testing .board-wrap,
+#field.testing .play,
+#field.testing .prompt {
+  display: none;
+}
+
+#field.working .prompt,
+#field.testing .backend-test {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+#field.testing .backend-test {
+  display: flex;
 }
 
 

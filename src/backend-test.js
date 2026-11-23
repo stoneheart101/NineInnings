@@ -38,19 +38,24 @@ function formatRemain(ms) {
 export function mountBackendTest(root) {
   const opener = el('button', 'backend-open', 'BACKEND TEST')
   opener.type = 'button'
+  opener.setAttribute('aria-expanded', 'false')
+  opener.setAttribute('aria-controls', 'backend-test-panel')
   const prompt = root.querySelector('#prompt')
   root.insertBefore(opener, prompt)
 
-  const dialog = el('dialog', 'backend-test')
-  dialog.setAttribute('aria-labelledby', 'backend-test-title')
+  const panel = el('section', 'backend-test')
+  panel.id = 'backend-test-panel'
+  panel.hidden = true
+  panel.setAttribute('aria-labelledby', 'backend-test-title')
 
   const head = el('div', 'backend-head')
+  head.dataset.keys = 'on'
   const title = el('h2', '', 'BACKEND TEST')
   title.id = 'backend-test-title'
-  const close = el('button', '', 'CLOSE')
-  close.type = 'button'
-  close.addEventListener('click', () => dialog.close())
-  head.append(title, close)
+  const closeButton = el('button', '', '1- CLOSE')
+  closeButton.type = 'button'
+  closeButton.addEventListener('click', () => close())
+  head.append(title, closeButton)
 
   const schedule = el('p', 'backend-schedule', 'RUNS EVERY 15 MINUTES')
   const next = el('p', 'backend-next', 'NEXT RUN')
@@ -60,8 +65,8 @@ export function mountBackendTest(root) {
   columns.append(el('span', '', 'NUMBER'), el('span', '', 'PICKED'))
   const list = el('ol', 'picks')
 
-  dialog.append(head, schedule, next, remain, status, columns, list)
-  document.body.append(dialog)
+  panel.append(head, schedule, next, remain, status, columns, list)
+  root.append(panel)
 
   let nextAt = null
   let dueReload = false
@@ -136,7 +141,10 @@ export function mountBackendTest(root) {
   }
 
   opener.addEventListener('click', () => {
-    dialog.showModal()
+    panel.hidden = false
+    opener.setAttribute('aria-expanded', 'true')
+    root.classList.add('testing')
+    closeButton.focus()
     load()
     window.clearInterval(timer)
     window.clearInterval(poll)
@@ -149,5 +157,20 @@ export function mountBackendTest(root) {
     window.clearInterval(poll)
   }
 
-  dialog.addEventListener('close', stop)
+  function close() {
+    const wasOpen = !panel.hidden
+    panel.hidden = true
+    opener.setAttribute('aria-expanded', 'false')
+    root.classList.remove('testing')
+    stop()
+    if (wasOpen) opener.focus()
+  }
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || panel.hidden) return
+    event.preventDefault()
+    close()
+  })
+
+  return { close }
 }

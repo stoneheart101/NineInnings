@@ -10,7 +10,13 @@ import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
 const prompt = drawField(field)
-mountBackendTest(field)
+const backend = mountBackendTest(field)
+
+// The home desk keeps the field. Any other signed-in route is real work.
+function syncLayout() {
+  const route = coachName ? routeFromHash(window.location.hash) : null
+  field.classList.toggle('working', route != null && route !== '/')
+}
 
 let coachName = ''
 let rulesVersion = null
@@ -29,6 +35,7 @@ async function loadRules() {
 }
 
 function renderDesk() {
+  syncLayout()
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
   if (route === '/seasons') {
@@ -71,7 +78,15 @@ document.addEventListener('keydown', (event) => {
   if (event.metaKey || event.ctrlKey || event.altKey) return
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
   if (document.querySelector('dialog[open]')) return
-  const box = prompt.querySelector('[data-keys]')
+  if (field.classList.contains('testing')) {
+    const box = field.querySelector('.backend-test [data-keys]')
+    pressKey(event, box)
+    return
+  }
+  pressKey(event, prompt.querySelector('[data-keys]'))
+})
+
+function pressKey(event, box) {
   if (!box) return
   const index = Number(event.key) - 1
   if (!Number.isInteger(index) || index < 0) return
@@ -79,7 +94,7 @@ document.addEventListener('keydown', (event) => {
   if (!button) return
   event.preventDefault()
   button.click()
-})
+}
 
 window.addEventListener('hashchange', () => {
   renderDesk()
@@ -97,6 +112,8 @@ supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       coachName = ''
       rulesVersion = null
+      backend.close()
+      syncLayout()
     }
     desk.onEvent(event, session)
   }, 0)
