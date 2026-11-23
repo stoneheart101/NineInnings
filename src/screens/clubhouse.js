@@ -40,14 +40,14 @@ function needsSlot(item) {
 }
 
 function durationLabel(duration) {
-  return duration === 'series' ? 'THREE GAME SERIES' : 'NEXT GAME'
+  return duration === 'series' ? 'LASTS A THREE GAME SERIES' : 'LASTS THE NEXT GAME'
 }
 
 function costLine(item) {
   const parts = []
   if (item.bottlecap_cost) parts.push(counted(item.bottlecap_cost, 'BOTTLECAP', 'BOTTLECAPS'))
   if (item.reputation_cost) parts.push(counted(item.reputation_cost, 'REPUTATION', 'REPUTATION'))
-  return parts.join(' · ')
+  return parts.join(' AND ')
 }
 
 function slotLabel(slot) {
@@ -162,9 +162,13 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
   }
 
   function packedCard(row) {
-    const card = el('div', 'shelf-card')
+    const card = el('div', 'kid-card')
     const item = linkedItem(row) || state.shelf.find((entry) => entry.id === row.item_id)
-    card.append(el('span', 'season-name', item?.name || 'ITEM'))
+    const head = el('div', 'kid-head')
+    const title = el('span', 'kid-title')
+    title.append(el('span', 'season-name', item?.name || 'ITEM'))
+    head.append(title)
+    card.append(head)
     const games = Number(row.remaining_games)
     if (Number.isInteger(games)) card.append(el('span', '', counted(games, 'GAME LEFT', 'GAMES LEFT')))
     const slot = row.effect?.slot
@@ -172,14 +176,32 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     return card
   }
 
+  function costRow(item) {
+    const row = el('span', 'shelf-cost')
+    row.append(el('span', 'season-role', 'COST'))
+    const price = costLine(item)
+    if (price) row.append(document.createTextNode(` ${price}`))
+    return row
+  }
+
   function shelfCard(item) {
-    const card = el('div', 'shelf-card')
+    const card = el('div', 'kid-card')
     card.dataset.item = item.id
-    card.append(el('span', 'season-name', item.name))
+    const head = el('div', 'kid-head')
+    const title = el('span', 'kid-title')
+    title.append(el('span', 'season-name', item.name))
+    head.append(title)
+    const buy = el('button', '', 'BUY')
+    buy.type = 'button'
+    buy.disabled = state.buyBusy || !canAfford(item) || (needsSlot(item) && !state.batSlot)
+    buy.addEventListener('click', () => onBuy(item))
+    head.append(buy)
+    card.append(head)
     if (item.blurb) card.append(el('span', '', item.blurb))
-    card.append(el('span', '', `${costLine(item)} · ${durationLabel(item.duration)}`))
-    const buyRow = el('div', 'shelf-buy')
+    card.append(costRow(item))
+    card.append(el('span', '', durationLabel(item.duration)))
     if (needsSlot(item)) {
+      const buyRow = el('div', 'shelf-buy')
       const slotSelect = document.createElement('select')
       slotSelect.dataset.bat = item.id
       slotSelect.disabled = state.buyBusy || !canAfford(item)
@@ -196,17 +218,11 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
       slotSelect.value = state.batSlot
       slotSelect.addEventListener('change', () => {
         state.batSlot = slotSelect.value
-        const buy = card.querySelector('button')
-        if (buy) buy.disabled = state.buyBusy || !canAfford(item) || !state.batSlot
+        buy.disabled = state.buyBusy || !canAfford(item) || !state.batSlot
       })
       buyRow.append(slotSelect)
+      card.append(buyRow)
     }
-    const buy = el('button', '', 'BUY')
-    buy.type = 'button'
-    buy.disabled = state.buyBusy || !canAfford(item) || (needsSlot(item) && !state.batSlot)
-    buy.addEventListener('click', () => onBuy(item))
-    buyRow.append(buy)
-    card.append(buyRow)
     if (state.buyError && state.buyItem === item.id) card.append(el('p', 'alert', state.buyError))
     return card
   }
