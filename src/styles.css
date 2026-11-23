@@ -320,6 +320,28 @@ button.team-card,
   margin-top: 14px;
 }
 
+.draft-list {
+  display: grid;
+  gap: clamp(8px, 1.6vw, 14px);
+  width: 100%;
+  margin: 8px 0 4px;
+}
+
+.draft-pick {
+  width: 100%;
+  border: 2px solid #d0d0d0;
+  padding: 6px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  overflow-wrap: anywhere;
+}
+
+.draft-pick.on-clock {
+  border-color: var(--mark);
+}
+
 .kid-stats {
   display: flex;
   flex-wrap: wrap;

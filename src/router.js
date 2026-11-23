@@ -15,6 +15,6 @@ export function routeFromHash(hash) {
   }
   const path = raw.split('?')[0]
   if (path === '/seasons') return '/seasons'
-  if (/^\/seasons\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path)) return path
+  if (/^\/seasons\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/draft)?$/i.test(path)) return path
   return '/'
 }

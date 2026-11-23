@@ -38,7 +38,7 @@ function coachName(team) {
   return profile?.coach_name || 'COACH'
 }
 
-export function renderSeason(prompt, { seasonId, onBack }) {
+export function renderSeason(prompt, { seasonId, onBack, onOpenDraft }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -118,7 +118,17 @@ export function renderSeason(prompt, { seasonId, onBack }) {
     } else if (!mine) {
       box.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
     }
-    if (forming && season.commissioner_id === state.userId) box.append(callForm(nextKey))
+    if (forming && season.commissioner_id === state.userId) {
+      box.append(callForm(nextKey))
+      nextKey += 1
+      box.append(startButton(nextKey))
+    }
+    if (season.status === 'drafting') {
+      const open = el('button', '', `${nextKey}- THE DRAFT`)
+      open.type = 'button'
+      open.addEventListener('click', () => onOpenDraft?.())
+      box.append(open)
+    }
     if (state.kids) {
       box.append(el('p', '', state.kids.length ? counted(state.kids.length, 'KID', 'KIDS') : 'NO KIDS YET'))
       if (state.kids.length) {
@@ -151,6 +161,14 @@ export function renderSeason(prompt, { seasonId, onBack }) {
     node.append(el('p', '', 'NAME YOUR TEAM'), nameLabel, save)
     node.addEventListener('submit', onSubmit)
     return node
+  }
+
+  function startButton(key) {
+    const button = el('button', '', `${key}- START THE DRAFT`)
+    button.type = 'button'
+    button.disabled = state.busy
+    button.addEventListener('click', onStart)
+    return button
   }
 
   function callForm(key) {
@@ -189,6 +207,22 @@ export function renderSeason(prompt, { seasonId, onBack }) {
     }
     card.append(stats)
     return card
+  }
+
+  async function onStart() {
+    if (state.busy) return
+    state.busy = true
+    state.error = ''
+    paint()
+    const { error } = await supabase.rpc('start_draft', { season_id: seasonId })
+    if (prompt.dataset.paint !== token) return
+    state.busy = false
+    if (error) {
+      state.error = (error.message || 'THE DRAFT DID NOT START.').toUpperCase()
+      paint()
+      return
+    }
+    onOpenDraft?.()
   }
 
   async function onCall(event) {

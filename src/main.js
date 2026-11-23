@@ -5,6 +5,7 @@ import { createDesk } from './auth.js'
 import { renderHome } from './screens/home.js'
 import { renderSeasons } from './screens/seasons.js'
 import { renderSeason } from './screens/season.js'
+import { closeDraft, renderDraft } from './screens/draft.js'
 import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
 
@@ -35,6 +36,7 @@ async function loadRules() {
 
 function renderDesk() {
   setCoach(coachName)
+  closeDraft()
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
   if (route === '/seasons') {
@@ -44,10 +46,20 @@ function renderDesk() {
     })
     return
   }
+  if (typeof route === 'string' && route.endsWith('/draft')) {
+    const seasonId = route.slice('/seasons/'.length, -'/draft'.length)
+    renderDraft(prompt, {
+      seasonId,
+      onBack: () => go(`/seasons/${seasonId}`),
+    })
+    return
+  }
   if (typeof route === 'string' && route.startsWith('/seasons/')) {
+    const seasonId = route.slice('/seasons/'.length)
     renderSeason(prompt, {
-      seasonId: route.slice('/seasons/'.length),
+      seasonId,
       onBack: () => go('/seasons'),
+      onOpenDraft: () => go(`/seasons/${seasonId}/draft`),
     })
     return
   }
