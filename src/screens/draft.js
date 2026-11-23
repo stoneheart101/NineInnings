@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { statChip } from '../stat-color.js'
 
 const STATS = [
   ['contact', 'CONTACT'],
@@ -202,10 +203,7 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const stats = el('span', 'kid-stats')
-    for (const [stat, label] of STATS) {
-      const value = kid.base_stats?.[stat]
-      stats.append(el('span', 'kid-stat', `${label} ${Number.isInteger(value) ? value : '-'}`))
-    }
+    for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
     if (state.pickError && state.pickKid === kid.id) card.append(el('p', 'alert', state.pickError))
     return card

@@ -194,16 +194,19 @@ input:focus-visible {
 
 @media (hover: hover) and (pointer: fine) {
   button:hover,
-  button:focus-visible {
+  button:focus-visible,
+  .season-card:hover,
+  .season-card:focus-visible {
     background: var(--mark);
     color: #000;
   }
 
-  .season-card:hover,
-  .season-card:focus-visible {
-    border-color: var(--mark);
-  }
-
+  .season-card:hover .season-status,
+  .season-card:focus-visible .season-status,
+  .season-card:hover .season-role,
+  .season-card:focus-visible .season-role,
+  .season-card:hover .season-name,
+  .season-card:focus-visible .season-name,
   button.team-card:hover .season-status,
   button.team-card:focus-visible .season-status,
   button.team-card:hover .season-name,

@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { statChip } from '../stat-color.js'
 
 const STATS = [
   ['contact', 'CONTACT'],
@@ -30,6 +31,13 @@ function seasonOf(team) {
   return season || null
 }
 
+function draftIsOpen(season, draft) {
+  if (season?.status !== 'drafting' || !draft) return false
+  const order = Array.isArray(draft.order) ? draft.order : []
+  const pickIndex = Number(draft.pick_index)
+  return order.length > 0 && Number.isInteger(pickIndex) && pickIndex < order.length
+}
+
 let room = null
 
 export function closeTeam() {
@@ -39,7 +47,7 @@ export function closeTeam() {
   supabase.removeChannel(current)
 }
 
-export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
+export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, setTabs }) {
   closeTeam()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -53,6 +61,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
     busy: false,
     missing: false,
     mine: false,
+    draftOpen: false,
     loaded: false,
   }
 
@@ -61,6 +70,14 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
     prompt.replaceChildren()
     const tabs = [{ label: 'BACK', onClick: onBack }]
     if (state.loaded && state.mine && state.team) {
+      if (state.draftOpen) {
+        tabs.push({
+          label: 'THE DRAFT',
+          onClick() {
+            onOpenDraft?.(state.team.season_id)
+          },
+        })
+      }
       tabs.push({
         label: 'THE SEASON',
         onClick() {
@@ -115,10 +132,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
     if (kid.nickname) card.append(el('span', '', `"${kid.nickname}"`))
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const stats = el('span', 'kid-stats')
-    for (const [stat, label] of STATS) {
-      const value = kid.base_stats?.[stat]
-      stats.append(el('span', 'kid-stat', `${label} ${Number.isInteger(value) ? value : '-'}`))
-    }
+    for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
     const release = el('button', '', 'RELEASE')
     release.type = 'button'
@@ -171,7 +185,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
       supabase.auth.getSession(),
       supabase
         .from('teams')
-        .select('id, name, coach_id, bottlecaps, reputation, season_id, seasons!teams_season_id_fkey(name, roster_cap)')
+        .select('id, name, coach_id, bottlecaps, reputation, season_id, seasons!teams_season_id_fkey(name, roster_cap, status)')
         .eq('id', teamId)
         .maybeSingle(),
     ])
@@ -183,6 +197,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
       state.kids = []
       state.missing = false
       state.mine = false
+      state.draftOpen = false
       state.loaded = true
       paint()
       return
@@ -192,6 +207,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
       state.team = null
       state.kids = []
       state.mine = false
+      state.draftOpen = false
       state.error = ''
       state.loaded = true
       paint()
@@ -203,17 +219,25 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
     state.error = ''
     if (!state.mine) {
       state.kids = []
+      state.draftOpen = false
       state.loaded = true
       paint()
       return
     }
-    const kids = await supabase
-      .from('players')
-      .select('id, team_id, given_name, family_name, nickname, flavor, base_stats, created_at')
-      .eq('team_id', teamId)
-      .order('family_name', { ascending: true })
-      .order('given_name', { ascending: true })
-      .order('id', { ascending: true })
+    const [kids, draft] = await Promise.all([
+      supabase
+        .from('players')
+        .select('id, team_id, given_name, family_name, nickname, flavor, base_stats, created_at')
+        .eq('team_id', teamId)
+        .order('family_name', { ascending: true })
+        .order('given_name', { ascending: true })
+        .order('id', { ascending: true }),
+      supabase
+        .from('draft_state')
+        .select('pick_index,order')
+        .eq('season_id', team.data.season_id)
+        .maybeSingle(),
+    ])
     if (prompt.dataset.paint !== token) return
     if (kids.error) {
       state.error = (kids.error.message || 'THE KIDS DID NOT LOAD.').toUpperCase()
@@ -221,6 +245,8 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, setTabs }) {
     } else {
       state.kids = kids.data || []
     }
+    const season = seasonOf(team.data)
+    state.draftOpen = draft.error ? season?.status === 'drafting' : draftIsOpen(season, draft.data)
     state.loaded = true
     listen(team.data.season_id)
     paint()

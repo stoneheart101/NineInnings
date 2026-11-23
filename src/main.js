@@ -75,6 +75,7 @@ function renderDesk() {
       teamId,
       onBack: () => go('/'),
       onOpenSeason: (id) => go(`/seasons/${id}`),
+      onOpenDraft: (id) => go(`/seasons/${id}/draft`),
       setTabs,
     })
     return
