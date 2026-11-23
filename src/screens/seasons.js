@@ -58,7 +58,7 @@ export function renderSeasons(prompt, { onBack }) {
         card.append(
           el('p', '', season.name),
           el('p', '', season.status.toUpperCase()),
-          el('p', '', days.join(' ')),
+          el('p', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
           el('p', '', `${practice} · ${weeks} · ${rounds}`),
         )
         if (season.commissioner_id === state.userId) {
@@ -100,7 +100,7 @@ export function renderSeasons(prompt, { onBack }) {
     node.append(
       el('p', '', 'OPEN A SEASON'),
       nameLabel,
-      el('p', '', 'DAYS'),
+      el('p', '', 'OFFICIAL GAME DAYS'),
       days,
       numberField('practice', 'PRACTICE EVERY', state.practice, 1, 14),
       numberField('weeks', 'WEEKS', state.weeks, 1, 20),
