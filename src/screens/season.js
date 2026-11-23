@@ -63,6 +63,21 @@ function dayLabel(when) {
   return `${DAYS[when.getUTCDay()]} ${MONTHS[when.getUTCMonth()]} ${when.getUTCDate()}`
 }
 
+function practiceLine(days) {
+  const count = Number(days)
+  return `PRACTICE GAMES EVERY ${count === 1 ? '1 DAY' : `${count} DAYS`}`
+}
+
+function weeksLine(weeks) {
+  const count = Number(weeks)
+  return count === 1 ? 'THE SEASON LASTS 1 WEEK' : `THE SEASON LASTS ${count} WEEKS`
+}
+
+function roundsLine(rounds) {
+  const count = Number(rounds)
+  return count === 1 ? 'THE DRAFT HAS 1 ROUND' : `THE DRAFT HAS ${count} ROUNDS`
+}
+
 function forecastSentence(game) {
   const sentence = game?.weather?.sentence
   if (typeof sentence !== 'string') return 'THE FORECAST IS NOT HERE'
@@ -91,7 +106,7 @@ function forecastShown(when, now = new Date()) {
   return day - today <= 10
 }
 
-export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, setTabs }) {
+export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, setTabs, setTeam }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -110,6 +125,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     games: [],
     gamesFailed: false,
     playError: '',
+    section: '',
     loaded: false,
   }
 
@@ -118,6 +134,15 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     prompt.replaceChildren()
     const season = state.loaded && !state.missing ? state.season : null
     const myTeam = season ? state.teams.find((team) => team.coach_id === state.userId) : null
+    if (myTeam && season) {
+      setTeam?.({
+        name: myTeam.name,
+        season: season.name,
+        purse: `${counted(myTeam.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(myTeam.reputation, 'REPUTATION', 'REPUTATION')}`,
+      })
+    } else {
+      setTeam?.(null)
+    }
     const forming = season?.status === 'forming'
     const draftOpen = season?.status === 'drafting' && (state.draftFailed || draftIsOpen(season, state.draft))
     const tabs = [{ label: 'SEASONS', onClick: onBack }]
@@ -158,28 +183,53 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     }
     if (canStart && state.playError) prompt.append(el('p', 'alert', state.playError))
 
+    if (!state.section) {
+      state.section = season.status === 'active' || state.games.length ? 'schedule' : 'teams'
+    }
     const box = el('div', 'choices')
     const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
-    const practice = season.practice_every_days === 1
-      ? 'EVERY 1 DAY'
-      : `EVERY ${season.practice_every_days} DAYS`
-    const weeks = season.weeks === 1 ? '1 WEEK' : `${season.weeks} WEEKS`
-    const rounds = season.draft_rounds === 1 ? '1 ROUND' : `${season.draft_rounds} ROUNDS`
     box.append(
       el('p', 'season-title', season.name),
       el('p', 'season-status', statusLabel(season, state.draftFailed ? null : state.draft)),
       el('p', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
-      el('p', '', `${practice} · ${weeks} · ${rounds}`),
+      el('p', '', practiceLine(season.practice_every_days)),
+      el('p', '', weeksLine(season.weeks)),
+      el('p', '', roundsLine(season.draft_rounds)),
     )
     if (season.commissioner_id === state.userId) {
       box.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
     }
-    const schedule = scheduleBlock(season)
-    if (schedule) box.append(schedule)
+    box.append(subtabs())
+    if (state.section === 'teams') box.append(teamsBlock())
+    else if (state.section === 'pool') box.append(poolBlock())
+    else box.append(scheduleBlock())
 
-    box.append(el('p', 'section', 'TEAMS'))
+    if (state.error) box.append(el('p', 'alert', state.error))
+    prompt.append(box)
+  }
+
+  function subtabs() {
+    const row = el('div', 'subtabs')
+    for (const [id, label] of [['schedule', 'SCHEDULE'], ['teams', 'TEAMS'], ['pool', 'THE POOL']]) {
+      const button = el('button', state.section === id ? 'on' : '', label)
+      button.type = 'button'
+      button.setAttribute('aria-pressed', state.section === id ? 'true' : 'false')
+      button.addEventListener('click', () => {
+        if (state.section === id) return
+        state.section = id
+        paint()
+      })
+      row.append(button)
+    }
+    return row
+  }
+
+  function teamsBlock() {
+    const season = state.season
+    const myTeam = state.teams.find((team) => team.coach_id === state.userId)
+    const wrap = el('div', 'season-panel')
     if (!state.teams.length) {
-      box.append(el('p', '', 'NO TEAMS YET'))
+      wrap.append(el('p', '', 'NO TEAMS YET'))
     } else {
       const list = el('div', 'team-list')
       for (const team of state.teams) {
@@ -190,51 +240,47 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
         }
         list.append(card)
       }
-      box.append(list)
+      wrap.append(list)
     }
+    if (season.status === 'forming' && !myTeam) wrap.append(form())
+    else if (!myTeam) wrap.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
+    return wrap
+  }
 
-    if (forming && !myTeam) {
-      box.append(form())
-    } else if (!myTeam) {
-      box.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
-    }
-    if (forming && season.commissioner_id === state.userId) {
-      box.append(callForm())
-    }
+  function poolBlock() {
+    const season = state.season
+    const wrap = el('div', 'season-panel')
+    if (season.status === 'forming' && season.commissioner_id === state.userId) wrap.append(callForm())
     if (state.kids) {
       const pool = state.kids.filter((kid) => !kid.team_id)
-      box.append(el('p', 'section', 'THE POOL'))
       if (!state.kids.length) {
-        box.append(el('p', '', 'NO KIDS YET'))
+        wrap.append(el('p', '', 'NO KIDS YET'))
       } else if (!pool.length) {
-        box.append(el('p', '', 'NO KIDS LEFT'))
+        wrap.append(el('p', '', 'NO KIDS LEFT'))
       } else {
-        box.append(el('p', '', counted(pool.length, 'KID', 'KIDS')))
+        wrap.append(el('p', '', counted(pool.length, 'KID', 'KIDS')))
         const list = el('div', 'kid-list')
         for (const kid of pool) list.append(kidCard(kid))
-        box.append(list)
+        wrap.append(list)
       }
     }
-
-    if (state.error) box.append(el('p', 'alert', state.error))
-    prompt.append(box)
+    return wrap
   }
 
-  function teamName(id) {
-    return state.teams.find((team) => team.id === id)?.name || 'TEAM'
+  function teamMark(id) {
+    const team = state.teams.find((item) => item.id === id)
+    const mine = team?.coach_id === state.userId
+    return el('span', mine ? 'mine' : '', team?.name || 'TEAM')
   }
 
-  function scheduleBlock(season) {
+  function scheduleBlock() {
+    const season = state.season
     if (state.gamesFailed && season.status === 'active') {
       return el('p', 'alert', 'THE SCHEDULE DID NOT LOAD')
     }
     const games = state.games || []
-    if (!games.length) {
-      if (season.status === 'active') return el('p', '', 'NO GAMES YET')
-      return null
-    }
+    if (!games.length) return el('p', '', 'NO GAMES YET')
     const wrap = el('div', 'schedule')
-    wrap.append(el('p', 'section', 'THE SCHEDULE'))
     const days = new Map()
     for (const game of games) {
       const when = new Date(game.starts_at)
@@ -250,7 +296,9 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
       for (const game of day.games) {
         playing.add(game.home_team_id)
         playing.add(game.away_team_id)
-        block.append(el('p', 'game-match', `${teamName(game.away_team_id)} VS ${teamName(game.home_team_id)}`))
+        const match = el('p', 'game-match')
+        match.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
+        block.append(match)
         if (forecastShown(day.when)) {
           block.append(el('p', 'game-forecast', forecastLine(game)))
         }
@@ -329,6 +377,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     if (state.busy) return
     state.busy = true
     state.playError = ''
+    state.section = 'schedule'
     paint()
     const { error } = await supabase.rpc('play_ball', { season_id: seasonId })
     if (prompt.dataset.paint !== token) return

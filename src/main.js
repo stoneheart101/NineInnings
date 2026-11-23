@@ -75,6 +75,7 @@ function renderDesk() {
       onOpenTeam: (id) => go(`/teams/${id}`),
       onOpenClubhouse: (id) => go(`/teams/${id}/clubhouse`),
       setTabs,
+      setTeam,
     })
     return
   }

@@ -416,6 +416,24 @@ button.team-card,
   overflow-wrap: anywhere;
 }
 
+.game-match .mine {
+  color: var(--mark);
+}
+
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  width: 100%;
+  margin: 0.75em 0 4px;
+  border-bottom: 2px solid var(--mark);
+}
+
+.subtabs button.on {
+  color: var(--mark);
+}
+
 .sex-m {
   color: #9ec9ff;
 }
@@ -511,7 +529,9 @@ button.team-card,
   .sort-row button.on:hover,
   .sort-row button.on:focus-visible,
   .tabs button.on:hover,
-  .tabs button.on:focus-visible {
+  .tabs button.on:focus-visible,
+  .subtabs button.on:hover,
+  .subtabs button.on:focus-visible {
     color: #000;
   }
 }

@@ -20,6 +20,21 @@ function cleanName(value) {
   return value.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
+function practiceLine(days) {
+  const count = Number(days)
+  return `PRACTICE GAMES EVERY ${count === 1 ? '1 DAY' : `${count} DAYS`}`
+}
+
+function weeksLine(weeks) {
+  const count = Number(weeks)
+  return count === 1 ? 'THE SEASON LASTS 1 WEEK' : `THE SEASON LASTS ${count} WEEKS`
+}
+
+function roundsLine(rounds) {
+  const count = Number(rounds)
+  return count === 1 ? 'THE DRAFT HAS 1 ROUND' : `THE DRAFT HAS ${count} ROUNDS`
+}
+
 function statusLabel(season, draft) {
   if (season?.status !== 'drafting' || !draft) return season.status.toUpperCase()
   const order = Array.isArray(draft.order) ? draft.order : []
@@ -50,22 +65,22 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
     const showForm = state.loaded && (state.seasons.length === 0 || state.opening)
-    const tabs = [{ label: 'HOME', onClick: onBack }]
-    if (state.loaded && !showForm) {
-      tabs.push({
-        label: 'OPEN A SEASON',
-        onClick() {
-          state.opening = true
-          state.error = ''
-          paint()
-          prompt.querySelector('[name="season-name"]')?.focus()
-        },
-      })
-    }
-    setTabs?.(tabs)
+    setTabs?.([{ label: 'HOME', onClick: onBack }])
 
     const box = el('div', 'choices')
     box.append(el('h2', 'screen-name', 'SEASONS'))
+    if (state.loaded && state.seasons.length && !showForm) {
+      const open = el('button', '', 'OPEN A SEASON')
+      open.type = 'button'
+      open.addEventListener('click', () => {
+        state.opening = true
+        state.error = ''
+        paint()
+        prompt.querySelector('[name="season-name"]')?.focus()
+      })
+      box.append(open)
+    }
+    if (showForm && state.seasons.length) box.append(form())
 
     if (state.loaded && !state.seasons.length) {
       box.append(el('p', '', 'NO SEASONS YET'))
@@ -82,16 +97,13 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
           onOpen(season.id)
         })
         const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
-        const practice = season.practice_every_days === 1
-          ? 'EVERY 1 DAY'
-          : `EVERY ${season.practice_every_days} DAYS`
-        const weeks = season.weeks === 1 ? '1 WEEK' : `${season.weeks} WEEKS`
-        const rounds = season.draft_rounds === 1 ? '1 ROUND' : `${season.draft_rounds} ROUNDS`
         card.append(
           el('span', 'season-name', season.name),
           el('span', 'season-status', statusLabel(season, state.drafts[season.id])),
           el('span', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
-          el('span', '', `${practice} · ${weeks} · ${rounds}`),
+          el('span', '', practiceLine(season.practice_every_days)),
+          el('span', '', weeksLine(season.weeks)),
+          el('span', '', roundsLine(season.draft_rounds)),
         )
         if (season.commissioner_id === state.userId) {
           card.append(el('span', 'season-role', 'YOU ARE THE COMMISSIONER'))
@@ -101,7 +113,7 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
       box.append(list)
     }
 
-    if (showForm) box.append(form())
+    if (showForm && !state.seasons.length) box.append(form())
 
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)
