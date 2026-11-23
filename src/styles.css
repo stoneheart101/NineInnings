@@ -308,6 +308,10 @@ button.team-card,
   cursor: pointer;
 }
 
+.kid-card {
+  background: color-mix(in srgb, var(--field) 32%, #000);
+}
+
 .season-card span,
 .team-card span,
 .kid-card span,
