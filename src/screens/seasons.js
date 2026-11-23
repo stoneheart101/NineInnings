@@ -47,6 +47,7 @@ export function renderSeasons(prompt, { onBack }) {
     if (!state.seasons.length) {
       box.append(el('p', '', 'NO SEASONS YET'))
     } else {
+      const list = el('div', 'season-list')
       for (const season of state.seasons) {
         const card = el('div', 'season-card')
         const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
@@ -56,16 +57,17 @@ export function renderSeasons(prompt, { onBack }) {
         const weeks = season.weeks === 1 ? '1 WEEK' : `${season.weeks} WEEKS`
         const rounds = season.draft_rounds === 1 ? '1 ROUND' : `${season.draft_rounds} ROUNDS`
         card.append(
-          el('p', '', season.name),
-          el('p', '', season.status.toUpperCase()),
+          el('p', 'season-name', season.name),
+          el('p', 'season-status', season.status.toUpperCase()),
           el('p', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
           el('p', '', `${practice} · ${weeks} · ${rounds}`),
         )
         if (season.commissioner_id === state.userId) {
-          card.append(el('p', '', 'YOU ARE THE COMMISSIONER'))
+          card.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
         }
-        box.append(card)
+        list.append(card)
       }
+      box.append(list)
     }
 
     box.append(form())
@@ -75,6 +77,7 @@ export function renderSeasons(prompt, { onBack }) {
 
   function form() {
     const node = document.createElement('form')
+    node.className = 'open-season'
     const name = document.createElement('input')
     name.name = 'season-name'
     name.required = true

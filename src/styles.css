@@ -317,13 +317,44 @@ input.num {
   flex: 0 0 6ch;
 }
 
+.season-list {
+  display: grid;
+  gap: clamp(14px, 2.4vw, 24px);
+  width: 100%;
+  justify-self: stretch;
+  margin: 12px 0 4px;
+}
+
 .season-card {
-  margin: 8px 0;
+  width: 100%;
   max-width: 100%;
+  border: 2px solid #d0d0d0;
+  padding: 6px 10px 8px;
+  display: grid;
+  gap: 1px;
 }
 
 .season-card p {
   margin: 0;
+}
+
+.season-card .season-name {
+  border-bottom: 1px solid var(--mark);
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.season-status,
+.season-role {
+  color: var(--mark);
+}
+
+.choices form.open-season {
+  width: 100%;
+  justify-self: stretch;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 2px solid #d0d0d0;
 }
 
 @media (pointer: coarse) {
