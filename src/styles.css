@@ -449,6 +449,13 @@ button.game-match .mine {
   margin-top: 0;
 }
 
+.writeup {
+  width: 100%;
+  margin-top: 0.75em;
+  display: grid;
+  gap: 0.75em;
+}
+
 .side-actions {
   display: flex;
   flex-wrap: wrap;

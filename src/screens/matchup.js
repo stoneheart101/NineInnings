@@ -99,6 +99,15 @@ function kidLine(row) {
   return `${row.name} — ${bits.join(', ')}`
 }
 
+function writeupNode(text) {
+  if (typeof text !== 'string' || !text.trim()) return null
+  const parts = text.split(/\n\n+/).map((part) => part.trim()).filter(Boolean)
+  if (!parts.length) return null
+  const wrap = el('div', 'writeup')
+  for (const part of parts) wrap.append(el('p', '', part))
+  return wrap
+}
+
 function scoreNodes(result) {
   const innings = Array.isArray(result?.innings) ? result.innings : null
   const lines = Array.isArray(result?.lines) ? result.lines : null
@@ -235,6 +244,9 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
       const score = el('div', 'box-score')
       for (const node of scoreNodes(game.result)) score.append(node)
       box.append(score)
+      const writeup = writeupNode(game.narrative)
+      if (writeup) box.append(writeup)
+      else box.append(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
     }
     if (canPlay()) {
       const actions = el('div', 'side-actions')
@@ -316,7 +328,14 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
       paint()
       return
     }
-    state.game = { ...state.game, status: 'final', result: data }
+    const note = await supabase.from('games').select('narrative').eq('id', gameId).maybeSingle()
+    if (prompt.dataset.paint !== token) return
+    state.game = {
+      ...state.game,
+      status: 'final',
+      result: data,
+      narrative: note.error ? null : (note.data?.narrative ?? null),
+    }
     paint()
   }
 
@@ -372,7 +391,7 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
   async function load() {
     const [session, gameRes, lockRes, cardRes] = await Promise.all([
       supabase.auth.getSession(),
-      supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, weather, is_practice, result').eq('id', gameId).maybeSingle(),
+      supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, weather, is_practice, result, narrative').eq('id', gameId).maybeSingle(),
       supabase.from('lineup_locks').select('game_id, team_id, locked_at').eq('game_id', gameId),
       supabase.rpc('own_locked_card', { game_id: gameId }),
     ])
