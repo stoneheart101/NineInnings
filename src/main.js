@@ -3,32 +3,97 @@ import './styles.css'
 import { drawField } from './field.js'
 import { createDesk } from './auth.js'
 import { mountBackendTest } from './backend-test.js'
+import { renderHome } from './screens/home.js'
+import { renderSeasons } from './screens/seasons.js'
+import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
 const prompt = drawField(field)
-const desk = createDesk(prompt)
 mountBackendTest(field)
+
+let coachName = ''
+
+function renderDesk() {
+  if (!coachName) return
+  const route = routeFromHash(window.location.hash)
+  if (route === '/seasons') {
+    renderSeasons(prompt, { onBack: () => go('/') })
+    return
+  }
+  renderHome(prompt, {
+    coachName,
+    onSeasons: () => go('/seasons'),
+    onSignOut: async () => {
+      const { error } = await supabase.auth.signOut()
+      if (!error) return
+      const alert = document.createElement('p')
+      alert.className = 'alert'
+      alert.textContent = (error.message || 'COULD NOT SIGN OUT.').toUpperCase()
+      prompt.append(alert)
+    },
+  })
+}
+
+function go(path) {
+  const next = `#${path}`
+  if (window.location.hash === next) renderDesk()
+  else window.location.hash = next
+}
+
+const desk = createDesk(prompt, {
+  onNamed(name) {
+    coachName = name
+    if (routeFromHash(window.location.hash) == null) {
+      history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/`)
+    }
+    renderDesk()
+  },
+})
+
+document.addEventListener('keydown', (event) => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
+  if (document.querySelector('dialog[open]')) return
+  const box = prompt.querySelector('[data-keys]')
+  if (!box) return
+  const index = Number(event.key) - 1
+  if (!Number.isInteger(index) || index < 0) return
+  const button = box.querySelectorAll('button')[index]
+  if (!button) return
+  event.preventDefault()
+  button.click()
+})
+
+window.addEventListener('hashchange', () => {
+  renderDesk()
+})
 
 const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
 const queryParams = new URLSearchParams(window.location.search)
 const oauthError = hashParams.get('error_description') || queryParams.get('error_description') || hashParams.get('error') || queryParams.get('error') || ''
-if (oauthError) desk.note(oauthError.replace(/\+/g, ' ').toUpperCase())
+if (oauthError && routeFromHash(window.location.hash) == null) {
+  desk.note(oauthError.replace(/\+/g, ' ').toUpperCase())
+}
 
 supabase.auth.onAuthStateChange((event, session) => {
   window.setTimeout(() => {
+    if (event === 'SIGNED_OUT') coachName = ''
     desk.onEvent(event, session)
   }, 0)
 })
 
 const { data } = await supabase.auth.getSession()
-if (window.location.hash || oauthError) {
+{
   const url = new URL(window.location.href)
-  url.hash = ''
+  const route = routeFromHash(url.hash)
   url.searchParams.delete('error')
   url.searchParams.delete('error_code')
   url.searchParams.delete('error_description')
+  if (route == null || url.hash === '' || url.hash === '#') url.hash = '#/'
   const search = url.searchParams.toString()
-  history.replaceState(null, '', `${url.pathname}${search ? `?${search}` : ''}`)
+  const next = `${url.pathname}${search ? `?${search}` : ''}${url.hash}`
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  if (next !== current) history.replaceState(null, '', next)
 }
 if (!data.session) desk.onEvent('INITIAL_SESSION', null)

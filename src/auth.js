@@ -45,7 +45,7 @@ function field(id, label, type, options = {}) {
   return { wrap, input }
 }
 
-export function createDesk(prompt) {
+export function createDesk(prompt, hooks) {
   const state = {
     mode: 'boot',
     busy: false,
@@ -56,6 +56,7 @@ export function createDesk(prompt) {
   let pendingError = ''
 
   function paint() {
+    if (state.mode === 'ready') return
     prompt.replaceChildren()
     const view = views[state.mode] || views.menu
     prompt.append(view())
@@ -91,7 +92,9 @@ export function createDesk(prompt) {
       setMode('coach')
       return
     }
-    setMode('home', { coachName: profile.coach_name })
+    state.mode = 'ready'
+    state.coachName = profile.coach_name
+    hooks.onNamed(profile.coach_name)
   }
 
   async function onEvent(event, session) {
@@ -150,6 +153,7 @@ export function createDesk(prompt) {
     },
     menu() {
       const box = el('div', 'choices')
+      box.dataset.keys = 'on'
       const button = el('button', '', '1- SIGN IN WITH GOOGLE')
       button.type = 'button'
       button.disabled = state.busy
@@ -188,22 +192,10 @@ export function createDesk(prompt) {
           state.error = 'THAT NAME WAS NOT SAVED.'
           return
         }
-        setMode('home', { coachName })
+        state.mode = 'ready'
+        state.coachName = coachName
+        hooks.onNamed(coachName)
       }, el('p', '', 'ENTER COACH NAME'), name.wrap, actions(['SAVE'], ['SIGN OUT', signOut]))
-    },
-    home() {
-      const box = el('div', 'choices')
-      const signOutButton = el('button', '', '1- SIGN OUT')
-      signOutButton.type = 'button'
-      signOutButton.addEventListener('click', () => {
-        signOut()
-      })
-      box.append(
-        el('p', '', `COACH: ${state.coachName}`),
-        signOutButton,
-        el('p', '', 'WHICH?'),
-      )
-      return box
     },
   }
 
@@ -232,15 +224,6 @@ export function createDesk(prompt) {
     }
     setMode('menu')
   }
-
-  document.addEventListener('keydown', (event) => {
-    if (state.mode !== 'menu' && state.mode !== 'home') return
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
-    const choice = { 1: 0 }[event.key]
-    if (choice == null) return
-    const button = prompt.querySelectorAll('button')[choice]
-    button?.click()
-  })
 
   return {
     onEvent,
