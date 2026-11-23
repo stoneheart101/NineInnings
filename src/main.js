@@ -9,13 +9,13 @@ import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
-const prompt = drawField(field)
-
-// The home desk keeps the field. Any other signed-in route is real work.
-function syncLayout() {
-  const route = coachName ? routeFromHash(window.location.hash) : null
-  field.classList.toggle('working', route != null && route !== '/')
-}
+const { prompt, setCoach } = drawField(field, {
+  onSignOut: async () => {
+    const { error } = await supabase.auth.signOut()
+    if (!error) return ''
+    return (error.message || 'COULD NOT SIGN OUT.').toUpperCase()
+  },
+})
 
 let coachName = ''
 let rulesVersion = null
@@ -34,7 +34,7 @@ async function loadRules() {
 }
 
 function renderDesk() {
-  syncLayout()
+  setCoach(coachName)
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
   if (route === '/seasons') {
@@ -52,18 +52,9 @@ function renderDesk() {
     return
   }
   renderHome(prompt, {
-    coachName,
     rulesVersion,
     onSeasons: () => go('/seasons'),
     onOpenSeason: (id) => go(`/seasons/${id}`),
-    onSignOut: async () => {
-      const { error } = await supabase.auth.signOut()
-      if (!error) return
-      const alert = document.createElement('p')
-      alert.className = 'alert'
-      alert.textContent = (error.message || 'COULD NOT SIGN OUT.').toUpperCase()
-      prompt.append(alert)
-    },
   })
 }
 
@@ -117,7 +108,7 @@ supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       coachName = ''
       rulesVersion = null
-      syncLayout()
+      setCoach('')
     }
     desk.onEvent(event, session)
   }, 0)

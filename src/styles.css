@@ -49,7 +49,7 @@ body {
   padding: clamp(6px, 1.6vw, 16px);
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  overflow: hidden;
 }
 
 #field {
@@ -63,155 +63,83 @@ body {
   container-name: field;
 }
 
-.board-wrap {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.board {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: clamp(16px, 3.4cqi, 1em);
-}
-
-.phone {
-  display: none;
-}
-
-.board th,
-.board td {
-  border: 1px solid #d0d0d0;
-  height: 1.25em;
-  padding: 0 3px;
-  text-align: center;
-  font-weight: 400;
-  color: var(--ink);
-  white-space: nowrap;
-}
-
-.board thead th {
-  color: var(--mark);
-}
-
-.board .title,
-.board tbody th {
-  width: 28%;
-  text-align: left;
-  padding-left: 8px;
-  color: var(--ink);
-}
-
-.board thead th.title {
-  color: var(--ink);
-}
-
-.play {
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: clamp(6px, 1.5cqi, 18px);
-  align-items: stretch;
-  min-width: 0;
-  min-height: 0;
-}
-
-.info {
-  font-size: 1.05em;
-  min-width: 0;
-}
-
-.info p {
-  margin: 0 0 1px;
-}
-
-.info .label {
-  color: var(--mark);
-}
-
-.info b {
-  font-weight: 400;
-  color: var(--ink);
-}
-
-.info .indent {
-  padding-left: 1.4em;
-}
-
-.info .gap {
-  height: 0.7em;
-}
-
-.diamond {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+.header {
+  position: relative;
+  z-index: 2;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 0;
-  height: 100%;
+  gap: 8px 12px;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
-.diamond svg {
-  width: 100%;
-  height: 100%;
-  max-height: 100%;
-}
-
-.outs {
-  border: 2px solid var(--mark);
-  color: var(--mark);
-  width: 1.35em;
-  min-width: 1.35em;
-  display: grid;
-  justify-items: center;
-  padding: 4px 0 2px;
-  line-height: 0.9;
-  align-self: center;
-}
-
-.outs strong {
+.brand {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(22px, 5cqi, 1.15em);
   font-weight: 400;
-  margin-top: 6px;
-  color: var(--ink);
+  line-height: 1;
+}
+
+.header-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.logo {
+  flex: 0 0 auto;
+  height: clamp(48px, 14cqi, 88px);
+  width: auto;
+}
+
+.logo svg {
+  display: block;
+  height: 100%;
+  width: auto;
+}
+
+.user-menu {
+  position: relative;
+  min-width: 0;
+}
+
+.coach-toggle {
+  display: block;
+  max-width: min(16ch, 34vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mark);
+}
+
+.coach-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 3;
+  background: #000;
+  border: 2px solid var(--mark);
+  padding: 4px 6px 6px;
+  min-width: max-content;
+  max-width: min(70vw, 24rem);
 }
 
 .prompt {
-  /* Simple menus keep a stable slot so the diamond does not jump. */
-  flex: 0 0 clamp(140px, 26dvh, 260px);
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-}
-
-.mast {
-  display: none;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 16px;
-  flex-wrap: wrap;
-  min-width: 0;
-  border: 1px solid #d0d0d0;
-  padding: 2px 8px;
-  font-size: clamp(16px, 3.4cqi, 1em);
-}
-
-.mast p {
-  margin: 0;
-}
-
-.mast-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-}
-
-.mast .label {
-  color: var(--mark);
 }
 
 .prompt p,
@@ -428,62 +356,6 @@ button.team-card,
   overflow-wrap: anywhere;
 }
 
-.prompt,
-.board-wrap {
-  flex-shrink: 0;
-}
 
-/* Density follows the field width, not a device breakpoint. See AGENTS.md. */
-@container field (max-width: 40rem) {
-  .desk {
-    display: none;
-  }
-
-  .phone {
-    display: inline;
-  }
-
-  .board .title,
-  .board tbody th {
-    width: 3.6rem;
-    padding-left: 3px;
-  }
-
-  .info .indent {
-    padding-left: 0.6em;
-  }
-
-  .info .gap {
-    height: 0.35em;
-  }
-}
-
-/* Real work keeps a one-line strip and gives the page to the task. */
-#field.working {
-  overflow: hidden;
-}
-
-.screen:has(#field.working) {
-  overflow: hidden;
-}
-
-#field.working .mast {
-  display: flex;
-  flex: 0 0 auto;
-}
-
-#field.working .board-wrap,
-#field.working .play {
-  display: none;
-}
-
-#field.working .prompt {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-  max-height: none;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
 
 

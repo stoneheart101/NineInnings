@@ -16,7 +16,7 @@ function seasonName(team) {
   return season?.name || 'SEASON'
 }
 
-export function renderHome(prompt, { coachName, rulesVersion, onSeasons, onSignOut, onOpenSeason }) {
+export function renderHome(prompt, { rulesVersion, onSeasons, onOpenSeason }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = { teams: null, error: '' }
@@ -25,7 +25,6 @@ export function renderHome(prompt, { coachName, rulesVersion, onSeasons, onSignO
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
     const head = el('div', 'choices')
-    head.append(el('p', '', `COACH: ${coachName}`))
     if (rulesVersion != null) head.append(el('p', '', `RULES v${rulesVersion}`))
 
     if (state.teams == null) {
@@ -54,10 +53,7 @@ export function renderHome(prompt, { coachName, rulesVersion, onSeasons, onSignO
     const seasons = el('button', '', '1- SEASONS')
     seasons.type = 'button'
     seasons.addEventListener('click', onSeasons)
-    const signOut = el('button', '', '2- SIGN OUT')
-    signOut.type = 'button'
-    signOut.addEventListener('click', onSignOut)
-    box.append(seasons, signOut, el('p', '', 'WHICH?'))
+    box.append(seasons, el('p', '', 'WHICH?'))
     prompt.append(head, box)
   }
 
