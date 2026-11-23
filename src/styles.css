@@ -176,7 +176,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
   color: inherit;
 }
@@ -191,7 +192,8 @@ button {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 2px solid var(--mark);
   outline-offset: 1px;
 }
@@ -462,10 +464,51 @@ button.team-card,
   width: 100%;
 }
 
+.lineup {
+  width: 100%;
+  margin-bottom: 0.75em;
+}
+
+.lineup-card {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  max-width: 40rem;
+}
+
+.lineup-slot {
+  width: 100%;
+}
+
+.lineup-slot select {
+  font-size: max(16px, 1em);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid currentColor;
+  padding: 0 4px;
+  min-width: 0;
+  width: min(100%, 28ch);
+  flex: 1 1 12ch;
+}
+
+.lineup-slot select option {
+  background: #000;
+  color: var(--ink);
+}
+
+.lineup-slot select:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 @media (pointer: coarse) {
   .days label {
     min-height: 44px;
     align-items: center;
+  }
+
+  .lineup-slot select {
+    min-height: 44px;
   }
 }
 

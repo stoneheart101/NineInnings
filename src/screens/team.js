@@ -11,6 +11,18 @@ const STATS = [
   ['stamina', 'STAMINA'],
 ]
 
+const SLOTS = [
+  [1, 'MOUND'],
+  [2, 'CATCHER'],
+  [3, 'FIRST'],
+  [4, 'SECOND'],
+  [5, 'THIRD'],
+  [6, 'SHORT'],
+  [7, 'LEFT'],
+  [8, 'CENTER'],
+  [9, 'RIGHT'],
+]
+
 function el(tag, className, text) {
   const node = document.createElement(tag)
   if (className) node.className = className
@@ -58,6 +70,9 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     error: '',
     releaseError: '',
     releaseKid: '',
+    lineup: {},
+    lineupError: '',
+    lineupBusy: false,
     busy: false,
     missing: false,
     mine: false,
@@ -114,6 +129,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     }
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)
+    prompt.append(lineupBlock())
 
     const board = el('div', 'choices')
     if (!state.kids.length) {
@@ -144,6 +160,109 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       card.append(el('p', 'alert', state.releaseError))
     }
     return card
+  }
+
+  function lineupBlock() {
+    const block = el('div', 'lineup')
+    block.append(el('p', 'section', 'LINEUP'))
+    const form = el('form', 'lineup-card')
+    form.addEventListener('submit', (event) => {
+      event.preventDefault()
+      onSaveLineup()
+    })
+    for (const [slot, label] of SLOTS) {
+      const row = el('label', 'lineup-slot')
+      row.append(document.createTextNode(label))
+      const select = document.createElement('select')
+      select.dataset.slot = String(slot)
+      select.disabled = state.lineupBusy
+      fillSelect(select, slot)
+      select.addEventListener('change', () => {
+        const chosen = select.value
+        state.lineup[slot] = chosen
+        if (chosen) {
+          for (const other of Object.keys(state.lineup)) {
+            if (Number(other) !== slot && state.lineup[other] === chosen) state.lineup[other] = ''
+          }
+        }
+        syncLineupOptions(select)
+      })
+      row.append(select)
+      form.append(row)
+    }
+    const save = el('button', '', 'SAVE THE LINEUP')
+    save.type = 'submit'
+    save.disabled = state.lineupBusy
+    form.append(save)
+    if (state.lineupError) form.append(el('p', 'alert', state.lineupError))
+    block.append(form)
+    return block
+  }
+
+  function takenElsewhere(slot) {
+    const taken = new Set()
+    for (const [other, playerId] of Object.entries(state.lineup)) {
+      if (Number(other) !== slot && playerId) taken.add(playerId)
+    }
+    return taken
+  }
+
+  function fillSelect(select, slot) {
+    const current = state.lineup[slot] || ''
+    const taken = takenElsewhere(slot)
+    select.replaceChildren()
+    const empty = document.createElement('option')
+    empty.value = ''
+    empty.textContent = 'EMPTY'
+    select.append(empty)
+    for (const kid of state.kids) {
+      if (taken.has(kid.id) && kid.id !== current) continue
+      const option = document.createElement('option')
+      option.value = kid.id
+      const nickname = kid.nickname ? ` "${kid.nickname}"` : ''
+      option.textContent = `${kidName(kid)}${nickname}`
+      select.append(option)
+    }
+    select.value = current && [...select.options].some((option) => option.value === current) ? current : ''
+  }
+
+  function syncLineupOptions(skip) {
+    const form = prompt.querySelector('form.lineup-card')
+    if (!form) return
+    for (const select of form.querySelectorAll('select')) {
+      if (select === skip) continue
+      fillSelect(select, Number(select.dataset.slot))
+    }
+  }
+
+  function slotsFromForm() {
+    const slots = {}
+    const form = prompt.querySelector('form.lineup-card')
+    for (const [slot] of SLOTS) {
+      const select = form?.querySelector(`[data-slot="${slot}"]`)
+      const value = select?.value || ''
+      state.lineup[slot] = value
+      slots[String(slot)] = value || null
+    }
+    return slots
+  }
+
+  async function onSaveLineup() {
+    if (state.lineupBusy || !state.team) return
+    const slots = slotsFromForm()
+    state.lineupBusy = true
+    state.lineupError = ''
+    paint()
+    const { error } = await supabase.rpc('set_lineup', { team_id: state.team.id, slots })
+    if (prompt.dataset.paint !== token) return
+    state.lineupBusy = false
+    if (error) {
+      state.lineupError = (error.message || 'THE LINEUP STAYED.').toUpperCase()
+      paint()
+      return
+    }
+    state.lineupError = ''
+    await load()
   }
 
   async function onRelease(playerId) {
@@ -225,7 +344,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       paint()
       return
     }
-    const [kids, draft] = await Promise.all([
+    const [kids, draft, lineup] = await Promise.all([
       supabase
         .from('players')
         .select('id, team_id, given_name, family_name, nickname, flavor, base_stats, created_at')
@@ -238,6 +357,11 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
         .select('pick_index,order')
         .eq('season_id', team.data.season_id)
         .maybeSingle(),
+      supabase
+        .from('lineups')
+        .select('slot, player_id')
+        .eq('team_id', teamId)
+        .order('slot', { ascending: true }),
     ])
     if (prompt.dataset.paint !== token) return
     if (kids.error) {
@@ -245,6 +369,16 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       state.kids = []
     } else {
       state.kids = kids.data || []
+    }
+    const onTeam = new Set(state.kids.map((kid) => kid.id))
+    state.lineup = {}
+    if (lineup.error) {
+      state.lineupError = (lineup.error.message || 'THE LINEUP DID NOT LOAD.').toUpperCase()
+    } else {
+      state.lineupError = ''
+      for (const row of lineup.data || []) {
+        if (onTeam.has(row.player_id)) state.lineup[row.slot] = row.player_id
+      }
     }
     const season = seasonOf(team.data)
     state.draftOpen = draft.error ? season?.status === 'drafting' : draftIsOpen(season, draft.data)
