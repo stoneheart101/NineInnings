@@ -381,6 +381,25 @@ button.team-card,
   text-align: right;
 }
 
+.sort-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  width: 100%;
+  margin: 2px 0 6px;
+}
+
+.sort-row button.on {
+  color: var(--mark);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sort-row button.on:hover,
+  .sort-row button.on:focus-visible {
+    color: #000;
+  }
+}
+
 .kid-stats {
   display: flex;
   flex-wrap: wrap;

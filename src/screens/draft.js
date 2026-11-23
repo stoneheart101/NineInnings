@@ -45,6 +45,7 @@ export function renderDraft(prompt, { seasonId, onBack }) {
     pickKid: '',
     busy: false,
     more: false,
+    sort: '',
     missing: false,
     loaded: false,
   }
@@ -151,7 +152,8 @@ export function renderDraft(prompt, { seasonId, onBack }) {
 
     node.append(el('p', '', 'THE POOL'))
     if (myTurn) node.append(el('p', 'season-role', 'YOUR PICK'))
-    const pool = state.kids.filter((kid) => !kid.team_id)
+    const pool = sortedPool(state.kids.filter((kid) => !kid.team_id))
+    if (myTurn && pool.length) node.append(sortRow())
     const poolList = el('div', 'draft-pool')
     if (!pool.length) poolList.append(el('p', '', 'NO KIDS LEFT'))
     else for (const kid of pool) poolList.append(kidCard(kid, myTurn))
@@ -160,6 +162,33 @@ export function renderDraft(prompt, { seasonId, onBack }) {
     }
     node.append(poolList)
     return node
+  }
+
+  function sortedPool(pool) {
+    if (!state.sort) return pool
+    const stat = state.sort
+    return pool.slice().sort((a, b) => {
+      const left = Number.isInteger(a.base_stats?.[stat]) ? a.base_stats[stat] : -1
+      const right = Number.isInteger(b.base_stats?.[stat]) ? b.base_stats[stat] : -1
+      if (left !== right) return right - left
+      return (a.family_name || '').localeCompare(b.family_name || '')
+        || (a.given_name || '').localeCompare(b.given_name || '')
+        || String(a.id).localeCompare(String(b.id))
+    })
+  }
+
+  function sortRow() {
+    const row = el('div', 'sort-row')
+    for (const [stat, label] of STATS) {
+      const link = el('button', state.sort === stat ? 'on' : '', label)
+      link.type = 'button'
+      link.addEventListener('click', () => {
+        state.sort = stat
+        paint()
+      })
+      row.append(link)
+    }
+    return row
   }
 
   function kidCard(kid, myTurn) {
