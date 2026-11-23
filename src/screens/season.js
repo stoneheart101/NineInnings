@@ -106,7 +106,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
       box.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
     }
 
-    box.append(el('p', '', 'TEAMS'))
+    box.append(el('p', 'section', 'TEAMS'))
     if (!state.teams.length) {
       box.append(el('p', '', 'NO TEAMS YET'))
     } else {
@@ -132,7 +132,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     }
     if (state.kids) {
       const pool = state.kids.filter((kid) => !kid.team_id)
-      box.append(el('p', '', 'THE POOL'))
+      box.append(el('p', 'section', 'THE POOL'))
       if (!state.kids.length) {
         box.append(el('p', '', 'NO KIDS YET'))
       } else if (!pool.length) {

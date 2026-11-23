@@ -102,7 +102,7 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
     if (!perRound) node.append(orderList(order, 0, pickIndex))
     else {
       for (let round = 0; round < rounds; round += 1) {
-        node.append(el('p', '', `ROUND ${round + 1}`))
+        node.append(el('p', 'section', `ROUND ${round + 1}`))
         node.append(orderList(order.slice(round * perRound, (round + 1) * perRound), round * perRound, pickIndex))
       }
     }
@@ -133,7 +133,7 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
       if (id && !seen.includes(id)) seen.push(id)
     }
 
-    node.append(el('p', '', 'DRAFTED'))
+    node.append(el('p', 'section', 'DRAFTED'))
     const roster = el('div', 'draft-roster')
     for (const id of seen) {
       const card = el('div', 'team-card')
@@ -145,7 +145,7 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
     }
     node.append(roster)
 
-    node.append(el('p', '', 'THE POOL'))
+    node.append(el('p', 'section', 'THE POOL'))
     if (myTurn) node.append(el('p', 'season-role', 'YOUR PICK'))
     const pool = sortedPool(state.kids.filter((kid) => !kid.team_id))
     if (myTurn && pool.length) node.append(sortRow())
