@@ -6,6 +6,7 @@ import { renderHome } from './screens/home.js'
 import { renderSeasons } from './screens/seasons.js'
 import { renderSeason } from './screens/season.js'
 import { closeDraft, renderDraft } from './screens/draft.js'
+import { closeTeam, renderTeam } from './screens/team.js'
 import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
 
@@ -37,6 +38,7 @@ async function loadRules() {
 function renderDesk() {
   setCoach(coachName)
   closeDraft()
+  closeTeam()
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
   if (route === '/seasons') {
@@ -60,13 +62,23 @@ function renderDesk() {
       seasonId,
       onBack: () => go('/seasons'),
       onOpenDraft: () => go(`/seasons/${seasonId}/draft`),
+      onOpenTeam: (id) => go(`/teams/${id}`),
+    })
+    return
+  }
+  if (typeof route === 'string' && route.startsWith('/teams/')) {
+    const teamId = route.slice('/teams/'.length)
+    renderTeam(prompt, {
+      teamId,
+      onBack: () => go('/'),
+      onOpenSeason: (id) => go(`/seasons/${id}`),
     })
     return
   }
   renderHome(prompt, {
     rulesVersion,
     onSeasons: () => go('/seasons'),
-    onOpenSeason: (id) => go(`/seasons/${id}`),
+    onOpenTeam: (id) => go(`/teams/${id}`),
   })
 }
 

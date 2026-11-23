@@ -38,7 +38,7 @@ function coachName(team) {
   return profile?.coach_name || 'COACH'
 }
 
-export function renderSeason(prompt, { seasonId, onBack, onOpenDraft }) {
+export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -110,19 +110,20 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft }) {
       box.append(list)
     }
 
-    const mine = state.teams.some((team) => team.coach_id === state.userId)
+    const myTeam = state.teams.find((team) => team.coach_id === state.userId)
     const forming = season.status === 'forming'
     let nextKey = 2
-    if (forming && !mine) {
+    if (forming && !myTeam) {
       box.append(form(nextKey))
       nextKey += 1
-    } else if (!mine) {
+    } else if (!myTeam) {
       box.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
     }
     if (forming && season.commissioner_id === state.userId) {
       box.append(callForm(nextKey))
       nextKey += 1
       box.append(startButton(nextKey))
+      nextKey += 1
       const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
       if (draftNote) box.append(el('p', 'alert', draftNote))
     }
@@ -131,12 +132,25 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft }) {
       open.type = 'button'
       open.addEventListener('click', () => onOpenDraft?.())
       box.append(open)
+      nextKey += 1
+    }
+    if (myTeam) {
+      const roster = el('button', '', `${nextKey}- THE ROSTER`)
+      roster.type = 'button'
+      roster.addEventListener('click', () => onOpenTeam?.(myTeam.id))
+      box.append(roster)
     }
     if (state.kids) {
-      box.append(el('p', '', state.kids.length ? counted(state.kids.length, 'KID', 'KIDS') : 'NO KIDS YET'))
-      if (state.kids.length) {
+      const pool = state.kids.filter((kid) => !kid.team_id)
+      box.append(el('p', '', 'THE POOL'))
+      if (!state.kids.length) {
+        box.append(el('p', '', 'NO KIDS YET'))
+      } else if (!pool.length) {
+        box.append(el('p', '', 'NO KIDS LEFT'))
+      } else {
+        box.append(el('p', '', counted(pool.length, 'KID', 'KIDS')))
         const list = el('div', 'kid-list')
-        for (const kid of state.kids) list.append(kidCard(kid))
+        for (const kid of pool) list.append(kidCard(kid))
         box.append(list)
       }
     }
@@ -302,7 +316,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft }) {
         .order('created_at', { ascending: true }),
       supabase
         .from('players')
-        .select('id, given_name, family_name, nickname, flavor, base_stats, created_at')
+        .select('id, team_id, given_name, family_name, nickname, flavor, base_stats, created_at')
         .eq('season_id', seasonId)
         .order('created_at', { ascending: true })
         .order('id', { ascending: true }),

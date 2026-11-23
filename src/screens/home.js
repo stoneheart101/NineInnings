@@ -16,7 +16,7 @@ function seasonName(team) {
   return season?.name || 'SEASON'
 }
 
-export function renderHome(prompt, { rulesVersion, onSeasons, onOpenSeason }) {
+export function renderHome(prompt, { rulesVersion, onSeasons, onOpenTeam }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = { teams: null, error: '' }
@@ -36,7 +36,7 @@ export function renderHome(prompt, { rulesVersion, onSeasons, onOpenSeason }) {
       for (const team of state.teams) {
         const card = el('button', 'team-card')
         card.type = 'button'
-        card.addEventListener('click', () => onOpenSeason(team.season_id))
+        card.addEventListener('click', () => onOpenTeam(team.id))
         card.append(
           el('span', 'season-name', team.name),
           el('span', '', `${counted(team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(team.reputation, 'REPUTATION', 'REPUTATION')}`),
