@@ -85,16 +85,6 @@ body {
   line-height: 1;
 }
 
-.header-tools {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-  flex: 0 1 auto;
-}
-
 .logo {
   flex: 0 0 auto;
   height: clamp(48px, 14cqi, 88px);
@@ -109,6 +99,7 @@ body {
 
 .user-menu {
   position: relative;
+  margin-left: auto;
   min-width: 0;
 }
 

@@ -31,14 +31,12 @@ export function drawField(root, { onSignOut } = {}) {
   root.replaceChildren()
 
   const header = el('header', 'header')
-  const brand = el('h1', 'brand', 'NineInnings')
-  const tools = el('div', 'header-tools')
-  const userMenu = el('div', 'user-menu')
-  userMenu.hidden = true
   const logo = el('div', 'logo')
   logo.innerHTML = DIAMOND
-  tools.append(userMenu, logo)
-  header.append(brand, tools)
+  const brand = el('h1', 'brand', 'NineInnings')
+  const userMenu = el('div', 'user-menu')
+  userMenu.hidden = true
+  header.append(logo, brand, userMenu)
 
   const prompt = el('div', 'prompt')
   prompt.id = 'prompt'

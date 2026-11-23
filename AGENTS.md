@@ -4,7 +4,7 @@
 
 Every layout, type, color, and interaction change has to work from a narrow phone through a wide desktop. A layout that only fits one size is unfinished.
 
-- The header shows the site name NineInnings, the coach's name as the user menu when they are signed in, and the baseball diamond as a logo at the top right. The diamond is not a game view and has no control.
+- The header shows the baseball diamond as a logo at the top left, the site name NineInnings beside it, and the coach's name as the user menu on the right when they are signed in. The diamond is not a game view and has no control.
 - The scoreboard, lineup, and outs are not on the page. Menus and other work use the body under the header.
 - That body fills the viewport under the header and is the only scroll region. The header stays put. Do not add a second page scroll.
 - Size type and density from the field container. Do not switch the whole layout at one phone breakpoint.
