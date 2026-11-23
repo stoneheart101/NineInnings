@@ -427,6 +427,10 @@ button.game-match {
   color: var(--mark);
 }
 
+button.game-match .mine {
+  color: #9ec9ff;
+}
+
 .side-box,
 .box-score {
   width: 100%;

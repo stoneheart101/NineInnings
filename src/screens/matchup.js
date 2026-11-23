@@ -159,6 +159,8 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
     lineupFailed: false,
     itemsFailed: false,
     lockFailed: false,
+    nextGameId: null,
+    nextFailed: false,
   }
 
   function playing() {
@@ -261,6 +263,9 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
         mineBox.append(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
       } else if (state.itemsFailed) {
         mineBox.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
+      } else if (state.nextFailed || state.nextGameId !== game.id) {
+        for (const node of cardNodes(state.live)) mineBox.append(node)
+        mineBox.append(el('p', state.nextFailed ? 'alert' : '', state.nextFailed ? 'THE NEXT GAME DID NOT LOAD' : 'LOCK THE NEXT GAME FIRST'))
       } else {
         for (const node of cardNodes(state.live)) mineBox.append(node)
         mineBox.append(el('p', '', 'LOCK COPIES THIS CARD FOR THE GAME'))
@@ -315,11 +320,40 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
     paint()
   }
 
+  function earlierId(rows) {
+    let best = null
+    for (const row of rows) {
+      if (!row?.id) continue
+      const at = Date.parse(row.starts_at)
+      if (Number.isNaN(at)) continue
+      if (!best || at < best.at) best = { id: row.id, at }
+    }
+    return best?.id ?? null
+  }
+
+  async function nextScheduled(teamId) {
+    const [homeRes, awayRes] = await Promise.all([
+      supabase.from('games').select('id, starts_at').eq('status', 'scheduled').eq('home_team_id', teamId).order('starts_at', { ascending: true }).limit(1),
+      supabase.from('games').select('id, starts_at').eq('status', 'scheduled').eq('away_team_id', teamId).order('starts_at', { ascending: true }).limit(1),
+    ])
+    if (homeRes.error || awayRes.error) return { id: null, failed: true }
+    return {
+      id: earlierId([...(homeRes.data || []), ...(awayRes.data || [])]),
+      failed: false,
+    }
+  }
+
   async function onLock() {
     if (state.busy) return
     state.busy = true
     state.error = ''
     paint()
+    if (state.nextFailed || state.nextGameId !== state.game?.id) {
+      state.busy = false
+      state.error = state.nextFailed ? 'THE NEXT GAME DID NOT LOAD' : 'LOCK THE NEXT GAME FIRST'
+      paint()
+      return
+    }
     const { data, error } = await supabase.rpc('lock_lineup', { game_id: gameId })
     if (prompt.dataset.paint !== token) return
     state.busy = false
@@ -381,14 +415,17 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
     state.myTeam = state.teams.find((team) => team.coach_id === state.userId) || null
     const showLive = playing() && !state.card && !mineLocked() && state.game.status === 'scheduled'
     if (showLive) {
-      const [lineupRes, itemRes, kidRes] = await Promise.all([
+      const [lineupRes, itemRes, kidRes, next] = await Promise.all([
         supabase.from('lineups').select('team_id, player_id, slot').eq('team_id', state.myTeam.id),
         supabase.from('team_items').select('id, item_id, remaining_games, bought_at, effect, clubhouse_items(name)').eq('team_id', state.myTeam.id).order('bought_at', { ascending: true }).order('id', { ascending: true }),
         supabase.from('players').select('id, given_name, family_name, nickname, sex, team_id').eq('team_id', state.myTeam.id),
+        nextScheduled(state.myTeam.id),
       ])
       if (prompt.dataset.paint !== token) return
       state.lineupFailed = Boolean(lineupRes.error || kidRes.error)
       state.itemsFailed = Boolean(itemRes.error)
+      state.nextFailed = next.failed
+      state.nextGameId = next.id
       state.live = state.lineupFailed || state.itemsFailed
         ? null
         : liveCard(lineupRes.data || [], kidRes.data || [], itemRes.data || [])
