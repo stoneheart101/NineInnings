@@ -8,6 +8,7 @@ import { renderSeason } from './screens/season.js'
 import { closeDraft, renderDraft } from './screens/draft.js'
 import { closeTeam, renderTeam } from './screens/team.js'
 import { renderClubhouse } from './screens/clubhouse.js'
+import { renderMatchup } from './screens/matchup.js'
 import { closePopup } from './popup.js'
 import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
@@ -72,6 +73,19 @@ function renderDesk() {
       seasonId,
       onBack: () => go('/seasons'),
       onOpenDraft: () => go(`/seasons/${seasonId}/draft`),
+      onOpenTeam: (id) => go(`/teams/${id}`),
+      onOpenClubhouse: (id) => go(`/teams/${id}/clubhouse`),
+      onOpenGame: (id) => go(`/games/${id}`),
+      setTabs,
+      setTeam,
+    })
+    return
+  }
+  if (typeof route === 'string' && route.startsWith('/games/')) {
+    const gameId = route.slice('/games/'.length)
+    renderMatchup(prompt, {
+      gameId,
+      onBack: (seasonId) => go(seasonId ? `/seasons/${seasonId}` : '/seasons'),
       onOpenTeam: (id) => go(`/teams/${id}`),
       onOpenClubhouse: (id) => go(`/teams/${id}/clubhouse`),
       setTabs,

@@ -1,8 +1,8 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
+import { dayLabel, forecastLine, forecastShown } from '../forecast.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 const STATS = [
   ['contact', 'CONTACT'],
   ['power', 'POWER'],
@@ -59,10 +59,6 @@ function statusLabel(season, draft) {
   return season.status.toUpperCase()
 }
 
-function dayLabel(when) {
-  return `${DAYS[when.getUTCDay()]} ${MONTHS[when.getUTCMonth()]} ${when.getUTCDate()}`
-}
-
 function practiceLine(days) {
   const count = Number(days)
   return `PRACTICE GAMES EVERY ${count === 1 ? '1 DAY' : `${count} DAYS`}`
@@ -78,35 +74,7 @@ function roundsLine(rounds) {
   return count === 1 ? 'THE DRAFT HAS 1 ROUND' : `THE DRAFT HAS ${count} ROUNDS`
 }
 
-function forecastSentence(game) {
-  const sentence = game?.weather?.sentence
-  if (typeof sentence !== 'string') return 'THE FORECAST IS NOT HERE'
-  const line = sentence.trim().toUpperCase()
-  return line || 'THE FORECAST IS NOT HERE'
-}
-
-function forecastLine(game) {
-  const chances = game?.weather?.chances
-  if (Array.isArray(chances)) {
-    const parts = []
-    for (const row of chances) {
-      const type = typeof row?.type === 'string' ? row.type.trim().toUpperCase() : ''
-      const percent = Number(row?.percent)
-      if (!type || !Number.isInteger(percent)) continue
-      parts.push(`${type} ${percent}%`)
-    }
-    if (parts.length) return parts.join(' · ')
-  }
-  return forecastSentence(game)
-}
-
-function forecastShown(when, now = new Date()) {
-  const day = Math.floor(when.getTime() / 86400000)
-  const today = Math.floor(now.getTime() / 86400000)
-  return day - today <= 10
-}
-
-export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, setTabs, setTeam }) {
+export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, onOpenGame, setTabs, setTeam }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -210,7 +178,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
 
   function subtabs() {
     const row = el('div', 'subtabs')
-    for (const [id, label] of [['schedule', 'SCHEDULE'], ['teams', 'TEAMS'], ['pool', 'THE POOL']]) {
+    for (const [id, label] of [['teams', 'TEAMS'], ['schedule', 'SCHEDULE'], ['pool', 'THE POOL']]) {
       const button = el('button', state.section === id ? 'on' : '', label)
       button.type = 'button'
       button.setAttribute('aria-pressed', state.section === id ? 'true' : 'false')
@@ -296,8 +264,10 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
       for (const game of day.games) {
         playing.add(game.home_team_id)
         playing.add(game.away_team_id)
-        const match = el('p', 'game-match')
+        const match = el('button', 'game-match')
+        match.type = 'button'
         match.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
+        match.addEventListener('click', () => onOpenGame?.(game.id))
         block.append(match)
         if (forecastShown(day.when)) {
           block.append(el('p', 'game-forecast', forecastLine(game)))

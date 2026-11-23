@@ -248,7 +248,9 @@ select:focus-visible {
   button.team-card:hover .season-status,
   button.team-card:focus-visible .season-status,
   button.team-card:hover .season-name,
-  button.team-card:focus-visible .season-name {
+  button.team-card:focus-visible .season-name,
+  button.game-match:hover .mine,
+  button.game-match:focus-visible .mine {
     color: #000;
     border-bottom-color: #000;
   }
@@ -414,6 +416,11 @@ button.team-card,
 .game-forecast {
   width: 100%;
   overflow-wrap: anywhere;
+}
+
+button.game-match {
+  width: 100%;
+  text-align: left;
 }
 
 .game-match .mine {
