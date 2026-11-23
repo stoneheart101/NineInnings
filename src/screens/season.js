@@ -39,7 +39,7 @@ function coachName(team) {
   return profile?.coach_name || 'COACH'
 }
 
-export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, setTabs }) {
+export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, setTabs }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -68,6 +68,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     }
     if (myTeam) {
       tabs.push({ label: 'THE ROSTER', onClick: () => onOpenTeam?.(myTeam.id) })
+      tabs.push({ label: 'CLUBHOUSE', onClick: () => onOpenClubhouse?.(myTeam.id) })
     }
     if (forming && season.commissioner_id === state.userId) {
       tabs.push({ label: 'START THE DRAFT', disabled: state.busy, onClick: onStart })

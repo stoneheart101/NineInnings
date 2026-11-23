@@ -7,6 +7,7 @@ import { renderSeasons } from './screens/seasons.js'
 import { renderSeason } from './screens/season.js'
 import { closeDraft, renderDraft } from './screens/draft.js'
 import { closeTeam, renderTeam } from './screens/team.js'
+import { renderClubhouse } from './screens/clubhouse.js'
 import { routeFromHash } from './router.js'
 import { supabase } from './supabase.js'
 
@@ -65,6 +66,19 @@ function renderDesk() {
       onBack: () => go('/seasons'),
       onOpenDraft: () => go(`/seasons/${seasonId}/draft`),
       onOpenTeam: (id) => go(`/teams/${id}`),
+      onOpenClubhouse: (id) => go(`/teams/${id}/clubhouse`),
+      setTabs,
+    })
+    return
+  }
+  if (typeof route === 'string' && route.startsWith('/teams/') && route.endsWith('/clubhouse')) {
+    const teamId = route.slice('/teams/'.length, -'/clubhouse'.length)
+    renderClubhouse(prompt, {
+      teamId,
+      onBack: () => go('/'),
+      onOpenSeason: (id) => go(`/seasons/${id}`),
+      onOpenDraft: (id) => go(`/seasons/${id}/draft`),
+      onOpenRoster: () => go(`/teams/${teamId}`),
       setTabs,
     })
     return
@@ -76,6 +90,7 @@ function renderDesk() {
       onBack: () => go('/'),
       onOpenSeason: (id) => go(`/seasons/${id}`),
       onOpenDraft: (id) => go(`/seasons/${id}/draft`),
+      onOpenClubhouse: () => go(`/teams/${teamId}/clubhouse`),
       setTabs,
     })
     return
