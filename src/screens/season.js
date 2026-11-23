@@ -1,6 +1,15 @@
 import { supabase } from '../supabase.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+const STATS = [
+  ['contact', 'CONTACT'],
+  ['power', 'POWER'],
+  ['eye', 'EYE'],
+  ['speed', 'SPEED'],
+  ['glove', 'GLOVE'],
+  ['arm', 'ARM'],
+  ['stamina', 'STAMINA'],
+]
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -15,6 +24,13 @@ function counted(value, one, many) {
 
 function cleanName(value) {
   return value.trim().replace(/\s+/g, ' ').toUpperCase()
+}
+
+function whole(value, min, max) {
+  if (!/^\d+$/.test(value)) return null
+  const number = Number(value)
+  if (number < min || number > max) return null
+  return number
 }
 
 function coachName(team) {
@@ -33,6 +49,8 @@ export function renderSeason(prompt, { seasonId, onBack }) {
     missing: false,
     busy: false,
     name: '',
+    kids: null,
+    count: '',
     loaded: false,
   }
 
@@ -92,14 +110,29 @@ export function renderSeason(prompt, { seasonId, onBack }) {
     }
 
     const mine = state.teams.some((team) => team.coach_id === state.userId)
-    if (season.status === 'forming' && !mine) box.append(form())
-    else if (!mine) box.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
+    const forming = season.status === 'forming'
+    let nextKey = 2
+    if (forming && !mine) {
+      box.append(form(nextKey))
+      nextKey += 1
+    } else if (!mine) {
+      box.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
+    }
+    if (forming && season.commissioner_id === state.userId) box.append(callForm(nextKey))
+    if (state.kids) {
+      box.append(el('p', '', state.kids.length ? counted(state.kids.length, 'KID', 'KIDS') : 'NO KIDS YET'))
+      if (state.kids.length) {
+        const list = el('div', 'kid-list')
+        for (const kid of state.kids) list.append(kidCard(kid))
+        box.append(list)
+      }
+    }
 
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)
   }
 
-  function form() {
+  function form(key) {
     const node = document.createElement('form')
     node.className = 'name-team'
     const name = document.createElement('input')
@@ -112,12 +145,80 @@ export function renderSeason(prompt, { seasonId, onBack }) {
     const nameLabel = el('label')
     nameLabel.append(el('span', '', 'NAME'), name)
 
-    const save = el('button', '', '2- NAME THE TEAM')
+    const save = el('button', '', `${key}- NAME THE TEAM`)
     save.type = 'submit'
     save.disabled = state.busy
     node.append(el('p', '', 'NAME YOUR TEAM'), nameLabel, save)
     node.addEventListener('submit', onSubmit)
     return node
+  }
+
+  function callForm(key) {
+    const node = document.createElement('form')
+    node.className = 'call-kids'
+    const count = document.createElement('input')
+    count.className = 'num'
+    count.name = 'kid-count'
+    count.type = 'number'
+    count.inputMode = 'numeric'
+    count.required = true
+    count.min = '1'
+    count.max = '40'
+    count.step = '1'
+    count.value = state.count
+    const countLabel = el('label')
+    countLabel.append(el('span', '', 'HOW MANY'), count)
+    const save = el('button', '', `${key}- CALL THE KIDS`)
+    save.type = 'submit'
+    save.disabled = state.busy
+    node.append(el('p', '', 'CALL THE KIDS'), el('p', '', '1 TO 40 AT A TIME'), countLabel, save)
+    node.addEventListener('submit', onCall)
+    return node
+  }
+
+  function kidCard(kid) {
+    const card = el('div', 'kid-card')
+    const name = [kid.given_name, kid.family_name].filter(Boolean).join(' ')
+    card.append(el('span', 'season-name', name || 'KID'))
+    if (kid.nickname) card.append(el('span', '', `"${kid.nickname}"`))
+    if (kid.flavor) card.append(el('span', '', kid.flavor))
+    const stats = el('span', 'kid-stats')
+    for (const [stat, label] of STATS) {
+      const value = kid.base_stats?.[stat]
+      stats.append(el('span', 'kid-stat', `${label} ${Number.isInteger(value) ? value : '-'}`))
+    }
+    card.append(stats)
+    return card
+  }
+
+  async function onCall(event) {
+    event.preventDefault()
+    if (state.busy) return
+    const data = new FormData(event.currentTarget)
+    const raw = String(data.get('kid-count') || '')
+    state.count = raw
+    const kidCount = whole(raw, 1, 40)
+    if (kidCount == null) {
+      state.error = 'CALL BETWEEN 1 AND 40 KIDS'
+      paint()
+      return
+    }
+    state.busy = true
+    state.error = ''
+    const button = event.currentTarget.querySelector('button')
+    if (button) button.disabled = true
+    const { error } = await supabase.rpc('call_kids', {
+      season_id: seasonId,
+      kid_count: kidCount,
+    })
+    state.busy = false
+    if (error) {
+      state.error = (error.message || 'THE KIDS DID NOT COME.').toUpperCase()
+      paint()
+      return
+    }
+    state.count = ''
+    await load()
   }
 
   async function onSubmit(event) {
@@ -150,7 +251,7 @@ export function renderSeason(prompt, { seasonId, onBack }) {
   }
 
   async function load() {
-    const [session, season, teams] = await Promise.all([
+    const [session, season, teams, kids] = await Promise.all([
       supabase.auth.getSession(),
       supabase
         .from('seasons')
@@ -162,9 +263,16 @@ export function renderSeason(prompt, { seasonId, onBack }) {
         .select('id, name, coach_id, bottlecaps, reputation, profiles!teams_coach_id_fkey(coach_name)')
         .eq('season_id', seasonId)
         .order('created_at', { ascending: true }),
+      supabase
+        .from('players')
+        .select('id, given_name, family_name, nickname, flavor, base_stats, created_at')
+        .eq('season_id', seasonId)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true }),
     ])
     if (prompt.dataset.paint !== token) return
     state.userId = session.data.session?.user?.id ?? ''
+    state.kids = null
     if (season.error || teams.error) {
       state.error = ((season.error || teams.error).message || 'THE SEASON DID NOT LOAD.').toUpperCase()
       state.season = null
@@ -178,6 +286,11 @@ export function renderSeason(prompt, { seasonId, onBack }) {
       state.missing = false
       state.season = season.data
       state.teams = teams.data || []
+      if (kids.error) {
+        state.error = (kids.error.message || 'THE KIDS DID NOT LOAD.').toUpperCase()
+      } else {
+        state.kids = kids.data || []
+      }
     }
     state.loaded = true
     paint()

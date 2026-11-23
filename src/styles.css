@@ -331,7 +331,8 @@ input.num {
 }
 
 .season-list,
-.team-list {
+.team-list,
+.kid-list {
   display: grid;
   gap: clamp(14px, 2.4vw, 24px);
   width: 100%;
@@ -340,7 +341,8 @@ input.num {
 }
 
 .season-card,
-.team-card {
+.team-card,
+.kid-card {
   width: 100%;
   max-width: 100%;
   border: 2px solid #d0d0d0;
@@ -359,13 +361,16 @@ button.team-card,
 
 .season-card span,
 .team-card span,
+.kid-card span,
 .season-card p,
-.team-card p {
+.team-card p,
+.kid-card p {
   margin: 0;
 }
 
 .season-card .season-name,
-.team-card .season-name {
+.team-card .season-name,
+.kid-card .season-name {
   border-bottom: 1px solid var(--mark);
   padding-bottom: 2px;
   margin-bottom: 4px;
@@ -383,7 +388,8 @@ button.team-card,
 }
 
 .choices form.open-season,
-.choices form.name-team {
+.choices form.name-team,
+.choices form.call-kids {
   width: 100%;
   justify-self: stretch;
   margin-top: 18px;
@@ -393,6 +399,13 @@ button.team-card,
 
 .open-season-toggle {
   margin-top: 14px;
+}
+
+.kid-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0.75em;
+  width: 100%;
 }
 
 @media (pointer: coarse) {
