@@ -84,7 +84,7 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     if (prompt.dataset.paint !== token) return
     closePopup()
     prompt.replaceChildren()
-    const tabs = [{ label: 'BACK', onClick: onBack }]
+    const tabs = [{ label: 'HOME', onClick: onBack }]
     if (state.loaded && state.mine && state.team) {
       if (state.draftOpen) {
         tabs.push({

@@ -58,7 +58,7 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
   function paint() {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
-    setTabs?.([{ label: 'BACK', onClick: onBack }])
+    setTabs?.([{ label: 'SEASON', onClick: onBack }])
     prompt.append(el('h2', 'screen-name', 'THE DRAFT'))
     const box = el('div', 'choices')
 

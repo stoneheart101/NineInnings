@@ -87,7 +87,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     if (prompt.dataset.paint !== token) return
     closePopup()
     prompt.replaceChildren()
-    const tabs = [{ label: 'BACK', onClick: onBack }]
+    const tabs = [{ label: 'HOME', onClick: onBack }]
     if (state.loaded && state.mine && state.team) {
       if (state.draftOpen) {
         tabs.push({
@@ -152,6 +152,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     if (pending) {
       mountPopup(prompt, {
         title: `RELEASE ${kidLabel(pending)}?`,
+        note: 'THIS KID WILL BE REMOVED FROM THE TEAM AND PLACED BACK IN THE POOL',
         actions: [
           { label: 'RELEASE', onClick: () => onRelease(pending.id) },
           {
@@ -234,6 +235,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     }
     const current = slotFor(kid.id)
     select.value = current ? String(current) : ''
+    select.classList.toggle('bench', current === 0)
     select.addEventListener('change', () => {
       if (state.lineupBusy || state.busy) return
       const chosen = select.value

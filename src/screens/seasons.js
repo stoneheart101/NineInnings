@@ -50,7 +50,7 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
     const showForm = state.loaded && (state.seasons.length === 0 || state.opening)
-    const tabs = [{ label: 'BACK', onClick: onBack }]
+    const tabs = [{ label: 'HOME', onClick: onBack }]
     if (state.loaded && !showForm) {
       tabs.push({
         label: 'OPEN A SEASON',

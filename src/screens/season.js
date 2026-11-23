@@ -70,6 +70,27 @@ function forecastSentence(game) {
   return line || 'THE FORECAST IS NOT HERE'
 }
 
+function forecastLine(game) {
+  const chances = game?.weather?.chances
+  if (Array.isArray(chances)) {
+    const parts = []
+    for (const row of chances) {
+      const type = typeof row?.type === 'string' ? row.type.trim().toUpperCase() : ''
+      const percent = Number(row?.percent)
+      if (!type || !Number.isInteger(percent)) continue
+      parts.push(`${type} ${percent}%`)
+    }
+    if (parts.length) return parts.join(' · ')
+  }
+  return forecastSentence(game)
+}
+
+function forecastShown(when, now = new Date()) {
+  const day = Math.floor(when.getTime() / 86400000)
+  const today = Math.floor(now.getTime() / 86400000)
+  return day - today <= 10
+}
+
 export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, setTabs }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -99,7 +120,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     const myTeam = season ? state.teams.find((team) => team.coach_id === state.userId) : null
     const forming = season?.status === 'forming'
     const draftOpen = season?.status === 'drafting' && (state.draftFailed || draftIsOpen(season, state.draft))
-    const tabs = [{ label: 'BACK', onClick: onBack }]
+    const tabs = [{ label: 'SEASONS', onClick: onBack }]
     if (draftOpen) {
       tabs.push({ label: 'THE DRAFT', onClick: () => onOpenDraft?.() })
     }
@@ -229,10 +250,10 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
       for (const game of day.games) {
         playing.add(game.home_team_id)
         playing.add(game.away_team_id)
-        block.append(
-          el('p', 'game-match', `${teamName(game.away_team_id)} VS ${teamName(game.home_team_id)}`),
-          el('p', 'game-forecast', forecastSentence(game)),
-        )
+        block.append(el('p', 'game-match', `${teamName(game.away_team_id)} VS ${teamName(game.home_team_id)}`))
+        if (forecastShown(day.when)) {
+          block.append(el('p', 'game-forecast', forecastLine(game)))
+        }
       }
       for (const team of state.teams) {
         if (!playing.has(team.id)) block.append(el('p', 'game-bye', `${team.name} HAS A BYE`))
@@ -288,9 +309,15 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
 
   function kidCard(kid) {
     const card = el('div', 'kid-card')
+    const head = el('div', 'kid-head')
+    const title = el('span', 'kid-title')
+    const nick = kid.nickname ? ` "${kid.nickname}"` : ''
     const name = [kid.given_name, kid.family_name].filter(Boolean).join(' ')
-    card.append(el('span', 'season-name', name || 'KID'))
-    if (kid.nickname) card.append(el('span', '', `"${kid.nickname}"`))
+    title.append(el('span', 'season-name', `${name || 'KID'}${nick}`))
+    if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
+    else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
+    head.append(title)
+    card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
@@ -404,7 +431,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
         .order('created_at', { ascending: true }),
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, flavor, base_stats, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, created_at')
         .eq('season_id', seasonId)
         .order('created_at', { ascending: true })
         .order('id', { ascending: true }),

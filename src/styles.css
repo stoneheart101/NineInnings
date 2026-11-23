@@ -410,6 +410,12 @@ button.team-card,
   color: var(--field);
 }
 
+.game-match,
+.game-forecast {
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .sex-m {
   color: #9ec9ff;
 }
@@ -518,7 +524,9 @@ button.team-card,
 }
 
 .lineup-slot {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
+  justify-self: start;
 }
 
 .kid-card .lineup-slot {
@@ -526,9 +534,14 @@ button.team-card,
 }
 
 .kid-card .lineup-slot select {
-  width: 100%;
-  flex: 1 1 auto;
+  width: auto;
+  max-width: 100%;
+  flex: 0 0 auto;
   color: var(--mark);
+}
+
+.kid-card .lineup-slot select.bench {
+  color: #8a8a8a;
 }
 
 .lineup-slot select,
