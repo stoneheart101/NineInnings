@@ -56,7 +56,7 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
     setTabs?.(tabs)
 
     const box = el('div', 'choices')
-    box.append(el('p', '', 'SEASONS'))
+    box.append(el('h2', 'screen-name', 'SEASONS'))
 
     if (state.loaded && !state.seasons.length) {
       box.append(el('p', '', 'NO SEASONS YET'))

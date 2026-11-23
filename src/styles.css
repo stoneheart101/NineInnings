@@ -325,6 +325,13 @@ button.team-card,
   margin-bottom: 4px;
 }
 
+.screen-name {
+  margin: 0 0 8px;
+  color: var(--field);
+  font: inherit;
+  line-height: 1.05;
+}
+
 .season-title {
   border-bottom: 1px solid var(--mark);
   padding-bottom: 2px;
@@ -334,6 +341,10 @@ button.team-card,
 .season-status,
 .season-role {
   color: var(--mark);
+}
+
+.sex-m {
+  color: #9ec9ff;
 }
 
 .choices form.open-season,

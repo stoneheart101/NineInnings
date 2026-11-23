@@ -25,6 +25,7 @@ export function renderHome(prompt, { rulesVersion, onSeasons, onOpenTeam, setTab
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
     const head = el('div', 'choices')
+    head.append(el('h2', 'screen-name', 'HOME'))
     if (rulesVersion != null) head.append(el('p', '', `RULES v${rulesVersion}`))
 
     if (state.teams == null) {

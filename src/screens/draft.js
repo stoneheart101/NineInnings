@@ -59,6 +59,7 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
     setTabs?.([{ label: 'BACK', onClick: onBack }])
+    prompt.append(el('h2', 'screen-name', 'THE DRAFT'))
     const box = el('div', 'choices')
 
     if (!state.loaded) return
@@ -69,7 +70,7 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
       return
     }
 
-    box.append(el('p', 'season-title', state.season.name), el('p', 'season-status', 'THE DRAFT'))
+    box.append(el('p', 'season-title', state.season.name))
     const order = Array.isArray(state.draft?.order) ? state.draft.order : []
     const pickIndex = Number(state.draft?.pick_index)
     const clock = Number.isInteger(pickIndex) ? order[pickIndex] : undefined
@@ -191,7 +192,8 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
     const title = el('span', 'kid-title')
     const nick = kid.nickname ? ` "${kid.nickname}"` : ''
     title.append(el('span', 'season-name', `${kidName(kid)}${nick}`))
-    if (kid.sex === 'M' || kid.sex === 'F') title.append(el('span', 'season-role', kid.sex))
+    if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
+    else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
     head.append(title)
     if (myTurn) {
       const pick = el('button', '', 'PICK')

@@ -73,6 +73,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
       tabs.push({ label: 'START THE DRAFT', disabled: state.busy, onClick: onStart })
     }
     setTabs?.(tabs)
+    prompt.append(el('h2', 'screen-name', 'SEASON'))
 
     if (!state.loaded) return
     if (state.missing || !state.season) {

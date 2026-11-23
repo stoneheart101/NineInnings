@@ -86,6 +86,7 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       })
     }
     setTabs?.(tabs)
+    prompt.append(el('h2', 'screen-name', 'THE ROSTER'))
     const box = el('div', 'choices')
 
     if (!state.loaded) return
