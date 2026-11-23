@@ -5,7 +5,7 @@ function el(tag, className, text) {
   return node
 }
 
-export function renderHome(prompt, { coachName, onSeasons, onSignOut }) {
+export function renderHome(prompt, { coachName, rulesVersion, onSeasons, onSignOut }) {
   prompt.replaceChildren()
   const box = el('div', 'choices')
   box.dataset.keys = 'on'
@@ -18,12 +18,9 @@ export function renderHome(prompt, { coachName, onSeasons, onSignOut }) {
   signOut.type = 'button'
   signOut.addEventListener('click', onSignOut)
 
-  box.append(
-    el('p', '', `COACH: ${coachName}`),
-    el('p', '', 'NO TEAMS YET'),
-    seasons,
-    signOut,
-    el('p', '', 'WHICH?'),
-  )
+  const lines = [el('p', '', `COACH: ${coachName}`)]
+  if (rulesVersion != null) lines.push(el('p', '', `RULES v${rulesVersion}`))
+  lines.push(el('p', '', 'NO TEAMS YET'), seasons, signOut, el('p', '', 'WHICH?'))
+  box.append(...lines)
   prompt.append(box)
 }

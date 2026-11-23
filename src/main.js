@@ -13,6 +13,20 @@ const prompt = drawField(field)
 mountBackendTest(field)
 
 let coachName = ''
+let rulesVersion = null
+
+async function loadRules() {
+  const { data, error } = await supabase
+    .from('game_settings')
+    .select('version')
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const next = error || data?.version == null ? null : data.version
+  if (next === rulesVersion) return
+  rulesVersion = next
+  renderDesk()
+}
 
 function renderDesk() {
   if (!coachName) return
@@ -23,6 +37,7 @@ function renderDesk() {
   }
   renderHome(prompt, {
     coachName,
+    rulesVersion,
     onSeasons: () => go('/seasons'),
     onSignOut: async () => {
       const { error } = await supabase.auth.signOut()
@@ -48,6 +63,7 @@ const desk = createDesk(prompt, {
       history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/`)
     }
     renderDesk()
+    loadRules()
   },
 })
 
@@ -78,7 +94,10 @@ if (oauthError && routeFromHash(window.location.hash) == null) {
 
 supabase.auth.onAuthStateChange((event, session) => {
   window.setTimeout(() => {
-    if (event === 'SIGNED_OUT') coachName = ''
+    if (event === 'SIGNED_OUT') {
+      coachName = ''
+      rulesVersion = null
+    }
     desk.onEvent(event, session)
   }, 0)
 })
