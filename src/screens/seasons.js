@@ -31,6 +31,8 @@ export function renderSeasons(prompt, { onBack }) {
     practice: '1',
     weeks: '8',
     rounds: '10',
+    loaded: false,
+    opening: false,
   }
 
   function paint() {
@@ -44,9 +46,9 @@ export function renderSeasons(prompt, { onBack }) {
 
     box.append(el('p', '', 'SEASONS'), back)
 
-    if (!state.seasons.length) {
+    if (state.loaded && !state.seasons.length) {
       box.append(el('p', '', 'NO SEASONS YET'))
-    } else {
+    } else if (state.seasons.length) {
       const list = el('div', 'season-list')
       for (const season of state.seasons) {
         const card = el('div', 'season-card')
@@ -70,7 +72,21 @@ export function renderSeasons(prompt, { onBack }) {
       box.append(list)
     }
 
-    box.append(form())
+    const showForm = state.loaded && (state.seasons.length === 0 || state.opening)
+    if (showForm) {
+      box.append(form())
+    } else if (state.loaded) {
+      const open = el('button', 'open-season-toggle', '2- OPEN A SEASON')
+      open.type = 'button'
+      open.addEventListener('click', () => {
+        state.opening = true
+        state.error = ''
+        paint()
+        prompt.querySelector('[name="season-name"]')?.focus()
+      })
+      box.append(open)
+    }
+
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)
   }
@@ -185,6 +201,7 @@ export function renderSeasons(prompt, { onBack }) {
     state.practice = '1'
     state.weeks = '8'
     state.rounds = '10'
+    state.opening = false
     await load()
   }
 
@@ -203,6 +220,7 @@ export function renderSeasons(prompt, { onBack }) {
     } else {
       state.seasons = seasons.data || []
     }
+    state.loaded = true
     paint()
   }
 

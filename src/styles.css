@@ -357,6 +357,10 @@ input.num {
   border-top: 2px solid #d0d0d0;
 }
 
+.open-season-toggle {
+  margin-top: 14px;
+}
+
 @media (pointer: coarse) {
   .days label {
     min-height: 44px;
