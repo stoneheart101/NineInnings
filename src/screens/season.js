@@ -51,6 +51,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft }) {
     name: '',
     kids: null,
     count: '',
+    draftError: '',
     loaded: false,
   }
 
@@ -122,6 +123,8 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft }) {
       box.append(callForm(nextKey))
       nextKey += 1
       box.append(startButton(nextKey))
+      const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
+      if (draftNote) box.append(el('p', 'alert', draftNote))
     }
     if (season.status === 'drafting') {
       const open = el('button', '', `${nextKey}- THE DRAFT`)
@@ -212,13 +215,13 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft }) {
   async function onStart() {
     if (state.busy) return
     state.busy = true
-    state.error = ''
+    state.draftError = ''
     paint()
     const { error } = await supabase.rpc('start_draft', { season_id: seasonId })
     if (prompt.dataset.paint !== token) return
     state.busy = false
     if (error) {
-      state.error = (error.message || 'THE DRAFT DID NOT START.').toUpperCase()
+      state.draftError = (error.message || 'THE DRAFT DID NOT START.').toUpperCase()
       paint()
       return
     }
