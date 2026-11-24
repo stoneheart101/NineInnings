@@ -1,5 +1,5 @@
 import { supabase } from '../supabase.js'
-import { closePopup, mountPopup } from '../popup.js'
+import { closePopup, mountPopup, popupKind } from '../popup.js'
 
 const SLOTS = [
   [1, 'MOUND'],
@@ -74,7 +74,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
 
   function paint() {
     if (prompt.dataset.paint !== token) return
-    closePopup()
+    if (popupKind() !== 'coach' && popupKind() !== 'season') closePopup()
     prompt.replaceChildren()
     const box = el('div', 'choices')
 
@@ -159,9 +159,9 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
   }
 
   function shelfCard(item) {
-    const card = el('div', 'kid-card')
+    const card = el('div', 'card kid-card')
     card.dataset.item = item.id
-    const head = el('div', 'kid-head')
+    const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
     title.append(el('span', 'season-name', item.name))
     head.append(title)
@@ -178,7 +178,9 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
       }
       onBuy(item)
     })
-    head.append(buy)
+    const actions = el('div', 'card-actions')
+    actions.append(buy)
+    head.append(actions)
     card.append(head)
     if (item.blurb) card.append(el('span', '', item.blurb))
     card.append(el('span', '', durationLabel(item.duration)))
@@ -207,17 +209,21 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
   function mountBatPopup() {
     const choices = batChoices()
     const item = state.shelf.find((entry) => entry.id === state.picking)
+    const list = el('div', 'popup-choices')
+    if (!choices.length) list.append(el('p', '', state.rosterError || 'THE LINEUP IS EMPTY'))
+    for (const choice of choices) {
+      const button = el('button', '', choice.label)
+      button.type = 'button'
+      button.addEventListener('click', () => {
+        if (!item) return
+        onBuy(item, choice.slot)
+      })
+      list.append(button)
+    }
     mountPopup(prompt, {
       title: 'WHO GETS THE BAT?',
-      note: choices.length ? '' : (state.rosterError || 'THE LINEUP IS EMPTY'),
+      content: list,
       actions: [
-        ...choices.map((choice) => ({
-          label: choice.label,
-          onClick() {
-            if (!item) return
-            onBuy(item, choice.slot)
-          },
-        })),
         {
           label: 'BACK',
           onClick() {

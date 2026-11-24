@@ -132,12 +132,14 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
     const list = el('div', 'draft-list')
     ids.forEach((id, index) => {
       const pick = start + index
-      const row = el('div', 'draft-pick')
-      row.append(el('span', 'season-name', `${pick + 1} ${teamName(id)}`))
+      const row = el('div', 'card draft-pick')
+      const head = el('div', 'card-head')
+      head.append(el('span', 'card-title', `${pick + 1} ${teamName(id)}`))
       if (pick === pickIndex) {
         row.classList.add('on-clock')
-        row.append(el('span', 'season-role', 'ON THE CLOCK'))
+        head.append(el('span', 'season-role', 'ON THE CLOCK'))
       }
+      row.append(head)
       list.append(row)
     })
     return list
@@ -155,8 +157,10 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
     node.append(el('p', 'section', 'DRAFTED'))
     const roster = el('div', 'draft-roster')
     for (const id of seen) {
-      const card = el('div', 'team-card')
-      card.append(el('span', 'season-name', teamName(id)))
+      const card = el('div', 'card team-card')
+      const head = el('div', 'card-head')
+      head.append(el('span', 'card-title', teamName(id)))
+      card.append(head)
       const drafted = state.kids.filter((kid) => kid.team_id === id)
       if (!drafted.length) card.append(el('span', '', 'NO KIDS YET'))
       else for (const kid of drafted) card.append(el('span', '', kidName(kid)))
@@ -206,8 +210,8 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
   }
 
   function kidCard(kid, myTurn) {
-    const card = el('div', 'kid-card')
-    const head = el('div', 'kid-head')
+    const card = el('div', 'card kid-card')
+    const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
     const nick = kid.nickname ? ` "${kid.nickname}"` : ''
     title.append(el('span', 'season-name', `${kidName(kid)}${nick}`))
@@ -219,7 +223,9 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
       pick.type = 'button'
       pick.disabled = state.busy
       pick.addEventListener('click', () => onPick(kid.id))
-      head.append(pick)
+      const actions = el('div', 'card-actions')
+      actions.append(pick)
+      head.append(actions)
     }
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))

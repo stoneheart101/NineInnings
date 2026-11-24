@@ -99,13 +99,30 @@ function kidLine(row) {
   return `${row.name} — ${bits.join(', ')}`
 }
 
+function headed(className, title, nodes, action) {
+  const card = el('div', `card ${className}`)
+  const head = el('div', 'card-head')
+  if (typeof title === 'string') head.append(el('span', 'card-title', title))
+  else {
+    const titleNode = el('span', 'card-title')
+    titleNode.append(title)
+    head.append(titleNode)
+  }
+  if (action) {
+    const actions = el('div', 'card-actions')
+    actions.append(action)
+    head.append(actions)
+  }
+  card.append(head)
+  for (const node of nodes) if (node) card.append(node)
+  return card
+}
+
 function writeupNode(text) {
   if (typeof text !== 'string' || !text.trim()) return null
   const parts = text.split(/\n\n+/).map((part) => part.trim()).filter(Boolean)
   if (!parts.length) return null
-  const wrap = el('div', 'writeup')
-  for (const part of parts) wrap.append(el('p', '', part))
-  return wrap
+  return headed('writeup', 'THE DAY', parts.map((part) => el('p', '', part)))
 }
 
 function scoreNodes(result) {
@@ -214,19 +231,18 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     }
 
     const when = new Date(game.starts_at)
-    if (!Number.isNaN(when.getTime())) box.append(el('p', 'game-date', dayLabel(when)))
-    const match = el('p', 'game-match')
-    match.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
-    box.append(match)
+    const matchNodes = []
+    if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', dayLabel(when)))
     if (!Number.isNaN(when.getTime()) && forecastShown(when)) {
       const chances = forecastChances(game)
-      if (chances) box.append(el('p', 'game-forecast', chances))
+      if (chances) matchNodes.push(el('p', 'game-forecast', chances))
     }
+    const matchTitle = el('span', 'game-match')
+    matchTitle.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
+    box.append(headed('matchup-card', matchTitle, matchNodes))
 
     if (game.status === 'final' || game.result) {
-      const score = el('div', 'box-score')
-      for (const node of scoreNodes(game.result)) score.append(node)
-      box.append(score)
+      box.append(headed('box-score', 'LINE', scoreNodes(game.result)))
       const writeup = writeupNode(game.narrative)
       if (writeup) box.append(writeup)
       else box.append(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
@@ -235,44 +251,41 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       const foeId = state.myTeam.id === game.home_team_id ? game.away_team_id : game.home_team_id
       const foe = state.teams.find((team) => team.id === foeId)
       const foeLocked = state.locks.some((row) => row.team_id === foeId)
-      const mineBox = el('div', 'side-box')
-      mineBox.append(el('p', 'section', 'YOUR CARD'))
+      const mineNodes = []
+      let lock = null
       if (state.card) {
-        mineBox.append(el('p', 'season-status', 'THE CARD IS LOCKED'))
-        for (const node of cardNodes(state.card)) mineBox.append(node)
+        mineNodes.push(el('p', 'season-status', 'THE CARD IS LOCKED'))
+        mineNodes.push(...cardNodes(state.card))
       } else if (mineLocked()) {
-        mineBox.append(el('p', 'alert', 'THE CARD DID NOT LOAD'))
+        mineNodes.push(el('p', 'alert', 'THE CARD DID NOT LOAD'))
       } else if (game.status !== 'scheduled') {
-        mineBox.append(el('p', '', 'THE GAME HAS ALREADY BEEN PLAYED'))
+        mineNodes.push(el('p', '', 'THE GAME HAS ALREADY BEEN PLAYED'))
       } else if (state.lineupFailed) {
-        mineBox.append(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
+        mineNodes.push(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
       } else if (state.itemsFailed) {
-        mineBox.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
+        mineNodes.push(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
       } else if (state.nextFailed || state.nextGameId !== game.id) {
-        for (const node of cardNodes(state.live)) mineBox.append(node)
-        mineBox.append(el('p', state.nextFailed ? 'alert' : '', state.nextFailed ? 'THE NEXT GAME DID NOT LOAD' : 'LOCK THE NEXT GAME FIRST'))
+        mineNodes.push(...cardNodes(state.live))
+        mineNodes.push(el('p', state.nextFailed ? 'alert' : '', state.nextFailed ? 'THE NEXT GAME DID NOT LOAD' : 'LOCK THE NEXT GAME FIRST'))
       } else {
-        for (const node of cardNodes(state.live)) mineBox.append(node)
-        mineBox.append(el('p', '', 'LOCK COPIES THIS CARD FOR THE GAME'))
-        const actions = el('div', 'side-actions')
-        const lock = el('button', 'action', 'LOCK')
+        mineNodes.push(...cardNodes(state.live))
+        mineNodes.push(el('p', '', 'LOCK COPIES THIS CARD FOR THE GAME'))
+        lock = el('button', 'action', 'LOCK')
         lock.type = 'button'
         lock.disabled = state.busy
         lock.addEventListener('click', onLock)
-        actions.append(lock)
-        mineBox.append(actions)
       }
-      box.append(mineBox)
-      const foeBox = el('div', 'side-box')
-      foeBox.append(el('p', '', `${foe?.name || 'TEAM'} IS ${foeLocked ? 'LOCKED' : 'STILL OPEN'}`))
-      box.append(foeBox)
+      box.append(headed('side-box', 'YOUR CARD', mineNodes, lock))
+      box.append(headed('side-box', foe?.name || 'TEAM', [
+        el('p', '', foeLocked ? 'LOCKED' : 'STILL OPEN'),
+      ]))
     } else if (!game.is_practice) {
       for (const id of [game.away_team_id, game.home_team_id]) {
         const team = state.teams.find((item) => item.id === id)
         const locked = state.locks.some((row) => row.team_id === id)
-        const side = el('div', 'side-box')
-        side.append(el('p', '', `${team?.name || 'TEAM'} IS ${locked ? 'LOCKED' : 'STILL OPEN'}`))
-        box.append(side)
+        box.append(headed('side-box', team?.name || 'TEAM', [
+          el('p', '', locked ? 'LOCKED' : 'STILL OPEN'),
+        ]))
       }
     }
 

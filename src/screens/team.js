@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { closePopup, mountPopup } from '../popup.js'
+import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { practiceGate } from '../practice-wait.js'
 
 const STATS = [
@@ -82,7 +82,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
 
   function paint() {
     if (prompt.dataset.paint !== token) return
-    closePopup()
+    if (popupKind() !== 'coach' && popupKind() !== 'season') closePopup()
     prompt.replaceChildren()
     const box = el('div', 'choices')
 
@@ -181,8 +181,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
   }
 
   function kidCard(kid) {
-    const card = el('div', 'kid-card')
-    const head = el('div', 'kid-head')
+    const card = el('div', 'card kid-card')
+    const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
     title.append(el('span', 'season-name', kidLabel(kid)))
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
@@ -197,7 +197,9 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
       state.releaseError = ''
       paint()
     })
-    head.append(release)
+    const actions = el('div', 'card-actions')
+    actions.append(release)
+    head.append(actions)
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const stats = el('span', 'kid-stats')
@@ -221,7 +223,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
   }
 
   function positionPicker(kid) {
-    const row = el('label', 'lineup-slot')
+    const row = el('label', 'lineup-slot card-foot')
     const select = document.createElement('select')
     select.dataset.player = kid.id
     select.disabled = state.busy || state.lineupBusy || state.practiceBusy

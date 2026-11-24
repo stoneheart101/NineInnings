@@ -8,6 +8,7 @@ import { closeTeam, renderTeam } from './screens/team.js'
 import { renderClubhouse } from './screens/clubhouse.js'
 import { renderMatchup } from './screens/matchup.js'
 import { closePopup } from './popup.js'
+import { openSeasonPopup } from './open-season.js'
 import { routeFromHash } from './router.js'
 import { deskMenu, placeFromRoute, seasonIdFromRoute } from './menu.js'
 import { supabase } from './supabase.js'
@@ -83,6 +84,17 @@ function coachDetails() {
     },
     onOpen() {
       refreshTeams()
+    },
+    onOpenSeason({ reopen }) {
+      openSeasonPopup({
+        onOpened(id) {
+          if (id) go(`/seasons/${id}`)
+          else renderDesk()
+        },
+        onBack() {
+          reopen?.()
+        },
+      })
     },
   }
 }

@@ -151,36 +151,20 @@ body {
 }
 
 .coach-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 3;
   display: grid;
   gap: 2px;
-  background: #000;
-  border: 2px solid var(--mark);
-  padding: 4px 6px 6px;
-  min-width: min(16rem, 70vw);
-  max-width: min(70vw, 24rem);
-}
-
-.coach-menu[hidden],
-.coach-teams[hidden],
-.coach-rules[hidden],
-.coach-empty[hidden] {
-  display: none;
+  width: 100%;
 }
 
 .coach-rules,
 .coach-empty {
   margin: 0;
-  text-align: right;
 }
 
 .coach-teams {
   display: grid;
   min-width: 0;
-  max-height: min(50dvh, 18rem);
+  max-height: min(40dvh, 16rem);
   overflow: auto;
 }
 
@@ -188,13 +172,8 @@ body {
   display: grid;
   width: 100%;
   max-width: 100%;
-  text-align: right;
+  text-align: left;
   white-space: normal;
-}
-
-.coach-team.on,
-.season-chip.on {
-  color: var(--mark);
 }
 
 .season-row {
@@ -228,8 +207,12 @@ body {
   overflow-wrap: anywhere;
 }
 
-.tabs button.on {
-  color: var(--mark);
+.tabs button.on:not(:disabled),
+.subtabs button.on,
+.sort-row button.on,
+.coach-team.on {
+  background: var(--mark);
+  color: #000;
 }
 
 .prompt {
@@ -287,28 +270,36 @@ select:focus-visible {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  button:not(.season-chip):not(:disabled):hover,
-  button:not(.season-chip):not(:disabled):focus-visible,
-  .season-card:hover,
-  .season-card:focus-visible {
+  button:not(:disabled):hover,
+  button:not(:disabled):focus-visible,
+  a:hover,
+  a:focus-visible,
+  [role='link']:hover,
+  [role='link']:focus-visible {
     background: var(--mark);
     color: #000;
   }
 
-  .season-card:hover .season-status,
-  .season-card:focus-visible .season-status,
-  .season-card:hover .season-role,
-  .season-card:focus-visible .season-role,
-  .season-card:hover .season-name,
-  .season-card:focus-visible .season-name,
-  button.team-card:hover .season-status,
-  button.team-card:focus-visible .season-status,
-  button.team-card:hover .season-name,
-  button.team-card:focus-visible .season-name,
-  button.game-match:hover .mine,
-  button.game-match:focus-visible .mine,
-  button.next-game:hover .game-date,
-  button.next-game:focus-visible .game-date {
+  [role='link']:hover .season-status,
+  [role='link']:focus-visible .season-status,
+  [role='link']:hover .season-role,
+  [role='link']:focus-visible .season-role,
+  [role='link']:hover .card-title,
+  [role='link']:focus-visible .card-title,
+  [role='link']:hover .season-name,
+  [role='link']:focus-visible .season-name,
+  [role='link']:hover .mine,
+  [role='link']:focus-visible .mine,
+  [role='link']:hover .game-date,
+  [role='link']:focus-visible .game-date,
+  button:not(:disabled):hover .season-status,
+  button:not(:disabled):focus-visible .season-status,
+  button:not(:disabled):hover .season-name,
+  button:not(:disabled):focus-visible .season-name,
+  button:not(:disabled):hover .mine,
+  button:not(:disabled):focus-visible .mine,
+  button:not(:disabled):hover .game-date,
+  button:not(:disabled):focus-visible .game-date {
     color: #000;
     border-bottom-color: #000;
   }
@@ -393,12 +384,19 @@ input.num {
   margin: 12px 0 4px;
 }
 
+.card,
 .season-card,
 .team-card,
-.kid-card {
+.kid-card,
+.game-box,
+.draft-pick,
+.side-box,
+.box-score,
+.writeup {
   width: 100%;
   max-width: 100%;
   border: 2px solid #d0d0d0;
+  background: color-mix(in srgb, var(--field) 32%, #000);
   padding: 6px 10px 8px;
   display: grid;
   gap: 1px;
@@ -407,15 +405,13 @@ input.num {
   text-align: left;
 }
 
-button.team-card,
+.card[role='link'],
 .season-card[role='link'] {
   cursor: pointer;
 }
 
-.kid-card {
-  background: color-mix(in srgb, var(--field) 32%, #000);
-}
-
+.card span,
+.card p,
 .season-card span,
 .team-card span,
 .kid-card span,
@@ -425,20 +421,17 @@ button.team-card,
   margin: 0;
 }
 
-.season-card .season-name,
-.team-card .season-name,
-.kid-card .season-name {
-  padding-bottom: 2px;
-  margin-bottom: 4px;
+.card-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.season-card .season-name,
-.team-card .season-name {
-  border-bottom: 1px solid var(--mark);
-}
-
-.kid-card .season-name {
-  border-bottom: 2px solid #000;
+.card-head .season-name,
+.card-head .card-title {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
 }
 
 .season-title {
@@ -494,15 +487,11 @@ button.team-card,
   margin-top: 0.75em;
 }
 
-.game-box {
-  width: 100%;
-  box-sizing: border-box;
-  background: #2a2a2a;
-  border: 2px solid #4a4a4a;
-  padding: 8px 10px;
+.played-list {
   display: grid;
-  gap: 2px;
-  justify-items: stretch;
+  gap: clamp(14px, 2.4vw, 24px);
+  width: 100%;
+  margin-top: 0.75em;
 }
 
 .game-date {
@@ -516,42 +505,22 @@ button.team-card,
 }
 
 .next-game {
-  display: grid;
-  justify-items: start;
-  width: 100%;
-  margin: 0 0 8px;
-  gap: 2px;
-}
-
-.next-game span {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-button.game-match {
-  width: 100%;
-  text-align: left;
+  margin-bottom: 8px;
 }
 
 .game-match .mine {
   color: var(--mark);
 }
 
-button.game-match .mine {
+.schedule .mine {
   color: #9ec9ff;
 }
 
 .side-box,
-.box-score {
-  width: 100%;
-  box-sizing: border-box;
-  border: 2px solid #d0d0d0;
-  padding: 8px 10px;
+.box-score,
+.writeup,
+.matchup-card {
   margin-top: 0.75em;
-  display: grid;
-  gap: 2px;
-  justify-items: start;
-  justify-self: stretch;
 }
 
 .side-box > .section:first-child,
@@ -560,9 +529,6 @@ button.game-match .mine {
 }
 
 .writeup {
-  width: 100%;
-  margin-top: 0.75em;
-  display: grid;
   gap: 0.75em;
 }
 
@@ -611,14 +577,7 @@ button.action {
   border-bottom: 2px solid var(--mark);
 }
 
-.subtabs button.on {
-  color: var(--mark);
-}
 
-.open-season-slot {
-  width: 100%;
-  margin-top: 12px;
-}
 
 .tabs button:disabled {
   cursor: default;
@@ -629,11 +588,16 @@ button.action {
   color: #9ec9ff;
 }
 
-.choices form.open-season,
 .choices form.name-team,
-.choices form.call-kids {
+.choices form.call-kids,
+.popup form.open-season {
   width: 100%;
   justify-self: stretch;
+  margin-top: 0;
+}
+
+.choices form.name-team,
+.choices form.call-kids {
   margin-top: 18px;
   padding-top: 12px;
   border-top: 2px solid #d0d0d0;
@@ -644,17 +608,6 @@ button.action {
   gap: clamp(8px, 1.6vw, 14px);
   width: 100%;
   margin: 8px 0 4px;
-}
-
-.draft-pick {
-  width: 100%;
-  border: 2px solid #d0d0d0;
-  padding: 6px 10px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 2px 12px;
-  overflow-wrap: anywhere;
 }
 
 .draft-pick.on-clock {
@@ -669,6 +622,7 @@ button.action {
   margin: 8px 0 4px;
 }
 
+.card-head,
 .kid-head {
   display: flex;
   flex-wrap: wrap;
@@ -689,19 +643,28 @@ button.action {
   min-width: 0;
 }
 
-.kid-head .season-name {
-  border-bottom: 0;
-  padding-bottom: 0;
-  margin-bottom: 0;
+.card-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px 10px;
+  margin-left: auto;
 }
 
+.card-head button,
 .kid-head button {
-  margin: 0 0 0 auto;
+  margin: 0;
   flex: 0 1 auto;
   max-width: 100%;
   overflow-wrap: anywhere;
   white-space: normal;
   text-align: right;
+}
+
+.card-foot {
+  justify-self: start;
 }
 
 .sort-row {
@@ -712,22 +675,7 @@ button.action {
   margin: 2px 0 6px;
 }
 
-.sort-row button.on {
-  color: var(--mark);
-}
 
-@media (hover: hover) and (pointer: fine) {
-  .sort-row button.on:hover,
-  .sort-row button.on:focus-visible,
-  .tabs button.on:hover:not(:disabled),
-  .tabs button.on:focus-visible:not(:disabled),
-  .subtabs button.on:hover,
-  .subtabs button.on:focus-visible,
-  .coach-team.on:hover,
-  .coach-team.on:focus-visible {
-    color: #000;
-  }
-}
 
 .kid-stats {
   display: flex;
@@ -844,29 +792,26 @@ button.action {
 
 .popup {
   width: min(40rem, 100%);
-  max-height: 100%;
+  max-height: min(100%, calc(100dvh - 24px));
   overflow: auto;
-  border: 2px solid #d0d0d0;
-  background: #000;
-  padding: 8px 12px 12px;
-  display: grid;
-  gap: 6px;
-  justify-items: start;
+  justify-items: stretch;
 }
 
-.popup-title {
-  margin: 0;
-}
-
-.popup-actions {
+.popup-body {
   display: grid;
   gap: 2px;
   width: 100%;
-  justify-items: start;
+  justify-items: stretch;
 }
 
-.popup-actions button {
+.popup-body button,
+.coach-menu > button {
+  width: 100%;
   text-align: left;
+}
+
+.popup .card-actions button {
+  width: auto;
 }
 
 .row {

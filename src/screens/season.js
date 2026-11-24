@@ -2,6 +2,7 @@ import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
 import { dayLabel, forecastChances, forecastShown } from '../forecast.js'
 import { draftIsActive } from '../menu.js'
+import { gameKind, narrativeLead, playedGames, playedScore } from '../played.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -87,7 +88,7 @@ function clockLabel(when) {
   return `${dayLabel(when)} · ${hours}:${minutes} UTC`
 }
 
-export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk, onOpenSlot }) {
+export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk }) {
   const token = String(Math.random())
   host.dataset.paint = token
   const next = { ready: false, failed: false, game: null }
@@ -156,6 +157,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     else if (state.section === 'dashboard') {
       const announcement = nextGameNode()
       if (announcement) box.append(announcement)
+      box.append(historyBlock())
     } else box.append(scheduleBlock())
 
     if (state.error) box.append(el('p', 'alert', state.error))
@@ -170,7 +172,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       && draftComplete(season, state.draft)
       && season.commissioner_id === state.userId,
     )
-    const wrap = el('div', 'season-facts')
+    const card = el('div', 'card season-facts')
+    const head = el('div', 'card-head')
+    head.append(el('span', 'card-title', season.name))
+    const actions = el('div', 'card-actions')
     const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
     const facts = el('div', 'facts')
     facts.append(
@@ -180,40 +185,63 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       fact('DRAFT', roundsValue(season.draft_rounds)),
     )
     if (season.commissioner_id === state.userId) facts.append(fact('COMMISSIONER', 'YOU'))
-    wrap.append(
-      el('p', 'season-title', season.name),
+    if (forming && season.commissioner_id === state.userId) {
+      const start = el('button', 'action', 'START THE DRAFT')
+      start.type = 'button'
+      start.disabled = state.busy
+      start.addEventListener('click', onStart)
+      actions.append(start)
+    }
+    if (canStart) {
+      const play = el('button', 'action', 'PLAY BALL')
+      play.type = 'button'
+      play.disabled = state.busy
+      play.addEventListener('click', onPlay)
+      actions.append(play)
+    }
+    if (actions.childNodes.length) head.append(actions)
+    card.append(
+      head,
       el('p', 'season-status', statusLabel(season, state.draftFailed ? null : state.draft)),
       facts,
     )
     if (forming && season.commissioner_id === state.userId) {
       const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
-      if (draftNote) wrap.append(el('p', 'alert', draftNote))
-      const start = el('button', 'action', 'START THE DRAFT')
-      start.type = 'button'
-      start.disabled = state.busy
-      start.addEventListener('click', onStart)
-      wrap.append(start)
+      if (draftNote) card.append(el('p', 'alert', draftNote))
     }
-    if (canStart) {
-      if (state.playError) wrap.append(el('p', 'alert', state.playError))
-      const play = el('button', 'action', 'PLAY BALL')
-      play.type = 'button'
-      play.disabled = state.busy
-      play.addEventListener('click', onPlay)
-      wrap.append(play)
-    }
-    return wrap
+    if (canStart && state.playError) card.append(el('p', 'alert', state.playError))
+    return card
   }
 
   function detailsBlock() {
     const wrap = el('div', 'details')
     wrap.append(seasonBlock(), teamsBlock())
-    if (onOpenSlot) {
-      const slot = el('div', 'open-season-slot')
-      wrap.append(slot)
-      onOpenSlot(slot)
-    }
     return wrap
+  }
+
+  function linkCard(className, onOpen) {
+    const card = el('div', `card ${className}`)
+    card.tabIndex = 0
+    card.setAttribute('role', 'link')
+    card.addEventListener('click', () => onOpen())
+    card.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+      event.preventDefault()
+      onOpen()
+    })
+    return card
+  }
+
+  function cardAction(label, onOpen) {
+    const button = el('button', '', label)
+    button.type = 'button'
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
+      onOpen()
+    })
+    const actions = el('div', 'card-actions')
+    actions.append(button)
+    return actions
   }
 
   function nextGameNode() {
@@ -223,16 +251,65 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (!game) return null
     const when = new Date(game.starts_at)
     if (Number.isNaN(when.getTime())) return null
-    const button = el('button', 'next-game')
-    button.type = 'button'
+    const open = () => onOpenGame?.(game.id)
+    const card = linkCard('next-game', open)
+    const head = el('div', 'card-head')
     const foe = game.opponent || 'TEAM'
-    button.append(el('span', 'game-date', `NEXT GAME VS ${foe} · ${clockLabel(when)}`))
+    head.append(el('span', 'card-title', `NEXT GAME VS ${foe}`), cardAction('OPEN', open))
+    card.append(head, el('p', 'game-date', clockLabel(when)))
     if (forecastShown(when)) {
       const chances = forecastChances(game)
-      if (chances) button.append(el('span', 'game-forecast', chances))
+      if (chances) card.append(el('p', 'game-forecast', chances))
     }
-    button.addEventListener('click', () => onOpenGame?.(game.id))
-    return button
+    return card
+  }
+
+  function sideName(game, side) {
+    const id = side === 'home' ? game.home_team_id : game.away_team_id
+    const team = state.teams.find((item) => item.id === id)
+    if (team?.name) return { name: team.name, mine: team.coach_id === state.userId }
+    const named = game.result?.[side]?.name
+    const name = typeof named === 'string' && named.trim() ? named.trim() : 'TEAM'
+    return { name, mine: false }
+  }
+
+  function matchTitle(game) {
+    const title = el('span', 'card-title game-match')
+    const away = sideName(game, 'away')
+    const home = sideName(game, 'home')
+    title.append(el('span', away.mine ? 'mine' : '', away.name), document.createTextNode(' VS '), el('span', home.mine ? 'mine' : '', home.name))
+    return title
+  }
+
+  function historyBlock() {
+    const wrap = el('div', 'played-list')
+    wrap.append(el('p', 'section', 'PLAYED'))
+    if (state.gamesFailed) {
+      wrap.append(el('p', 'alert', 'THE GAMES DID NOT LOAD'))
+      return wrap
+    }
+    const games = playedGames(state.games)
+    if (!games.length) {
+      wrap.append(el('p', '', 'NO GAMES PLAYED YET'))
+      return wrap
+    }
+    for (const game of games) wrap.append(playedCard(game))
+    return wrap
+  }
+
+  function playedCard(game) {
+    const open = () => onOpenGame?.(game.id)
+    const card = linkCard('played-card', open)
+    const head = el('div', 'card-head')
+    head.append(matchTitle(game), cardAction('REVIEW', open))
+    const when = new Date(game.starts_at)
+    const bits = [playedScore(game), gameKind(game)]
+    if (!Number.isNaN(when.getTime())) bits.push(clockLabel(when))
+    const detail = bits.filter(Boolean).join(' · ')
+    card.append(head, el('p', '', detail))
+    const lead = narrativeLead(game.narrative)
+    if (lead) card.append(el('p', '', lead))
+    return card
   }
 
   function subtabs() {
@@ -261,8 +338,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     } else {
       const list = el('div', 'team-list')
       for (const team of state.teams) {
-        const card = el('div', 'team-card')
-        card.append(el('span', 'season-name', team.name), el('span', '', coachName(team)))
+        const card = el('div', 'card team-card')
+        const head = el('div', 'card-head')
+        head.append(el('span', 'card-title', team.name))
+        card.append(head, el('span', '', coachName(team)))
         if (team.coach_id === state.userId) {
           card.append(el('span', 'season-role', `YOUR TEAM · ${counted(team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(team.reputation, 'REPUTATION', 'REPUTATION')}`))
         }
@@ -306,7 +385,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (state.gamesFailed && season.status === 'active') {
       return el('p', 'alert', 'THE SCHEDULE DID NOT LOAD')
     }
-    const games = state.games || []
+    const games = (state.games || []).filter((game) => !game.is_practice)
     if (!games.length) return el('p', '', 'NO GAMES YET')
     const wrap = el('div', 'schedule')
     const days = new Map()
@@ -324,12 +403,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       for (const game of day.games) {
         playing.add(game.home_team_id)
         playing.add(game.away_team_id)
-        const card = el('div', 'game-box')
-        const match = el('button', 'game-match')
-        match.type = 'button'
-        match.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
-        match.addEventListener('click', () => onOpenGame?.(game.id))
-        card.append(match)
+        const open = () => onOpenGame?.(game.id)
+        const card = linkCard('game-box', open)
+        const head = el('div', 'card-head')
+        const title = el('span', 'card-title game-match')
+        title.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
+        head.append(title, cardAction('OPEN', open))
+        card.append(head)
         if (forecastShown(day.when)) {
           const chances = forecastChances(game)
           if (chances) card.append(el('p', 'game-forecast', chances))
@@ -389,8 +469,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   }
 
   function kidCard(kid) {
-    const card = el('div', 'kid-card')
-    const head = el('div', 'kid-head')
+    const card = el('div', 'card kid-card')
+    const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
     const nick = kid.nickname ? ` "${kid.nickname}"` : ''
     const name = [kid.given_name, kid.family_name].filter(Boolean).join(' ')
@@ -525,9 +605,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .maybeSingle(),
       supabase
         .from('games')
-        .select('id, home_team_id, away_team_id, starts_at, status, weather, is_practice')
+        .select('id, home_team_id, away_team_id, starts_at, status, weather, is_practice, dev, result, narrative')
         .eq('season_id', seasonId)
-        .eq('is_practice', false)
         .order('starts_at', { ascending: true })
         .order('id', { ascending: true }),
     ])

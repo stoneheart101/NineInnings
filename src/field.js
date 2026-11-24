@@ -1,3 +1,5 @@
+import { closePopup, mountPopup, popupKind, replacePopupBody } from './popup.js'
+
 function el(tag, className, text) {
   const node = document.createElement(tag)
   if (className) node.className = className
@@ -77,13 +79,6 @@ export function drawField(root, { onSignOut } = {}) {
     }
   }
 
-  function closeMenu() {
-    const panel = userMenu.querySelector('.coach-menu')
-    const toggle = userMenu.querySelector('.coach-toggle')
-    if (panel) panel.hidden = true
-    if (toggle) toggle.setAttribute('aria-expanded', 'false')
-  }
-
   function setTeam(info) {
     teamInfo.replaceChildren()
     if (!info?.name) {
@@ -99,133 +94,114 @@ export function drawField(root, { onSignOut } = {}) {
   }
 
   let coachHooks = {}
+  let signOutAlert = ''
 
-  function fillCoachMenu(panel, details) {
-    let rules = panel.querySelector('.coach-rules')
-    if (!rules) {
-      rules = el('p', 'coach-rules', '')
-      panel.prepend(rules)
+  function menuBody(details) {
+    const body = el('div', 'coach-menu')
+    if (details.rulesVersion != null) {
+      body.append(el('p', 'coach-rules', `RULES v${details.rulesVersion}`))
     }
-    if (details.rulesVersion == null) {
-      rules.hidden = true
-      rules.textContent = ''
-    } else {
-      rules.hidden = false
-      rules.textContent = `RULES v${details.rulesVersion}`
-    }
-
-    const signOut = panel.querySelector('.coach-sign-out')
-    let list = panel.querySelector('.coach-teams')
-    if (!list) {
-      list = el('div', 'coach-teams')
-      panel.insertBefore(list, signOut)
-    }
-    list.replaceChildren()
     const teams = details.teams
-    let empty = panel.querySelector('.coach-empty')
-    if (teams == null) {
-      list.hidden = true
-      if (empty) empty.hidden = true
-      return
-    }
-    if (!teams.length) {
-      list.hidden = true
-      if (!empty) {
-        empty = el('p', 'coach-empty', 'NO TEAMS YET')
-        panel.insertBefore(empty, signOut)
+    if (Array.isArray(teams) && teams.length) {
+      const list = el('div', 'coach-teams')
+      for (const team of teams) {
+        const open = team.id === details.teamId
+        const button = el('button', open ? 'coach-team on' : 'coach-team', '')
+        button.type = 'button'
+        if (open) button.setAttribute('aria-current', 'true')
+        button.append(
+          el('span', 'coach-team-name', team.name),
+          el('span', '', team.season || 'SEASON'),
+          el('span', '', team.purse || ''),
+        )
+        button.addEventListener('click', () => {
+          closePopup()
+          details.onPickTeam?.(team)
+        })
+        list.append(button)
       }
-      empty.hidden = false
-      return
+      body.append(list)
+    } else if (Array.isArray(teams)) {
+      body.append(el('p', 'coach-empty', 'NO TEAMS YET'))
     }
-    list.hidden = false
-    if (empty) empty.hidden = true
-    for (const team of teams) {
-      const open = team.id === details.teamId
-      const button = el('button', open ? 'coach-team on' : 'coach-team')
-      button.type = 'button'
-      button.setAttribute('role', 'menuitem')
-      if (open) button.setAttribute('aria-current', 'true')
-      button.append(
-        el('span', 'coach-team-name', team.name),
-        el('span', '', team.season || 'SEASON'),
-        el('span', '', team.purse || ''),
-      )
-      button.addEventListener('click', () => {
-        closeMenu()
-        details.onPickTeam?.(team)
-      })
-      list.append(button)
-    }
+    const openSeason = el('button', '', 'OPEN A SEASON')
+    openSeason.type = 'button'
+    openSeason.addEventListener('click', () => {
+      const reopen = () => showCoach()
+      closePopup()
+      details.onOpenSeason?.({ reopen })
+    })
+    body.append(openSeason)
+    const signOut = el('button', 'coach-sign-out', 'SIGN OUT')
+    signOut.type = 'button'
+    const alert = el('p', 'alert', signOutAlert)
+    alert.hidden = !signOutAlert
+    signOut.addEventListener('click', async () => {
+      signOut.disabled = true
+      signOutAlert = ''
+      alert.hidden = true
+      const message = onSignOut ? await onSignOut() : ''
+      if (!message) {
+        signOutAlert = ''
+        closePopup()
+        return
+      }
+      signOutAlert = message
+      if (popupKind() === 'coach') replacePopupBody(menuBody(coachHooks))
+    })
+    body.append(signOut, alert)
+    return body
+  }
+
+  function showCoach() {
+    const toggle = userMenu.querySelector('.coach-toggle')
+    const name = toggle?.textContent || 'COACH'
+    mountPopup(document.body, {
+      title: name,
+      kind: 'coach',
+      content: menuBody(coachHooks),
+      actions: [{ label: 'CLOSE', onClick() { closePopup() } }],
+      onClose() {
+        toggle?.setAttribute('aria-expanded', 'false')
+      },
+    })
+    toggle?.setAttribute('aria-expanded', 'true')
+    coachHooks.onOpen?.()
   }
 
   function setCoach(name, details = {}) {
     coachHooks = details
     const cleaned = String(name || '').trim()
     if (!cleaned) {
+      closePopup()
+      signOutAlert = ''
       userMenu.replaceChildren()
       userMenu.hidden = true
       return
     }
     userMenu.hidden = false
     const current = userMenu.querySelector('.coach-toggle')
-    const currentPanel = userMenu.querySelector('.coach-menu')
-    if (current && currentPanel && current.textContent === cleaned) {
-      fillCoachMenu(currentPanel, details)
+    if (current && current.textContent === cleaned) {
+      if (popupKind() === 'coach') replacePopupBody(menuBody(details))
       return
     }
+    if (popupKind() === 'coach') closePopup()
     userMenu.replaceChildren()
     const toggle = el('button', 'coach-toggle', cleaned)
     toggle.type = 'button'
     toggle.title = cleaned
-    toggle.setAttribute('aria-haspopup', 'menu')
+    toggle.setAttribute('aria-haspopup', 'dialog')
     toggle.setAttribute('aria-expanded', 'false')
-    toggle.setAttribute('aria-controls', 'coach-menu')
-    const panel = el('div', 'coach-menu')
-    panel.id = 'coach-menu'
-    panel.hidden = true
-    panel.setAttribute('role', 'menu')
-    const signOut = el('button', 'coach-sign-out', 'SIGN OUT')
-    signOut.type = 'button'
-    signOut.setAttribute('role', 'menuitem')
-    const alert = el('p', 'alert', '')
-    alert.hidden = true
     toggle.addEventListener('click', (event) => {
       event.stopPropagation()
-      const opening = panel.hidden
-      panel.hidden = !opening
-      toggle.setAttribute('aria-expanded', opening ? 'true' : 'false')
-      if (opening) coachHooks.onOpen?.()
-    })
-    signOut.addEventListener('click', async () => {
-      signOut.disabled = true
-      alert.hidden = true
-      const message = onSignOut ? await onSignOut() : ''
-      signOut.disabled = false
-      if (!message) {
-        closeMenu()
+      if (popupKind() === 'coach') {
+        closePopup()
         return
       }
-      alert.textContent = message
-      alert.hidden = false
-      panel.hidden = false
-      toggle.setAttribute('aria-expanded', 'true')
+      showCoach()
     })
-    panel.append(signOut, alert)
-    fillCoachMenu(panel, details)
-    userMenu.append(toggle, panel)
+    userMenu.append(toggle)
   }
-
-  document.addEventListener('click', (event) => {
-    if (userMenu.hidden || userMenu.contains(event.target)) return
-    closeMenu()
-  })
-  document.addEventListener('keydown', (event) => {
-    const panel = userMenu.querySelector('.coach-menu')
-    if (!panel || panel.hidden || event.key !== 'Escape') return
-    event.preventDefault()
-    closeMenu()
-    userMenu.querySelector('.coach-toggle')?.focus()
-  })
 
   return { prompt, setCoach, setTeam, setTabs }
 }

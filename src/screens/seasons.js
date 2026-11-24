@@ -11,17 +11,6 @@ function el(tag, className, text) {
   return node
 }
 
-function whole(value, min, max) {
-  if (!/^\d+$/.test(value)) return null
-  const number = Number(value)
-  if (number < min || number > max) return null
-  return number
-}
-
-function cleanName(value) {
-  return value.trim().replace(/\s+/g, ' ').toUpperCase()
-}
-
 function earlierGame(rows) {
   let best = null
   for (const row of rows) {
@@ -56,6 +45,12 @@ function statusLabel(season, draft) {
   return complete ? 'THE DRAFT IS COMPLETE' : season.status.toUpperCase()
 }
 
+function openOnKey(event, onOpen) {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  onOpen()
+}
+
 export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, setTeam, onDesk, onDrafting }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -63,15 +58,7 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     seasons: [],
     userId: '',
     error: '',
-    busy: false,
-    name: '',
-    days: [],
-    practice: '1',
-    weeks: '8',
-    rounds: '10',
     loaded: false,
-    opening: false,
-    focusName: false,
     drafts: {},
     nextGame: null,
     nextFailed: false,
@@ -93,25 +80,12 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     } else if (state.seasons.length && !seasonId) {
       box.append(seasonCards())
     }
-    if (state.loaded && !seasonId) {
-      const control = openControl()
-      if (control) box.append(control)
-      if (state.error) box.append(el('p', 'alert', state.error))
-    } else if (state.error && !state.opening) {
-      box.append(el('p', 'alert', state.error))
-    }
+    if (state.error) box.append(el('p', 'alert', state.error))
     if (box.childNodes.length) prompt.append(box)
-    if (!seasonId) {
-      if (state.focusName) {
-        state.focusName = false
-        prompt.querySelector('[name="season-name"]')?.focus()
-      }
-      return
-    }
+    if (!seasonId) return
     if (keep) {
       prompt.append(keep)
       keep.setNext?.(nextInfo())
-      mountOpen(keep.querySelector('.open-season-slot'))
       return
     }
     const detail = el('div', 'season-detail')
@@ -125,7 +99,6 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       onOpenGame,
       setTeam,
       onDesk,
-      onOpenSlot: mountOpen,
     })
     detail.setNext?.(nextInfo())
   }
@@ -134,47 +107,29 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     return { ready: state.loaded, failed: state.nextFailed, game: state.nextGame }
   }
 
-  function openControl() {
-    if (!state.loaded) return null
-    if (!state.seasons.length || state.opening) return form()
-    const open = el('button', '', 'OPEN A SEASON')
-    open.type = 'button'
-    open.addEventListener('click', () => {
-      state.opening = true
-      state.error = ''
-      state.focusName = true
-      paint()
-    })
-    return open
-  }
-
-  function mountOpen(slot) {
-    if (!slot) return
-    slot.replaceChildren()
-    const control = openControl()
-    if (control) slot.append(control)
-    if (state.error && state.opening) slot.append(el('p', 'alert', state.error))
-    if (state.focusName) {
-      state.focusName = false
-      slot.querySelector('[name="season-name"]')?.focus()
-    }
-  }
-
   function seasonCards() {
     const list = el('div', 'season-list')
     for (const season of state.seasons) {
-      const card = el('div', 'season-card')
+      const card = el('div', 'card season-card')
       card.tabIndex = 0
       card.setAttribute('role', 'link')
-      card.addEventListener('click', () => onOpen(season.id))
-      card.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return
-        event.preventDefault()
-        onOpen(season.id)
+      const openSeason = () => onOpen(season.id)
+      card.addEventListener('click', openSeason)
+      card.addEventListener('keydown', (event) => openOnKey(event, openSeason))
+      const head = el('div', 'card-head')
+      head.append(el('span', 'card-title', season.name))
+      const open = el('button', '', 'OPEN')
+      open.type = 'button'
+      open.addEventListener('click', (event) => {
+        event.stopPropagation()
+        openSeason()
       })
+      const actions = el('div', 'card-actions')
+      actions.append(open)
+      head.append(actions)
       const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
       card.append(
-        el('span', 'season-name', season.name),
+        head,
         el('span', 'season-status', statusLabel(season, state.drafts[season.id])),
         el('span', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
         el('span', '', practiceLine(season.practice_every_days)),
@@ -187,120 +142,6 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       list.append(card)
     }
     return list
-  }
-
-  function form() {
-    const node = document.createElement('form')
-    node.className = 'open-season'
-    const name = document.createElement('input')
-    name.name = 'season-name'
-    name.required = true
-    name.maxLength = 40
-    name.autocomplete = 'off'
-    name.spellcheck = false
-    name.value = state.name
-    const nameLabel = el('label')
-    nameLabel.append(el('span', '', 'NAME'), name)
-
-    const days = el('div', 'days')
-    DAYS.forEach((label, index) => {
-      const input = document.createElement('input')
-      input.type = 'checkbox'
-      input.name = 'day'
-      input.value = String(index)
-      input.checked = state.days.includes(index)
-      const dayLabel = el('label')
-      dayLabel.append(input, el('span', '', label))
-      days.append(dayLabel)
-    })
-
-    node.append(
-      el('p', '', 'OPEN A SEASON'),
-      nameLabel,
-      el('p', '', 'OFFICIAL GAME DAYS'),
-      days,
-      numberField('practice', 'PRACTICE EVERY', state.practice, 1, 14),
-      numberField('weeks', 'WEEKS', state.weeks, 1, 20),
-      numberField('rounds', 'DRAFT ROUNDS', state.rounds, 1, 15),
-    )
-
-    const open = el('button', '', 'OPEN')
-    open.type = 'submit'
-    open.disabled = state.busy
-    node.append(open)
-    node.addEventListener('submit', onSubmit)
-    return node
-  }
-
-  function numberField(name, label, value, min, max) {
-    const input = document.createElement('input')
-    input.className = 'num'
-    input.name = name
-    input.type = 'number'
-    input.inputMode = 'numeric'
-    input.required = true
-    input.min = String(min)
-    input.max = String(max)
-    input.value = value
-    const wrap = el('label')
-    wrap.append(el('span', '', label), input)
-    return wrap
-  }
-
-  async function onSubmit(event) {
-    event.preventDefault()
-    if (state.busy) return
-    const data = new FormData(event.currentTarget)
-    const seasonName = cleanName(String(data.get('season-name') || ''))
-    const officialWeekdays = data.getAll('day').map(Number)
-    const practice = whole(String(data.get('practice') || ''), 1, 14)
-    const weeks = whole(String(data.get('weeks') || ''), 1, 20)
-    const rounds = whole(String(data.get('rounds') || ''), 1, 15)
-    state.name = seasonName
-    state.days = officialWeekdays
-    state.practice = String(data.get('practice') || '')
-    state.weeks = String(data.get('weeks') || '')
-    state.rounds = String(data.get('rounds') || '')
-    if (!/^[A-Z0-9][A-Z0-9 .'-]{0,39}$/.test(seasonName)) {
-      state.error = "USE 1 TO 40 LETTERS, NUMBERS, SPACES, OR . ' -"
-      paint()
-      return
-    }
-    if (!officialWeekdays.length) {
-      state.error = 'PICK AT LEAST ONE DAY'
-      paint()
-      return
-    }
-    if (practice == null || weeks == null || rounds == null) {
-      state.error = 'CHECK THE PRACTICE DAYS, WEEKS, AND ROUNDS'
-      paint()
-      return
-    }
-
-    state.busy = true
-    state.error = ''
-    const button = event.currentTarget.querySelector('button')
-    if (button) button.disabled = true
-    const { error } = await supabase.rpc('create_season', {
-      season_name: seasonName,
-      official_weekdays: officialWeekdays,
-      practice_every_days: practice,
-      weeks,
-      draft_rounds: rounds,
-    })
-    state.busy = false
-    if (error) {
-      state.error = (error.message || 'THAT SEASON WAS NOT OPENED.').toUpperCase()
-      paint()
-      return
-    }
-    state.name = ''
-    state.days = []
-    state.practice = '1'
-    state.weeks = '8'
-    state.rounds = '10'
-    state.opening = false
-    await load()
   }
 
   async function loadNext(userId) {
