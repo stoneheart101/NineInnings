@@ -584,6 +584,15 @@ button.action {
   flex: 0 0 auto;
 }
 
+.practice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  width: 100%;
+}
+
 .subtabs {
   display: flex;
   flex-wrap: wrap;

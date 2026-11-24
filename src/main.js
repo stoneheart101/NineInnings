@@ -258,7 +258,12 @@ function renderDesk() {
   }
   if (place === 'roster') {
     const teamId = route.slice('/teams/'.length)
-    renderTeam(prompt, { teamId, setTeam, onDesk })
+    renderTeam(prompt, {
+      teamId,
+      setTeam,
+      onDesk,
+      onOpenGame: (id) => go(`/games/${id}`),
+    })
   }
 }
 

@@ -1,6 +1,7 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
 import { closePopup, mountPopup } from '../popup.js'
+import { practiceGate } from '../practice-wait.js'
 
 const STATS = [
   ['contact', 'CONTACT'],
@@ -53,7 +54,7 @@ export function closeTeam() {
   supabase.removeChannel(current)
 }
 
-export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
+export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
   closeTeam()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -69,6 +70,10 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     lineupError: '',
     lineupKid: '',
     lineupBusy: false,
+    practiceError: '',
+    practiceBusy: false,
+    practiceFailed: false,
+    lastPractice: null,
     busy: false,
     missing: false,
     mine: false,
@@ -113,6 +118,23 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     if (state.error) box.append(el('p', 'alert', state.error))
     if (state.lineupError && !state.lineupKid) box.append(el('p', 'alert', state.lineupError))
     if (box.childNodes.length) prompt.append(box)
+
+    const gate = practiceGate({
+      status: season?.status,
+      everyDays: season?.practice_every_days,
+      lastPractice: state.lastPractice,
+      now: Date.now(),
+    })
+    const practice = el('div', 'practice-row')
+    if (gate.note) practice.append(el('p', '', gate.note))
+    if (state.practiceFailed) practice.append(el('p', 'alert', 'THE LAST PRACTICE DID NOT LOAD'))
+    if (state.practiceError) practice.append(el('p', 'alert', state.practiceError))
+    const practiceButton = el('button', 'action', 'PRACTICE')
+    practiceButton.type = 'button'
+    practiceButton.disabled = !gate.open || state.practiceBusy || state.busy || state.lineupBusy || state.practiceFailed
+    practiceButton.addEventListener('click', onPractice)
+    practice.append(practiceButton)
+    prompt.append(practice)
 
     const board = el('div', 'choices')
     if (!state.kids.length) {
@@ -162,7 +184,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     head.append(title)
     const release = el('button', '', 'RELEASE')
     release.type = 'button'
-    release.disabled = state.busy || state.lineupBusy
+    release.disabled = state.busy || state.lineupBusy || state.practiceBusy
     release.addEventListener('click', () => {
       if (state.busy) return
       state.confirmKid = kid.id
@@ -196,7 +218,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     const row = el('label', 'lineup-slot')
     const select = document.createElement('select')
     select.dataset.player = kid.id
-    select.disabled = state.busy || state.lineupBusy
+    select.disabled = state.busy || state.lineupBusy || state.practiceBusy
     const bench = document.createElement('option')
     bench.value = ''
     bench.textContent = 'BENCH'
@@ -213,11 +235,11 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     select.value = current ? String(current) : ''
     select.classList.toggle('bench', current === 0)
     select.addEventListener('change', () => {
-      if (state.lineupBusy || state.busy) return
+      if (state.lineupBusy || state.busy || state.practiceBusy) return
       const chosen = select.value
       // Replacing the selects inside this event also changes the next kid.
       setTimeout(() => {
-        if (prompt.dataset.paint !== token || state.lineupBusy || state.busy) return
+        if (prompt.dataset.paint !== token || state.lineupBusy || state.busy || state.practiceBusy) return
         onPosition(kid.id, chosen)
       }, 0)
     })
@@ -236,7 +258,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
   }
 
   async function onPosition(playerId, raw) {
-    if (state.lineupBusy || state.busy || !state.team) return
+    if (state.lineupBusy || state.busy || state.practiceBusy || !state.team) return
     const slot = raw === '' ? 0 : Number(raw)
     if (raw !== '' && (!Number.isInteger(slot) || slot < 1 || slot > 9)) return
     const previous = slotFor(playerId)
@@ -273,8 +295,34 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     await load()
   }
 
+  async function onPractice() {
+    if (state.practiceBusy || state.busy || state.lineupBusy || !state.team) return
+    const gate = practiceGate({
+      status: seasonOf(state.team)?.status,
+      everyDays: seasonOf(state.team)?.practice_every_days,
+      lastPractice: state.lastPractice,
+      now: Date.now(),
+    })
+    if (!gate.open) return
+    state.practiceBusy = true
+    state.practiceError = ''
+    state.confirmKid = ''
+    paint()
+    const { data, error } = await supabase.rpc('start_practice', { team_id: teamId })
+    if (prompt.dataset.paint !== token) return
+    state.practiceBusy = false
+    if (error || !data) {
+      state.practiceError = (error?.message || 'PRACTICE DID NOT START.').toUpperCase()
+      await load()
+      if (prompt.dataset.paint !== token) return
+      paint()
+      return
+    }
+    onOpenGame?.(data)
+  }
+
   async function onRelease(playerId) {
-    if (state.busy) return
+    if (state.busy || state.practiceBusy) return
     state.confirmKid = ''
     state.busy = true
     state.releaseError = ''
@@ -314,7 +362,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
       supabase.auth.getSession(),
       supabase
         .from('teams')
-        .select('id, name, coach_id, bottlecaps, reputation, season_id, seasons!teams_season_id_fkey(name, roster_cap, status)')
+        .select('id, name, coach_id, bottlecaps, reputation, season_id, seasons!teams_season_id_fkey(name, roster_cap, status, practice_every_days)')
         .eq('id', teamId)
         .maybeSingle(),
     ])
@@ -350,7 +398,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
       paint()
       return
     }
-    const [kids, lineup] = await Promise.all([
+    const [kids, lineup, practiced] = await Promise.all([
       supabase
         .from('players')
         .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, created_at')
@@ -363,6 +411,13 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
         .select('slot, player_id')
         .eq('team_id', teamId)
         .order('slot', { ascending: true }),
+      supabase
+        .from('games')
+        .select('starts_at')
+        .eq('is_practice', true)
+        .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+        .order('starts_at', { ascending: false })
+        .limit(1),
     ])
     if (prompt.dataset.paint !== token) return
     if (kids.error) {
@@ -380,6 +435,13 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
       for (const row of lineup.data || []) {
         if (onTeam.has(row.player_id)) state.lineup[row.slot] = row.player_id
       }
+    }
+    if (practiced.error) {
+      state.practiceFailed = true
+      state.lastPractice = null
+    } else {
+      state.practiceFailed = false
+      state.lastPractice = practiced.data?.[0]?.starts_at || null
     }
     state.loaded = true
     listen(team.data.season_id)

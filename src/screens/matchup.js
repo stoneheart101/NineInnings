@@ -231,7 +231,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       if (writeup) box.append(writeup)
       else box.append(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
     }
-    if (playing()) {
+    if (!game.is_practice && playing()) {
       const foeId = state.myTeam.id === game.home_team_id ? game.away_team_id : game.home_team_id
       const foe = state.teams.find((team) => team.id === foeId)
       const foeLocked = state.locks.some((row) => row.team_id === foeId)
@@ -266,7 +266,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       const foeBox = el('div', 'side-box')
       foeBox.append(el('p', '', `${foe?.name || 'TEAM'} IS ${foeLocked ? 'LOCKED' : 'STILL OPEN'}`))
       box.append(foeBox)
-    } else {
+    } else if (!game.is_practice) {
       for (const id of [game.away_team_id, game.home_team_id]) {
         const team = state.teams.find((item) => item.id === id)
         const locked = state.locks.some((row) => row.team_id === id)
@@ -282,10 +282,19 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     prompt.append(box)
   }
 
+  function sideName(id) {
+    const team = state.teams.find((item) => item.id === id)
+    if (team?.name) return team.name
+    const result = state.game?.result
+    if (result?.away?.team_id === id && result.away.name) return result.away.name
+    if (result?.home?.team_id === id && result.home.name) return result.home.name
+    return 'TEAM'
+  }
+
   function teamMark(id) {
     const team = state.teams.find((item) => item.id === id)
     const mine = team?.coach_id === state.userId
-    return el('span', mine ? 'mine' : '', team?.name || 'TEAM')
+    return el('span', mine ? 'mine' : '', sideName(id))
   }
 
   function armClock() {
