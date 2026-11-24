@@ -31,6 +31,8 @@ let rememberedSeasonId = ''
 let rememberedTeamId = ''
 let drafting = false
 let draftingSeasonId = ''
+let forming = false
+let formingSeasonId = ''
 let nextSection = ''
 let menuSection = ''
 let pickActive = false
@@ -85,6 +87,15 @@ function assignDrafting(seasonId, active) {
   return true
 }
 
+function assignForming(seasonId, active) {
+  const nextId = seasonId || ''
+  const next = Boolean(nextId && active)
+  if (next === forming && nextId === formingSeasonId) return false
+  forming = next
+  formingSeasonId = nextId
+  return true
+}
+
 function applyTabs() {
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
@@ -98,6 +109,7 @@ function applyTabs() {
     place,
     section,
     drafting: openSeasonId !== '' && openSeasonId === draftingSeasonId && drafting,
+    forming: openSeasonId !== '' && openSeasonId === formingSeasonId && forming,
   })
   setTabs(items.map((item) => ({
     label: item.label,
@@ -125,10 +137,16 @@ function onDesk(ctx) {
     : seasonId !== rememberedSeasonId
       ? assignDrafting(seasonId, false)
       : false
+  const reportedForming = ctx != null && Object.hasOwn(ctx, 'forming')
+  const formingChanged = reportedForming
+    ? assignForming(seasonId, ctx.forming)
+    : seasonId !== rememberedSeasonId
+      ? assignForming(seasonId, false)
+      : false
   const reportedSection = ctx != null && Object.hasOwn(ctx, 'section')
   const section = reportedSection ? String(ctx.section || '') : menuSection
   const sectionChanged = section !== menuSection
-  if (seasonId === rememberedSeasonId && teamId === rememberedTeamId && !draftChanged && !sectionChanged) return
+  if (seasonId === rememberedSeasonId && teamId === rememberedTeamId && !draftChanged && !formingChanged && !sectionChanged) return
   rememberedSeasonId = seasonId
   rememberedTeamId = teamId
   if (reportedSection) menuSection = section
@@ -319,6 +337,8 @@ supabase.auth.onAuthStateChange((event, session) => {
       rememberedTeamId = ''
       drafting = false
       draftingSeasonId = ''
+      forming = false
+      formingSeasonId = ''
       nextSection = ''
       menuSection = ''
       pickActive = false

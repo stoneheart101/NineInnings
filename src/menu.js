@@ -8,13 +8,14 @@ export function draftIsActive(season, draft) {
   return !complete
 }
 
-export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', drafting = false, section = '' } = {}) {
+export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', drafting = false, forming = false, section = '' } = {}) {
   const seasonPath = openSeasonId ? `/seasons/${openSeasonId}` : '/seasons'
   const joined = openSeasonId ? { path: seasonPath, section: 'details' } : { path: '/seasons', section: '' }
   const inSeason = place === 'seasons' || place === 'draft' || place === 'recruiting'
   const shown = place === 'draft' ? 'draft' : place === 'recruiting' ? 'recruiting' : section
   const onDashboard = place === 'seasons' && (shown === 'dashboard' || shown === '')
   const onSeason = place === 'list' || place === 'draft' || (inSeason && !onDashboard && shown !== '')
+  const seasonSection = forming ? 'details' : drafting ? 'draft' : 'schedule'
   return [
     {
       id: 'dashboard',
@@ -27,7 +28,7 @@ export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', draft
       id: 'seasons',
       label: 'SEASON',
       path: seasonPath,
-      section: drafting ? 'draft' : 'schedule',
+      section: seasonSection,
       on: onSeason,
     },
     {

@@ -47,6 +47,13 @@ test('your team in the open season is where ROSTER and CLUBHOUSE go', () => {
   assert.equal(menu[1].on, false)
 })
 
+test('a forming season opens DETAILS from the SEASON tab', () => {
+  const menu = deskMenu({ openSeasonId: SEASON, place: 'seasons', section: 'details', forming: true })
+  assert.equal(menu[1].section, 'details')
+  assert.equal(menu[1].on, true)
+  assert.equal(menu[0].on, false)
+})
+
 test('an active draft puts DRAFT on the SEASON tab', () => {
   const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'draft', drafting: true })
   assert.equal(menu[1].on, true)

@@ -36,13 +36,6 @@ function cleanName(value) {
   return value.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
-function whole(value, min, max) {
-  if (!/^\d+$/.test(value)) return null
-  const number = Number(value)
-  if (number < min || number > max) return null
-  return number
-}
-
 function coachName(team) {
   const profile = Array.isArray(team.profiles) ? team.profiles[0] : team.profiles
   return profile?.coach_name || 'COACH'
@@ -105,7 +98,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     busy: false,
     name: '',
     kids: null,
-    count: '',
     draftError: '',
     draft: null,
     draftFailed: false,
@@ -145,12 +137,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     }
     if (!state.section) state.section = 'dashboard'
     const draftingNow = draftIsActive(season, state.draftFailed ? null : state.draft) && !state.draftClosed
-    if (state.section === 'pool' && !poolShown()) state.section = 'schedule'
-    const visible = shownSection(state.section, draftingNow)
+    const visible = keptSection(state.section, draftingNow)
+    state.section = visible
     onDesk?.({
       seasonId: season?.id || '',
       teamId: myTeam?.id || '',
       drafting: draftingNow,
+      forming: Boolean(season && season.status === 'forming'),
       section: visible,
     })
     if (state.missing || !state.season) {
@@ -164,12 +157,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const box = el('div', visible === 'dashboard' ? 'choices dashboard' : 'choices')
     if (visible === 'dashboard') {
       closeDraft()
+      const forming = season.status === 'forming'
+      if (forming && !myTeam) box.append(nameBlock())
       const recruits = recruitNote()
       if (recruits) box.append(recruits)
-      box.append(futureBlock())
-      const play = playCards()
-      if (play) box.append(play)
-      box.append(historyBlock())
+      if (!forming || comingShown()) box.append(futureBlock())
+      if (!forming) {
+        const play = playCards()
+        if (play) box.append(play)
+      }
+      if (!forming || playedShown()) box.append(historyBlock())
+      if (state.boardError && !recruitShown()) box.append(el('p', 'alert', state.boardError))
     } else {
       box.append(subtabs(visible, draftingNow))
       if (visible === 'details') box.append(detailsBlock())
@@ -502,21 +500,46 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return card
   }
 
+  function poolKids() {
+    return (state.kids || []).filter((kid) => !kid.team_id && !kid.offer)
+  }
+
   function poolShown() {
-    if (!state.kids) return true
-    if (state.kids.some((kid) => !kid.team_id && !kid.offer)) return true
-    const season = state.season
-    return Boolean(season && season.status === 'forming' && season.commissioner_id === state.userId)
+    return poolKids().length > 0
+  }
+
+  function recruitShown() {
+    return (state.kids || []).some((kid) => !kid.team_id && kid.offer)
+  }
+
+  function keptSection(section, draftingNow) {
+    const forming = state.season?.status === 'forming'
+    const idle = forming ? 'details' : draftingNow ? 'draft' : 'schedule'
+    let next = shownSection(section, draftingNow)
+    if (forming && (next === 'schedule' || next === 'draft')) next = 'details'
+    if (next === 'pool' && !poolShown()) next = idle
+    if (next === 'recruiting' && !recruitShown()) next = idle
+    return next
+  }
+
+  function comingShown() {
+    if (!myTeam()) return false
+    if (state.gamesFailed) return true
+    return Boolean(nextOfficial(state.games, myTeam().id, state.teams))
+  }
+
+  function playedShown() {
+    if (state.gamesFailed) return true
+    return playedGames(state.games).length > 0
   }
 
   function subtabs(visible, draftingNow) {
     const row = el('div', 'subtabs')
-    const tabs = [
-      [draftingNow ? 'draft' : 'schedule', draftingNow ? 'DRAFT' : 'SCHEDULE'],
-      ['recruiting', 'RECRUITING'],
-      ['details', 'DETAILS'],
-    ]
-    if (poolShown()) tabs.splice(1, 0, ['pool', 'THE POOL'])
+    const forming = state.season?.status === 'forming'
+    const tabs = [['details', 'DETAILS']]
+    if (!forming) tabs.unshift([draftingNow ? 'draft' : 'schedule', draftingNow ? 'DRAFT' : 'SCHEDULE'])
+    if (recruitShown()) tabs.splice(forming ? 0 : 1, 0, ['recruiting', 'RECRUITING'])
+    if (poolShown()) tabs.splice(forming ? 0 : 1, 0, ['pool', 'THE POOL'])
     for (const [id, label] of tabs) {
       const button = el('button', visible === id ? 'on' : '', label)
       button.type = 'button'
@@ -546,7 +569,11 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
             if (host.dataset.paint === token) paint()
           }, 0)
         }
-        onDesk?.({ ...ctx, section: state.draftClosed ? 'schedule' : 'draft' })
+        onDesk?.({
+          ...ctx,
+          section: state.draftClosed ? 'schedule' : 'draft',
+          forming: state.season?.status === 'forming',
+        })
       },
     })
     return node
@@ -573,15 +600,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       }
       wrap.append(list)
     }
-    if (season.status === 'forming' && !myTeam) wrap.append(form())
-    else if (!myTeam) wrap.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
+    if (season.status !== 'forming' && !myTeam) wrap.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
     return wrap
   }
 
   function poolBlock() {
-    const season = state.season
     const wrap = el('div', 'season-panel')
-    if (season.status === 'forming' && season.commissioner_id === state.userId) wrap.append(callForm())
     if (state.kids) {
       const pool = state.kids.filter((kid) => !kid.team_id && !kid.offer)
       if (!state.kids.length) {
@@ -688,6 +712,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return wrap
   }
 
+  function nameBlock() {
+    const wrap = el('div', 'played-list')
+    wrap.append(el('p', 'section', 'YOUR TEAM'))
+    wrap.append(form())
+    return wrap
+  }
+
   function form() {
     const node = document.createElement('form')
     node.className = 'name-team'
@@ -700,35 +731,11 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     name.value = state.name
     const nameLabel = el('label')
     nameLabel.append(el('span', '', 'NAME'), name)
-
     const save = el('button', '', 'NAME THE TEAM')
     save.type = 'submit'
     save.disabled = state.busy
-    node.append(el('p', '', 'NAME YOUR TEAM'), nameLabel, save)
+    node.append(nameLabel, save)
     node.addEventListener('submit', onSubmit)
-    return node
-  }
-
-  function callForm() {
-    const node = document.createElement('form')
-    node.className = 'call-kids'
-    const count = document.createElement('input')
-    count.className = 'num'
-    count.name = 'kid-count'
-    count.type = 'number'
-    count.inputMode = 'numeric'
-    count.required = true
-    count.min = '1'
-    count.max = '40'
-    count.step = '1'
-    count.value = state.count
-    const countLabel = el('label')
-    countLabel.append(el('span', '', 'HOW MANY'), count)
-    const save = el('button', '', 'CALL THE KIDS')
-    save.type = 'submit'
-    save.disabled = state.busy
-    node.append(el('p', '', 'CALL THE KIDS'), el('p', '', '1 TO 40 AT A TIME'), countLabel, save)
-    node.addEventListener('submit', onCall)
     return node
   }
 
@@ -870,36 +877,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     onOpenDraft?.()
   }
 
-  async function onCall(event) {
-    event.preventDefault()
-    if (state.busy) return
-    const data = new FormData(event.currentTarget)
-    const raw = String(data.get('kid-count') || '')
-    state.count = raw
-    const kidCount = whole(raw, 1, 40)
-    if (kidCount == null) {
-      state.error = 'CALL BETWEEN 1 AND 40 KIDS'
-      paint()
-      return
-    }
-    state.busy = true
-    state.error = ''
-    const button = event.currentTarget.querySelector('button')
-    if (button) button.disabled = true
-    const { error } = await supabase.rpc('call_kids', {
-      season_id: seasonId,
-      kid_count: kidCount,
-    })
-    state.busy = false
-    if (error) {
-      state.error = (error.message || 'THE KIDS DID NOT COME.').toUpperCase()
-      paint()
-      return
-    }
-    state.count = ''
-    await load()
-  }
-
   async function onSubmit(event) {
     event.preventDefault()
     if (state.busy) return
@@ -1005,8 +982,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       }
     }
     state.loaded = true
-    if (state.section === 'recruiting') await maybeOpenBoard()
-    else paint()
+    await maybeOpenBoard()
   }
 
   paint()

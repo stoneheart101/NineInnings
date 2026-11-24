@@ -701,22 +701,13 @@ button.action {
 }
 
 .choices form.name-team,
-.choices form.call-kids,
 .popup form.open-season {
   width: 100%;
   justify-self: stretch;
   margin-top: 0;
 }
 
-.choices form.name-team,
-.choices form.call-kids {
-  margin-top: 18px;
-  padding-top: 12px;
-  border-top: 2px solid #d0d0d0;
-}
-
-.choices .season-panel > form.name-team:first-child,
-.choices .season-panel > form.call-kids:first-child {
+.choices.dashboard form.name-team {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
