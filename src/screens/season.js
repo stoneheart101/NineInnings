@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { dayLabel, forecastChances, forecastShown } from '../forecast.js'
+import { clockLabel, dayKey, dayLabel, forecastChances, forecastShown } from '../forecast.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, narrativeLead, playedGames, playedScore } from '../played.js'
 
@@ -80,12 +80,6 @@ function chosenSection(section) {
   if (section === 'details' || section === 'season' || section === 'teams') return 'details'
   if (section === 'schedule' || section === 'pool') return section
   return ''
-}
-
-function clockLabel(when) {
-  const hours = String(when.getUTCHours()).padStart(2, '0')
-  const minutes = String(when.getUTCMinutes()).padStart(2, '0')
-  return `${dayLabel(when)} · ${hours}:${minutes} UTC`
 }
 
 export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk }) {
@@ -392,7 +386,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     for (const game of games) {
       const when = new Date(game.starts_at)
       if (Number.isNaN(when.getTime())) continue
-      const key = when.toISOString().slice(0, 10)
+      const key = dayKey(when)
       if (!days.has(key)) days.set(key, { when, games: [] })
       days.get(key).games.push(game)
     }

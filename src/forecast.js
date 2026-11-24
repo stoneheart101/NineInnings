@@ -2,7 +2,19 @@ const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
 export function dayLabel(when) {
-  return `${DAYS[when.getUTCDay()]} ${MONTHS[when.getUTCMonth()]} ${when.getUTCDate()}`
+  return `${DAYS[when.getDay()]} ${MONTHS[when.getMonth()]} ${when.getDate()}`
+}
+
+export function dayKey(when) {
+  const month = String(when.getMonth() + 1).padStart(2, '0')
+  const date = String(when.getDate()).padStart(2, '0')
+  return `${when.getFullYear()}-${month}-${date}`
+}
+
+export function clockLabel(when) {
+  const hours = String(when.getHours()).padStart(2, '0')
+  const minutes = String(when.getMinutes()).padStart(2, '0')
+  return `${dayLabel(when)} · ${hours}:${minutes}`
 }
 
 export function forecastSentence(game) {

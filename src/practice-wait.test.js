@@ -1,14 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { dayLabel } from './forecast.js'
 import { practiceGate, practiceWaitLabel } from './practice-wait.js'
 
 const NOW = Date.parse('2026-11-23T18:00:00.000Z')
 
-test('the wait names the next UTC day', () => {
-  assert.equal(
-    practiceWaitLabel(new Date('2026-11-25T15:00:00.000Z')),
-    'PRACTICE AGAIN WED NOV 25',
-  )
+test('the wait names the next local day', () => {
+  const when = new Date('2026-11-25T15:00:00.000Z')
+  assert.equal(practiceWaitLabel(when), `PRACTICE AGAIN ${dayLabel(when)}`)
 })
 
 test('practice stays shut until the season is active', () => {
@@ -31,7 +30,8 @@ test('a second practice inside the gap waits', () => {
     now: NOW,
   })
   assert.equal(gate.open, false)
-  assert.equal(gate.note, 'PRACTICE AGAIN WED NOV 25')
+  const ready = new Date(Date.parse('2026-11-23T15:00:00.000Z') + 2 * 24 * 60 * 60 * 1000)
+  assert.equal(gate.note, `PRACTICE AGAIN ${dayLabel(ready)}`)
 })
 
 test('a practice after the gap is open', () => {

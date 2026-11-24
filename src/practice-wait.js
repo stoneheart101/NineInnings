@@ -1,8 +1,7 @@
-const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+import { dayLabel } from './forecast.js'
 
 export function practiceWaitLabel(when) {
-  return `PRACTICE AGAIN ${DAYS[when.getUTCDay()]} ${MONTHS[when.getUTCMonth()]} ${when.getUTCDate()}`
+  return `PRACTICE AGAIN ${dayLabel(when)}`
 }
 
 export function practiceGate({ status, everyDays, lastPractice, now }) {

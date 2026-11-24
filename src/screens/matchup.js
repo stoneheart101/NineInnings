@@ -1,5 +1,6 @@
 import { supabase } from '../supabase.js'
-import { dayLabel, forecastChances, forecastShown } from '../forecast.js'
+import { boxScore, usedGroups } from '../box.js'
+import { clockLabel, forecastChances, forecastShown } from '../forecast.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
 
@@ -73,30 +74,35 @@ function cardNodes(card) {
   return nodes
 }
 
-function whole(value) {
-  return Number.isInteger(value) ? value : null
+function cell(className, text) {
+  return el('span', className, text)
 }
 
-function sideOk(side) {
-  return Boolean(side)
-    && typeof side.name === 'string'
-    && side.name.trim()
-    && whole(side.runs) != null
-    && whole(side.hits) != null
-    && whole(side.errors) != null
+function lineGrid(box) {
+  const node = el('div', 'score-grid')
+  node.style.setProperty('--score-cols', String(box.innings.length + 3))
+  node.append(cell('score-h', ''))
+  for (const inning of box.innings) node.append(cell('score-h', String(inning)))
+  for (const label of ['R', 'H', 'E']) node.append(cell('score-h', label))
+  for (const side of box.sides) {
+    node.append(cell('score-name', side.name))
+    for (const mark of side.marks) node.append(cell('score-n', mark))
+    node.append(cell('score-n', String(side.runs)))
+    node.append(cell('score-n', String(side.hits)))
+    node.append(cell('score-n', String(side.errors)))
+  }
+  return node
 }
 
-function lineOk(row) {
-  return Boolean(row)
-    && typeof row.name === 'string'
-    && row.name.trim()
-    && ['ab', 'h', 'r', 'rbi', 'bb', 'k', 'outs'].every((key) => whole(row[key]) != null)
-}
-
-function kidLine(row) {
-  const bits = [`${row.ab} AB`, `${row.h} H`, `${row.r} R`, `${row.rbi} RBI`, `${row.bb} BB`, `${row.k} K`]
-  if (row.outs > 0) bits.push(`${row.outs} OUTS`)
-  return `${row.name} — ${bits.join(', ')}`
+function statGrid(rows) {
+  const node = el('div', 'stat-grid')
+  node.append(cell('score-h', ''))
+  for (const label of ['AB', 'H', 'R', 'RBI', 'BB', 'K', 'OUTS']) node.append(cell('score-h', label))
+  for (const row of rows) {
+    node.append(cell('score-name', row.name))
+    for (const key of ['ab', 'h', 'r', 'rbi', 'bb', 'k', 'outs']) node.append(cell('score-n', String(row[key])))
+  }
+  return node
 }
 
 function headed(className, title, nodes, action) {
@@ -126,41 +132,22 @@ function writeupNode(text) {
 }
 
 function scoreNodes(result) {
-  const innings = Array.isArray(result?.innings) ? result.innings : null
-  const lines = Array.isArray(result?.lines) ? result.lines : null
-  const away = result?.away
-  const home = result?.home
-  const inningsOk = Boolean(innings?.length) && innings.every((inn) => {
-    const homeMark = inn?.home
-    return whole(inn?.inning) != null
-      && whole(inn?.away) != null
-      && (homeMark == null || whole(homeMark) != null)
-  })
-  if (!inningsOk || !lines || !sideOk(away) || !sideOk(home) || lines.some((row) => !lineOk(row))) {
-    return [el('p', 'alert', 'THE LINE DID NOT LOAD')]
+  const box = boxScore(result)
+  if (!box) return [el('p', 'alert', 'THE LINE DID NOT LOAD')]
+  const nodes = [lineGrid(box)]
+  for (const group of box.groups) {
+    nodes.push(el('p', 'section', group.name))
+    nodes.push(statGrid(group.rows))
   }
-  const head = innings.map((inn) => String(inn.inning))
-  const mark = (value) => (value == null ? 'x' : String(value))
-  const row = (side, key) => [side.name, ...innings.map((inn) => mark(inn[key])), String(side.runs), String(side.hits), String(side.errors)].join(' ')
-  const nodes = [
-    el('p', 'line-row', ['INNING', ...head, 'R', 'H', 'E'].join(' ')),
-    el('p', 'line-row', row(away, 'away')),
-    el('p', 'line-row', row(home, 'home')),
-  ]
-  const groups = [
-    [away.name, lines.filter((row) => row.team_id === away.team_id)],
-    [home.name, lines.filter((row) => row.team_id === home.team_id)],
-  ]
-  const placed = groups[0][1].length + groups[1][1].length
-  if (!placed && lines.length) {
-    nodes.push(el('p', 'section', 'THE LINE'))
-    for (const line of lines) nodes.push(el('p', '', kidLine(line)))
-    return nodes
-  }
-  for (const [name, rows] of groups) {
-    if (!rows.length) continue
-    nodes.push(el('p', 'section', name))
-    for (const line of rows) nodes.push(el('p', '', kidLine(line)))
+  return nodes
+}
+
+function usedNodes(items, result) {
+  const groups = usedGroups(items, result)
+  const nodes = []
+  for (const group of groups) {
+    nodes.push(el('p', 'section', group.name))
+    for (const name of group.items) nodes.push(el('p', '', name))
   }
   return nodes
 }
@@ -184,6 +171,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     busy: false,
     lineupFailed: false,
     itemsFailed: false,
+    used: [],
+    usedFailed: false,
     lockFailed: false,
     nextGameId: null,
     nextFailed: false,
@@ -231,9 +220,10 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     }
 
     const when = new Date(game.starts_at)
+    const summary = game.status === 'final' || Boolean(game.result)
     const matchNodes = []
-    if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', dayLabel(when)))
-    if (!Number.isNaN(when.getTime()) && forecastShown(when)) {
+    if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
+    if (!summary && !Number.isNaN(when.getTime()) && forecastShown(when)) {
       const chances = forecastChances(game)
       if (chances) matchNodes.push(el('p', 'game-forecast', chances))
     }
@@ -241,8 +231,13 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     matchTitle.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
     box.append(headed('matchup-card', matchTitle, matchNodes))
 
-    if (game.status === 'final' || game.result) {
+    if (summary) {
       box.append(headed('box-score', 'LINE', scoreNodes(game.result)))
+      if (state.usedFailed) box.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
+      else {
+        const used = usedNodes(state.used, game.result)
+        if (used.length) box.append(headed('used-items', 'USED', used))
+      }
       const writeup = writeupNode(game.narrative)
       if (writeup) box.append(writeup)
       else box.append(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
@@ -323,6 +318,10 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       const { data, error } = await supabase.from('games').select('status, result, narrative').eq('id', gameId).maybeSingle()
       if (prompt.dataset.paint !== token) return
       if (!error && data?.status === 'final') {
+        const usedRes = await supabase.rpc('used_clubhouse_items', { game_id: gameId })
+        if (prompt.dataset.paint !== token) return
+        state.usedFailed = Boolean(usedRes.error)
+        state.used = usedRes.error || !Array.isArray(usedRes.data) ? [] : usedRes.data
         if (state.myTeam) {
           const purse = await supabase.from('teams').select('bottlecaps, reputation').eq('id', state.myTeam.id).maybeSingle()
           if (prompt.dataset.paint !== token) return
@@ -394,11 +393,12 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
   }
 
   async function load() {
-    const [session, gameRes, lockRes, cardRes] = await Promise.all([
+    const [session, gameRes, lockRes, cardRes, usedRes] = await Promise.all([
       supabase.auth.getSession(),
       supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, weather, is_practice, result, narrative').eq('id', gameId).maybeSingle(),
       supabase.from('lineup_locks').select('game_id, team_id, locked_at').eq('game_id', gameId),
       supabase.rpc('own_locked_card', { game_id: gameId }),
+      supabase.rpc('used_clubhouse_items', { game_id: gameId }),
     ])
     if (prompt.dataset.paint !== token) return
     state.userId = session.data.session?.user?.id ?? ''
@@ -406,6 +406,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     state.locks = lockRes.error ? [] : (lockRes.data || [])
     state.cardError = cardRes.error ? (cardRes.error.message || 'THE CARD DID NOT LOAD').toUpperCase() : ''
     state.card = cardRes.error ? null : cardRes.data
+    state.usedFailed = Boolean(usedRes.error)
+    state.used = usedRes.error || !Array.isArray(usedRes.data) ? [] : usedRes.data
     if (gameRes.error) {
       state.error = (gameRes.error.message || 'THE GAME DID NOT LOAD.').toUpperCase()
       state.game = null
