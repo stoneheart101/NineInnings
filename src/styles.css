@@ -303,6 +303,12 @@ select:focus-visible {
     color: #000;
     border-bottom-color: #000;
   }
+
+  [role='link'].played-card.scrimmage:hover,
+  [role='link'].played-card.scrimmage:focus-visible {
+    background: var(--mark);
+    color: #000;
+  }
 }
 
 @media (pointer: coarse) {
@@ -509,12 +515,12 @@ input.num {
   margin-bottom: 8px;
 }
 
-.game-match .mine {
-  color: var(--mark);
-}
-
 .schedule .mine {
   color: #9ec9ff;
+}
+
+.played-card.scrimmage {
+  background: #0e2748;
 }
 
 .side-box,
@@ -564,7 +570,7 @@ input.num {
   white-space: nowrap;
 }
 
-.score-name {
+.score-grid > .score-name {
   overflow-wrap: anywhere;
   text-align: left;
   white-space: normal;
@@ -777,6 +783,19 @@ button.action {
 .shelf-buy select:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kid-card .lineup-slot select:not(:disabled):hover,
+  .kid-card .lineup-slot select:not(:disabled):focus-visible {
+    background: var(--mark);
+    color: #000;
+  }
+}
+
+.draft-host {
+  width: 100%;
+  min-width: 0;
 }
 
 .clubhouse {

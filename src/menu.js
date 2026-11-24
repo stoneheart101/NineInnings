@@ -8,18 +8,27 @@ export function draftIsActive(season, draft) {
   return !complete
 }
 
-export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', drafting = false } = {}) {
+export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', drafting = false, section = '' } = {}) {
   const seasonPath = openSeasonId ? `/seasons/${openSeasonId}` : '/seasons'
   const joined = openSeasonId ? { path: seasonPath, section: 'details' } : { path: '/seasons', section: '' }
+  const inSeason = place === 'seasons' || place === 'draft'
+  const shown = place === 'draft' ? 'draft' : section
+  const onDashboard = place === 'seasons' && (shown === 'dashboard' || shown === '')
+  const onSeason = place === 'list' || place === 'draft' || (inSeason && !onDashboard && shown !== '')
   return [
-    { id: 'seasons', label: 'SEASON', path: seasonPath, section: '', on: place === 'list' || place === 'seasons' },
     {
-      id: 'draft',
-      label: 'DRAFT',
-      path: openSeasonId ? `/seasons/${openSeasonId}/draft` : '/seasons',
-      section: '',
-      on: place === 'draft',
-      disabled: !openSeasonId || !drafting,
+      id: 'dashboard',
+      label: 'DASHBOARD',
+      path: seasonPath,
+      section: 'dashboard',
+      on: onDashboard,
+    },
+    {
+      id: 'seasons',
+      label: 'SEASON',
+      path: seasonPath,
+      section: drafting ? 'draft' : 'schedule',
+      on: onSeason,
     },
     {
       id: 'roster',

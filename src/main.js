@@ -3,7 +3,7 @@ import './styles.css'
 import { drawField } from './field.js'
 import { createDesk } from './auth.js'
 import { renderSeasons } from './screens/seasons.js'
-import { closeDraft, renderDraft } from './screens/draft.js'
+import { closeDraft } from './screens/draft.js'
 import { closeTeam, renderTeam } from './screens/team.js'
 import { renderClubhouse } from './screens/clubhouse.js'
 import { renderMatchup } from './screens/matchup.js'
@@ -31,6 +31,7 @@ let rememberedTeamId = ''
 let drafting = false
 let draftingSeasonId = ''
 let nextSection = ''
+let menuSection = ''
 let holdHeader = false
 let pickActive = false
 let openingActive = false
@@ -113,10 +114,13 @@ function applyTabs() {
   const route = routeFromHash(window.location.hash)
   const place = placeFromRoute(route)
   const openSeasonId = openSeasonIdFor(route)
+  if (place === 'list') menuSection = ''
+  const section = place === 'draft' ? 'draft' : place === 'seasons' ? (nextSection || menuSection || 'dashboard') : ''
   const items = deskMenu({
     openSeasonId,
     teamId: teamIdFor(route),
     place,
+    section,
     drafting: openSeasonId !== '' && openSeasonId === draftingSeasonId && drafting,
   })
   setTabs(items.map((item) => ({
@@ -124,8 +128,7 @@ function applyTabs() {
     on: item.on,
     disabled: item.disabled,
     onClick() {
-      if (item.disabled) return
-      if (item.on && !item.section) return
+      if (item.disabled || item.on) return
       if (item.section) nextSection = item.section
       go(item.path)
     },
@@ -146,9 +149,13 @@ function onDesk(ctx) {
     : seasonId !== rememberedSeasonId
       ? assignDrafting(seasonId, false)
       : false
-  if (seasonId === rememberedSeasonId && teamId === rememberedTeamId && !draftChanged) return
+  const reportedSection = ctx != null && Object.hasOwn(ctx, 'section')
+  const section = reportedSection ? String(ctx.section || '') : menuSection
+  const sectionChanged = section !== menuSection
+  if (seasonId === rememberedSeasonId && teamId === rememberedTeamId && !draftChanged && !sectionChanged) return
   rememberedSeasonId = seasonId
   rememberedTeamId = teamId
+  if (reportedSection) menuSection = section
   applyTabs()
   setCoach(coachName, coachDetails())
   if (teamId && Array.isArray(coachTeams) && !coachTeams.some((team) => team.id === teamId)) refreshTeams()
@@ -238,9 +245,10 @@ function renderDesk() {
   setCoach(coachName, coachDetails())
   applyTabs()
   const place = placeFromRoute(route)
-  if (place === 'list' || place === 'seasons') {
-    const section = nextSection
+  if (place === 'list' || place === 'seasons' || place === 'draft') {
+    const section = place === 'draft' ? 'draft' : nextSection
     nextSection = ''
+    if (section) menuSection = section
     renderSeasons(prompt, {
       seasonId: seasonIdFromRoute(route),
       section,
@@ -251,11 +259,6 @@ function renderDesk() {
       onDesk,
       onDrafting,
     })
-    return
-  }
-  if (place === 'draft') {
-    const seasonId = seasonIdFromRoute(route)
-    renderDraft(prompt, { seasonId, setTeam, onDesk })
     return
   }
   if (place === 'matchup') {
@@ -332,6 +335,7 @@ supabase.auth.onAuthStateChange((event, session) => {
       drafting = false
       draftingSeasonId = ''
       nextSection = ''
+      menuSection = ''
       holdHeader = false
       pickActive = false
       openingActive = false

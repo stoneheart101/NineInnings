@@ -36,7 +36,7 @@ export function closeDraft() {
   supabase.removeChannel(current)
 }
 
-export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
+export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true }) {
   closeDraft()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -81,6 +81,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
       seasonId: state.season?.id || '',
       teamId: mine?.id || '',
       drafting: draftIsActive(state.season, state.draft),
+      draftKnown: Boolean(state.season),
     })
     if (state.missing || !state.season) {
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
@@ -89,7 +90,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
       return
     }
 
-    box.append(el('p', 'season-title', state.season.name))
+    if (heading) box.append(el('p', 'season-title', state.season.name))
     const order = Array.isArray(state.draft?.order) ? state.draft.order : []
     const pickIndex = Number(state.draft?.pick_index)
     const clock = Number.isInteger(pickIndex) ? order[pickIndex] : undefined

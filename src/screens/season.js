@@ -3,6 +3,7 @@ import { statChip } from '../stat-color.js'
 import { clockLabel, dayKey, dayLabel, forecastChances, forecastShown } from '../forecast.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, narrativeLead, playedGames, playedScore } from '../played.js'
+import { closeDraft, renderDraft } from './draft.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -76,10 +77,15 @@ function roundsValue(rounds) {
 }
 
 function chosenSection(section) {
-  if (section === 'dashboard') return 'dashboard'
+  if (section === 'dashboard' || section === 'schedule' || section === 'pool' || section === 'draft') return section
   if (section === 'details' || section === 'season' || section === 'teams') return 'details'
-  if (section === 'schedule' || section === 'pool') return section
   return ''
+}
+
+function shownSection(section, draftingNow) {
+  if (section === 'schedule' && draftingNow) return 'draft'
+  if (section === 'draft' && !draftingNow) return 'schedule'
+  return section || 'dashboard'
 }
 
 export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk }) {
@@ -99,6 +105,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     draftError: '',
     draft: null,
     draftFailed: false,
+    draftClosed: false,
     games: [],
     gamesFailed: false,
     playError: '',
@@ -130,10 +137,14 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     } else {
       setTeam?.(null)
     }
+    if (!state.section) state.section = 'dashboard'
+    const draftingNow = draftIsActive(season, state.draftFailed ? null : state.draft) && !state.draftClosed
+    const visible = shownSection(state.section, draftingNow)
     onDesk?.({
       seasonId: season?.id || '',
       teamId: myTeam?.id || '',
-      drafting: draftIsActive(season, state.draftFailed ? null : state.draft),
+      drafting: draftingNow,
+      section: visible,
     })
     if (state.missing || !state.season) {
       const box = el('div', 'choices')
@@ -143,16 +154,20 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       return
     }
 
-    if (!state.section) state.section = 'dashboard'
     const box = el('div', 'choices')
-    box.append(subtabs())
-    if (state.section === 'details') box.append(detailsBlock())
-    else if (state.section === 'pool') box.append(poolBlock())
-    else if (state.section === 'dashboard') {
+    if (visible === 'dashboard') {
+      closeDraft()
       const announcement = nextGameNode()
       if (announcement) box.append(announcement)
       box.append(historyBlock())
-    } else box.append(scheduleBlock())
+    } else {
+      box.append(subtabs(visible, draftingNow))
+      if (visible === 'details') box.append(detailsBlock())
+      else if (visible === 'pool') box.append(poolBlock())
+      else if (visible === 'draft') box.append(draftBlock())
+      else box.append(scheduleBlock())
+      if (visible !== 'draft') closeDraft()
+    }
 
     if (state.error) box.append(el('p', 'alert', state.error))
     host.append(box)
@@ -294,6 +309,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   function playedCard(game) {
     const open = () => onOpenGame?.(game.id)
     const card = linkCard('played-card', open)
+    if (game?.dev || game?.is_practice) card.classList.add('scrimmage')
     const head = el('div', 'card-head')
     head.append(matchTitle(game), cardAction('REVIEW', open))
     const when = new Date(game.starts_at)
@@ -306,12 +322,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return card
   }
 
-  function subtabs() {
+  function subtabs(visible, draftingNow) {
     const row = el('div', 'subtabs')
-    for (const [id, label] of [['dashboard', 'DASHBOARD'], ['schedule', 'SCHEDULE'], ['pool', 'THE POOL'], ['details', 'DETAILS']]) {
-      const button = el('button', state.section === id ? 'on' : '', label)
+    const tabs = [[draftingNow ? 'draft' : 'schedule', draftingNow ? 'DRAFT' : 'SCHEDULE'], ['pool', 'THE POOL'], ['details', 'DETAILS']]
+    for (const [id, label] of tabs) {
+      const button = el('button', visible === id ? 'on' : '', label)
       button.type = 'button'
-      button.setAttribute('aria-pressed', state.section === id ? 'true' : 'false')
+      button.setAttribute('aria-pressed', visible === id ? 'true' : 'false')
       button.addEventListener('click', () => {
         if (state.section === id) return
         state.section = id
@@ -320,6 +337,26 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       row.append(button)
     }
     return row
+  }
+
+  function draftBlock() {
+    const node = el('div', 'draft-host')
+    renderDraft(node, {
+      seasonId,
+      setTeam,
+      heading: false,
+      onDesk: (ctx) => {
+        if (ctx?.draftKnown && ctx.drafting === false && !state.draftClosed) {
+          state.draftClosed = true
+          state.section = 'schedule'
+          window.setTimeout(() => {
+            if (host.dataset.paint === token) paint()
+          }, 0)
+        }
+        onDesk?.({ ...ctx, section: state.draftClosed ? 'schedule' : 'draft' })
+      },
+    })
+    return node
   }
 
   function teamsBlock() {
