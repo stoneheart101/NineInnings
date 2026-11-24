@@ -6,6 +6,8 @@ import { draftIsActive } from '../menu.js'
 import { gameKind, narrativeLead, playedGames, playedScore } from '../played.js'
 import { rankStandings } from '../standings.js'
 import { closeDraft, renderDraft } from './draft.js'
+import { closePopup, mountPopup } from '../popup.js'
+import { sameSeasonName } from '../season-name.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -90,7 +92,7 @@ function shownSection(section, draftingNow) {
   return section || 'dashboard'
 }
 
-export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, onOpenReport, setTeam, onDesk }) {
+export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, onOpenReport, onLeave, setTeam, onDesk }) {
   const token = String(Math.random())
   host.dataset.paint = token
   const next = { ready: false, failed: false, game: null }
@@ -118,6 +120,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     boardAsked: false,
     boardError: '',
     playError: '',
+    confirmDelete: false,
+    deleteTyped: '',
+    deleteError: '',
     section: chosenSection(section),
     loaded: false,
   }
@@ -166,8 +171,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const box = el('div', visible === 'dashboard' ? 'choices dashboard' : 'choices')
     if (visible === 'dashboard') {
       closeDraft()
-      const announcement = nextGameNode()
-      if (announcement) box.append(announcement)
+      const recruits = recruitNote()
+      if (recruits) box.append(recruits)
+      box.append(futureBlock())
       const play = playCards()
       if (play) box.append(play)
       box.append(historyBlock())
@@ -183,6 +189,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
     if (state.error) box.append(el('p', 'alert', state.error))
     host.append(box)
+    if (state.confirmDelete && season && season.commissioner_id === state.userId) deletePopup(season)
   }
 
   function seasonBlock() {
@@ -219,6 +226,18 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       play.disabled = state.busy
       play.addEventListener('click', onPlay)
       actions.append(play)
+    }
+    if (season.commissioner_id === state.userId) {
+      const remove = el('button', 'action', 'DELETE SEASON')
+      remove.type = 'button'
+      remove.disabled = state.busy
+      remove.addEventListener('click', () => {
+        state.confirmDelete = true
+        state.deleteTyped = ''
+        state.deleteError = ''
+        paint()
+      })
+      actions.append(remove)
     }
     if (actions.childNodes.length) head.append(actions)
     card.append(
@@ -313,9 +332,37 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return actions
   }
 
+  function futureBlock() {
+    const wrap = el('div', 'played-list')
+    wrap.append(el('p', 'section', 'FUTURE'))
+    if (!next.ready) return wrap
+    if (next.failed) {
+      wrap.append(el('p', 'alert', 'THE NEXT GAME DID NOT LOAD'))
+      return wrap
+    }
+    wrap.append(nextGameNode() || el('p', '', 'NO GAME COMING'))
+    return wrap
+  }
+
+  function recruitNote() {
+    if (!state.kids) return null
+    const waiting = state.kids.filter((kid) => !kid.team_id && kid.offer)
+    if (!waiting.length) return null
+    const row = el('div', 'recruit-note')
+    row.append(el('p', '', counted(waiting.length, 'KID IS ON THE RECRUITING BOARD', 'KIDS ARE ON THE RECRUITING BOARD')))
+    const open = el('button', '', 'OPEN')
+    open.type = 'button'
+    open.addEventListener('click', () => {
+      if (state.section === 'recruiting') return
+      state.section = 'recruiting'
+      paint()
+      maybeOpenBoard()
+    })
+    row.append(open)
+    return row
+  }
+
   function nextGameNode() {
-    if (!next.ready) return null
-    if (next.failed) return el('p', 'alert', 'THE NEXT GAME DID NOT LOAD')
     const game = next.game
     if (!game) return null
     const when = new Date(game.starts_at)
@@ -707,6 +754,86 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
     return card
+  }
+
+  function deletePopup(season) {
+    const form = document.createElement('form')
+    form.id = 'delete-season'
+    form.className = 'open-season'
+    form.addEventListener('submit', (event) => {
+      event.preventDefault()
+      onDelete(season)
+    })
+    const name = document.createElement('input')
+    name.name = 'season-name'
+    name.required = true
+    name.maxLength = 40
+    name.autocomplete = 'off'
+    name.spellcheck = false
+    name.value = state.deleteTyped
+    const nameLabel = el('label')
+    nameLabel.append(el('span', '', 'SEASON NAME'), name)
+    form.append(nameLabel)
+    if (state.deleteError) form.append(el('p', 'alert', state.deleteError))
+    mountPopup(host, {
+      title: 'DELETE THIS SEASON',
+      note: `TYPE ${season.name}. THE TEAMS, GAMES, AND KIDS GO WITH IT.`,
+      actions: [
+        {
+          label: 'DELETE',
+          submit: true,
+          form: 'delete-season',
+          disabled: state.busy || !sameSeasonName(state.deleteTyped, season.name),
+        },
+        {
+          label: 'BACK',
+          onClick() {
+            state.confirmDelete = false
+            state.deleteError = ''
+            closePopup()
+          },
+        },
+      ],
+      content: form,
+      onClose() {
+        state.confirmDelete = false
+      },
+      focus(box) {
+        const input = box.querySelector('input')
+        const del = box.querySelector('.card-actions button')
+        const sync = () => {
+          state.deleteTyped = input.value
+          if (del) del.disabled = state.busy || !sameSeasonName(input.value, season.name)
+        }
+        input.addEventListener('input', sync)
+        sync()
+        input.focus()
+      },
+    })
+    state.confirmDelete = true
+  }
+
+  async function onDelete(season) {
+    if (state.busy || !sameSeasonName(state.deleteTyped, season?.name)) return
+    state.busy = true
+    state.deleteError = ''
+    state.confirmDelete = true
+    paint()
+    const { error } = await supabase.rpc('delete_season', {
+      season_id: seasonId,
+      season_name: cleanName(state.deleteTyped),
+    })
+    if (host.dataset.paint !== token || !host.isConnected) return
+    state.busy = false
+    if (error) {
+      state.deleteError = (error.message || 'THE SEASON WAS NOT DELETED.').toUpperCase()
+      state.confirmDelete = true
+      paint()
+      return
+    }
+    state.confirmDelete = false
+    closePopup()
+    onLeave?.()
   }
 
   async function onPlay() {

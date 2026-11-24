@@ -51,7 +51,7 @@ function openOnKey(event, onOpen) {
   onOpen()
 }
 
-export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, onOpenReport, setTeam, onDesk, onDrafting }) {
+export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, onOpenReport, onLeave, setTeam, onDesk, onDrafting }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -98,6 +98,7 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       onOpenDraft,
       onOpenGame,
       onOpenReport,
+      onLeave,
       setTeam,
       onDesk,
     })

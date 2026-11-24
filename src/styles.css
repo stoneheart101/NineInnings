@@ -620,6 +620,28 @@ button.action {
   padding-top: clamp(28px, 4.5vw, 56px);
 }
 
+.recruit-note {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  width: 100%;
+  margin-top: 0.75em;
+  color: var(--mark);
+}
+
+.recruit-note p {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.recruit-note button {
+  flex: 0 0 auto;
+  color: var(--mark);
+}
+
 .card.tryout {
   background: #0e2748;
 }
@@ -694,14 +716,25 @@ button.action {
 .card-head,
 .kid-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: space-between;
   gap: 8px 12px;
   width: 100%;
   border-bottom: 2px solid #000;
   padding-bottom: 2px;
   margin-bottom: 4px;
+}
+
+.card-head > .card-title,
+.card-head > .kid-title,
+.card-head > .game-match,
+.kid-head > .card-title,
+.kid-head > .kid-title {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .kid-title {
