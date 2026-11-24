@@ -86,7 +86,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     games: [],
     gamesFailed: false,
     playError: '',
-    section: section === 'teams' || section === 'schedule' || section === 'pool' ? section : '',
+    section: section === 'season' || section === 'teams' || section === 'schedule' || section === 'pool' ? section : '',
     loaded: false,
   }
 
@@ -106,14 +106,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       setTeam?.(null)
     }
     onDesk?.({ seasonId: season?.id || '', teamId: myTeam?.id || '' })
-    const forming = season?.status === 'forming'
-    const canStart = Boolean(
-      season
-      && !state.draftFailed
-      && draftComplete(season, state.draft)
-      && season.commissioner_id === state.userId,
-    )
-
     if (state.missing || !state.season) {
       const box = el('div', 'choices')
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
@@ -122,18 +114,31 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       return
     }
 
-    if (forming && season.commissioner_id === state.userId) {
-      const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
-      if (draftNote) host.append(el('p', 'alert', draftNote))
-    }
-    if (canStart && state.playError) host.append(el('p', 'alert', state.playError))
-
     if (!state.section) {
       state.section = season.status === 'active' || state.games.length ? 'schedule' : 'teams'
     }
     const box = el('div', 'choices')
+    box.append(subtabs())
+    if (state.section === 'season') box.append(seasonBlock())
+    else if (state.section === 'teams') box.append(teamsBlock())
+    else if (state.section === 'pool') box.append(poolBlock())
+    else box.append(scheduleBlock())
+
+    if (state.error) box.append(el('p', 'alert', state.error))
+    host.append(box)
+  }
+
+  function seasonBlock() {
+    const season = state.season
+    const forming = season.status === 'forming'
+    const canStart = Boolean(
+      !state.draftFailed
+      && draftComplete(season, state.draft)
+      && season.commissioner_id === state.userId,
+    )
+    const wrap = el('div', 'season-panel')
     const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
-    box.append(
+    wrap.append(
       el('p', 'season-title', season.name),
       el('p', 'season-status', statusLabel(season, state.draftFailed ? null : state.draft)),
       el('p', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
@@ -142,34 +147,31 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       el('p', '', roundsLine(season.draft_rounds)),
     )
     if (season.commissioner_id === state.userId) {
-      box.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
+      wrap.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
     }
     if (forming && season.commissioner_id === state.userId) {
+      const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
+      if (draftNote) wrap.append(el('p', 'alert', draftNote))
       const start = el('button', 'action', 'START THE DRAFT')
       start.type = 'button'
       start.disabled = state.busy
       start.addEventListener('click', onStart)
-      box.append(start)
+      wrap.append(start)
     }
     if (canStart) {
+      if (state.playError) wrap.append(el('p', 'alert', state.playError))
       const play = el('button', 'action', 'PLAY BALL')
       play.type = 'button'
       play.disabled = state.busy
       play.addEventListener('click', onPlay)
-      box.append(play)
+      wrap.append(play)
     }
-    box.append(subtabs())
-    if (state.section === 'teams') box.append(teamsBlock())
-    else if (state.section === 'pool') box.append(poolBlock())
-    else box.append(scheduleBlock())
-
-    if (state.error) box.append(el('p', 'alert', state.error))
-    host.append(box)
+    return wrap
   }
 
   function subtabs() {
     const row = el('div', 'subtabs')
-    for (const [id, label] of [['teams', 'TEAMS'], ['schedule', 'SCHEDULE'], ['pool', 'THE POOL']]) {
+    for (const [id, label] of [['season', 'SEASON'], ['teams', 'TEAMS'], ['schedule', 'SCHEDULE'], ['pool', 'THE POOL']]) {
       const button = el('button', state.section === id ? 'on' : '', label)
       button.type = 'button'
       button.setAttribute('aria-pressed', state.section === id ? 'true' : 'false')
@@ -338,16 +340,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (state.busy) return
     state.busy = true
     state.playError = ''
-    state.section = 'schedule'
     paint()
     const { error } = await supabase.rpc('play_ball', { season_id: seasonId })
     if (host.dataset.paint !== token || !host.isConnected) return
     state.busy = false
     if (error) {
       state.playError = (error.message || 'PLAY BALL DID NOT START.').toUpperCase()
+      state.section = 'season'
       paint()
       return
     }
+    state.section = 'schedule'
     await load()
   }
 
