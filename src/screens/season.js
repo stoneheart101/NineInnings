@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { clockLabel, dayKey, dayLabel, forecastChances, forecastShown } from '../forecast.js'
+import { clockLabel, clockLabel12, dayKey, dayLabel, forecastChances, forecastShown } from '../forecast.js'
 import { practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, narrativeLead, playedGames, playedScore } from '../played.js'
@@ -153,6 +153,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     }
     if (!state.section) state.section = 'dashboard'
     const draftingNow = draftIsActive(season, state.draftFailed ? null : state.draft) && !state.draftClosed
+    if (state.section === 'pool' && !poolShown()) state.section = 'schedule'
     const visible = shownSection(state.section, draftingNow)
     onDesk?.({
       seasonId: season?.id || '',
@@ -334,7 +335,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function futureBlock() {
     const wrap = el('div', 'played-list')
-    wrap.append(el('p', 'section', 'FUTURE'))
+    wrap.append(el('p', 'section', 'CURRENT'))
     if (!next.ready) return wrap
     if (next.failed) {
       wrap.append(el('p', 'alert', 'THE NEXT GAME DID NOT LOAD'))
@@ -397,7 +398,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   }
 
   function playButton(label, onPlay, disabled) {
-    const button = el('button', 'action', label)
+    const button = el('button', '', label)
     button.type = 'button'
     button.disabled = disabled
     button.addEventListener('click', onPlay)
@@ -502,7 +503,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     head.append(matchTitle(game), cardAction('REVIEW', open))
     const when = new Date(game.starts_at)
     const bits = [playedScore(game), gameKind(game)]
-    if (!Number.isNaN(when.getTime())) bits.push(clockLabel(when))
+    if (!Number.isNaN(when.getTime())) bits.push(clockLabel12(when))
     const detail = bits.filter(Boolean).join(' · ')
     card.append(head, el('p', '', detail))
     const lead = narrativeLead(game.narrative)
@@ -510,14 +511,21 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return card
   }
 
+  function poolShown() {
+    if (!state.kids) return true
+    if (state.kids.some((kid) => !kid.team_id && !kid.offer)) return true
+    const season = state.season
+    return Boolean(season && season.status === 'forming' && season.commissioner_id === state.userId)
+  }
+
   function subtabs(visible, draftingNow) {
     const row = el('div', 'subtabs')
     const tabs = [
       [draftingNow ? 'draft' : 'schedule', draftingNow ? 'DRAFT' : 'SCHEDULE'],
-      ['pool', 'THE POOL'],
       ['recruiting', 'RECRUITING'],
       ['details', 'DETAILS'],
     ]
+    if (poolShown()) tabs.splice(1, 0, ['pool', 'THE POOL'])
     for (const [id, label] of tabs) {
       const button = el('button', visible === id ? 'on' : '', label)
       button.type = 'button'

@@ -17,6 +17,14 @@ export function clockLabel(when) {
   return `${dayLabel(when)} · ${hours}:${minutes}`
 }
 
+export function clockLabel12(when) {
+  const raw = when.getHours()
+  const suffix = raw < 12 ? 'AM' : 'PM'
+  const hour = raw % 12 || 12
+  const minutes = String(when.getMinutes()).padStart(2, '0')
+  return `${dayLabel(when)} · ${hour}:${minutes} ${suffix}`
+}
+
 export function forecastSentence(game) {
   const sentence = game?.weather?.sentence
   if (typeof sentence !== 'string') return 'THE FORECAST IS NOT HERE'

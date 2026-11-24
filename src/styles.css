@@ -511,8 +511,8 @@ input.num {
   overflow-wrap: anywhere;
 }
 
-.next-game {
-  margin-bottom: 8px;
+.choices.dashboard > .played-list {
+  margin-top: 0;
 }
 
 .schedule .mine {
@@ -618,6 +618,7 @@ button.action {
 
 .choices.dashboard {
   padding-top: clamp(28px, 4.5vw, 56px);
+  gap: clamp(14px, 2.4vw, 24px);
 }
 
 .recruit-note {
