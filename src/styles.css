@@ -609,20 +609,25 @@ button.action {
   flex: 0 0 auto;
 }
 
-.practice-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
+.play-cards,
+.recruiting-list {
+  display: grid;
+  gap: clamp(14px, 2.4vw, 24px);
   width: 100%;
 }
 
-.practice-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+.choices.dashboard {
+  padding-top: clamp(28px, 4.5vw, 56px);
+}
+
+.card.tryout {
+  background: #0e2748;
+}
+
+.tryout-mark {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--mark);
 }
 
 .subtabs {
@@ -634,6 +639,11 @@ button.action {
   width: 100%;
   margin: 0.75em 0 4px;
   border-bottom: 2px solid var(--mark);
+}
+
+.subtabs + .details,
+.subtabs + .season-panel {
+  margin-top: clamp(28px, 4.5vw, 56px);
 }
 
 

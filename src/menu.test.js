@@ -70,6 +70,13 @@ test('a draft is active only while picks are still being made', () => {
   assert.equal(draftIsActive(season, { order: ['a', 'b'], pick_index: 2 }), false)
 })
 
+test('the recruiting route keeps SEASON on and names that season', () => {
+  const menu = deskMenu({ openSeasonId: SEASON, place: 'recruiting' })
+  assert.equal(menu[0].on, false)
+  assert.equal(menu[1].on, true)
+  assert.equal(menu[1].section, 'schedule')
+})
+
 test('a game leaves the four tabs up and DASHBOARD returns to that season', () => {
   for (const place of ['matchup', 'report']) {
     const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place })
@@ -85,6 +92,7 @@ test('routes name the place and the season', () => {
   assert.equal(placeFromRoute('/seasons'), 'list')
   assert.equal(placeFromRoute(`/seasons/${SEASON}`), 'seasons')
   assert.equal(placeFromRoute(`/seasons/${SEASON}/draft`), 'draft')
+  assert.equal(placeFromRoute(`/seasons/${SEASON}/recruiting`), 'recruiting')
   assert.equal(placeFromRoute(`/teams/${TEAM}`), 'roster')
   assert.equal(placeFromRoute(`/teams/${TEAM}/clubhouse`), 'clubhouse')
   assert.equal(placeFromRoute(`/games/${TEAM}`), 'matchup')
@@ -94,5 +102,6 @@ test('routes name the place and the season', () => {
   assert.equal(gameIdFromRoute(`/seasons/${SEASON}`), '')
   assert.equal(seasonIdFromRoute(`/seasons/${SEASON}`), SEASON)
   assert.equal(seasonIdFromRoute(`/seasons/${SEASON}/draft`), SEASON)
+  assert.equal(seasonIdFromRoute(`/seasons/${SEASON}/recruiting`), SEASON)
   assert.equal(seasonIdFromRoute(`/teams/${TEAM}`), '')
 })

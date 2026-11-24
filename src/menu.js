@@ -11,8 +11,8 @@ export function draftIsActive(season, draft) {
 export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', drafting = false, section = '' } = {}) {
   const seasonPath = openSeasonId ? `/seasons/${openSeasonId}` : '/seasons'
   const joined = openSeasonId ? { path: seasonPath, section: 'details' } : { path: '/seasons', section: '' }
-  const inSeason = place === 'seasons' || place === 'draft'
-  const shown = place === 'draft' ? 'draft' : section
+  const inSeason = place === 'seasons' || place === 'draft' || place === 'recruiting'
+  const shown = place === 'draft' ? 'draft' : place === 'recruiting' ? 'recruiting' : section
   const onDashboard = place === 'seasons' && (shown === 'dashboard' || shown === '')
   const onSeason = place === 'list' || place === 'draft' || (inSeason && !onDashboard && shown !== '')
   return [
@@ -49,6 +49,7 @@ export function placeFromRoute(route) {
   if (route === '/' || route === '/seasons') return 'list'
   if (typeof route !== 'string') return 'list'
   if (/^\/seasons\/[^/]+\/draft$/.test(route)) return 'draft'
+  if (/^\/seasons\/[^/]+\/recruiting$/.test(route)) return 'recruiting'
   if (route.startsWith('/seasons/')) return 'seasons'
   if (/^\/teams\/[^/]+\/clubhouse$/.test(route)) return 'clubhouse'
   if (route.startsWith('/teams/')) return 'roster'
@@ -65,6 +66,6 @@ export function gameIdFromRoute(route) {
 
 export function seasonIdFromRoute(route) {
   if (typeof route !== 'string') return ''
-  const match = route.match(/^\/seasons\/([^/]+)(?:\/draft)?$/)
+  const match = route.match(/^\/seasons\/([^/]+)(?:\/draft|\/recruiting)?$/)
   return match ? match[1] : ''
 }

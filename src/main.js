@@ -116,7 +116,7 @@ function applyTabs() {
   const place = placeFromRoute(route)
   const openSeasonId = openSeasonIdFor(route)
   if (place === 'list') menuSection = ''
-  const section = place === 'draft' ? 'draft' : place === 'seasons' ? (nextSection || menuSection || 'dashboard') : ''
+  const section = place === 'draft' ? 'draft' : place === 'recruiting' ? 'recruiting' : place === 'seasons' ? (nextSection || menuSection || 'dashboard') : ''
   const items = deskMenu({
     openSeasonId,
     teamId: teamIdFor(route),
@@ -247,7 +247,7 @@ function renderDesk() {
   applyTabs()
   const place = placeFromRoute(route)
   if (place === 'list' || place === 'seasons' || place === 'draft') {
-    const section = place === 'draft' ? 'draft' : nextSection
+    const section = place === 'draft' ? 'draft' : place === 'recruiting' ? 'recruiting' : nextSection
     nextSection = ''
     if (section) menuSection = section
     renderSeasons(prompt, {
@@ -282,7 +282,6 @@ function renderDesk() {
       teamId,
       setTeam,
       onDesk,
-      onOpenGame: (id) => go(`/games/${id}/report`),
     })
   }
 }
