@@ -5,7 +5,7 @@ export function dayLabel(when) {
   return `${DAYS[when.getUTCDay()]} ${MONTHS[when.getUTCMonth()]} ${when.getUTCDate()}`
 }
 
-function forecastSentence(game) {
+export function forecastSentence(game) {
   const sentence = game?.weather?.sentence
   if (typeof sentence !== 'string') return 'THE FORECAST IS NOT HERE'
   const line = sentence.trim().toUpperCase()

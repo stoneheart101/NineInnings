@@ -79,7 +79,6 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     if (prompt.dataset.paint !== token) return
     closePopup()
     prompt.replaceChildren()
-    prompt.append(el('h2', 'screen-name', 'ROSTER'))
     const box = el('div', 'choices')
 
     if (!state.loaded) return

@@ -182,20 +182,6 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     return playing() && state.locks.some((row) => row.team_id === state.myTeam.id)
   }
 
-  function bothLocked() {
-    const game = state.game
-    if (!game) return false
-    const ids = new Set(state.locks.map((row) => row.team_id))
-    return ids.has(game.away_team_id) && ids.has(game.home_team_id)
-  }
-
-  function canPlay() {
-    return Boolean(state.season)
-      && state.season.commissioner_id === state.userId
-      && state.game?.status === 'scheduled'
-      && bothLocked()
-  }
-
   function paint() {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
@@ -216,7 +202,6 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
         teamId: mine?.id || '',
       })
     }
-    prompt.append(el('h2', 'screen-name', 'THE MATCHUP'))
     if (!state.loaded) return
 
     const box = el('div', 'choices')
@@ -244,16 +229,6 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       if (writeup) box.append(writeup)
       else box.append(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
     }
-    if (canPlay()) {
-      const actions = el('div', 'side-actions')
-      const play = el('button', 'action', 'PLAY THIS ONE')
-      play.type = 'button'
-      play.disabled = state.busy
-      play.addEventListener('click', onPlay)
-      actions.append(play)
-      box.append(actions)
-    }
-
     if (playing()) {
       const foeId = state.myTeam.id === game.home_team_id ? game.away_team_id : game.home_team_id
       const foe = state.teams.find((team) => team.id === foeId)
@@ -311,28 +286,38 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     return el('span', mine ? 'mine' : '', team?.name || 'TEAM')
   }
 
-  async function onPlay() {
-    if (state.busy) return
-    state.busy = true
-    state.error = ''
-    paint()
-    const { data, error } = await supabase.rpc('play_game_now', { game_id: gameId })
-    if (prompt.dataset.paint !== token) return
-    state.busy = false
-    if (error) {
-      state.error = (error.message || 'THE GAME DID NOT PLAY.').toUpperCase()
-      paint()
-      return
+  function armClock() {
+    const game = state.game
+    if (!game || game.is_practice || game.status !== 'scheduled') return
+    const when = Date.parse(game.starts_at)
+    if (Number.isNaN(when)) return
+    const remaining = when - Date.now()
+    if (remaining > 16 * 60 * 1000) return
+    let tries = 0
+    const pull = async () => {
+      if (prompt.dataset.paint !== token) return
+      const { data, error } = await supabase.from('games').select('status, result, narrative').eq('id', gameId).maybeSingle()
+      if (prompt.dataset.paint !== token) return
+      if (!error && data?.status === 'final') {
+        if (state.myTeam) {
+          const purse = await supabase.from('teams').select('bottlecaps, reputation').eq('id', state.myTeam.id).maybeSingle()
+          if (prompt.dataset.paint !== token) return
+          if (!purse.error && purse.data) state.myTeam = { ...state.myTeam, ...purse.data }
+        }
+        state.game = {
+          ...state.game,
+          status: data.status,
+          result: data.result,
+          narrative: data.narrative,
+        }
+        paint()
+        return
+      }
+      tries += 1
+      if (tries >= 20) return
+      window.setTimeout(pull, 60000)
     }
-    const note = await supabase.from('games').select('narrative').eq('id', gameId).maybeSingle()
-    if (prompt.dataset.paint !== token) return
-    state.game = {
-      ...state.game,
-      status: 'final',
-      result: data,
-      narrative: note.error ? null : (note.data?.narrative ?? null),
-    }
-    paint()
+    window.setTimeout(pull, remaining > 0 ? remaining : 15000)
   }
 
   function earlierId(rows) {
@@ -447,6 +432,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     }
     state.loaded = true
     paint()
+    armClock()
   }
 
   paint()

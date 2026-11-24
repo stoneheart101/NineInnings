@@ -166,7 +166,7 @@ export function createDesk(prompt, hooks) {
           signInWithGoogle()
         },
       }])
-      return el('h2', 'screen-name', 'SIGN IN')
+      return null
     },
     coach() {
       useTabs([])
@@ -201,7 +201,7 @@ export function createDesk(prompt, hooks) {
         state.mode = 'ready'
         state.coachName = coachName
         hooks.onNamed(coachName)
-      }, el('h2', 'screen-name', 'COACH'), el('p', '', 'ENTER COACH NAME'), name.wrap, actions(['SAVE'], ['SIGN OUT', signOut]))
+      }, el('p', '', 'ENTER COACH NAME'), name.wrap, actions(['SAVE'], ['SIGN OUT', signOut]))
     },
   }
 

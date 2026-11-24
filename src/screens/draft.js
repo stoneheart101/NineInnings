@@ -63,7 +63,6 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
   function paint() {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
-    prompt.append(el('h2', 'screen-name', 'DRAFT'))
     const box = el('div', 'choices')
 
     if (!state.loaded) return

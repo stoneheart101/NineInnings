@@ -293,7 +293,9 @@ select:focus-visible {
   button.team-card:hover .season-name,
   button.team-card:focus-visible .season-name,
   button.game-match:hover .mine,
-  button.game-match:focus-visible .mine {
+  button.game-match:focus-visible .mine,
+  button.next-game:hover .game-date,
+  button.next-game:focus-visible .game-date {
     color: #000;
     border-bottom-color: #000;
   }
@@ -420,13 +422,6 @@ button.team-card,
   border-bottom: 2px solid #000;
 }
 
-.screen-name {
-  margin: 0 0 8px;
-  color: var(--field);
-  font: inherit;
-  line-height: 1.05;
-}
-
 .season-title {
   border-bottom: 1px solid var(--mark);
   padding-bottom: 2px;
@@ -458,6 +453,19 @@ button.team-card,
 .game-match,
 .game-forecast {
   width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.next-game {
+  display: grid;
+  justify-items: start;
+  width: 100%;
+  margin: 0 0 8px;
+  gap: 2px;
+}
+
+.next-game span {
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 
@@ -521,6 +529,7 @@ button.action {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-start;
   gap: 2px 12px;
   width: 100%;
   margin: 0.75em 0 4px;
@@ -529,10 +538,6 @@ button.action {
 
 .subtabs button.on {
   color: var(--mark);
-}
-
-.subtabs button.end {
-  margin-left: auto;
 }
 
 .open-season-slot {

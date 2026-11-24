@@ -191,8 +191,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   function subtabs() {
     const row = el('div', 'subtabs')
     for (const [id, label] of [['schedule', 'SCHEDULE'], ['pool', 'THE POOL'], ['details', 'DETAILS']]) {
-      const marked = [state.section === id ? 'on' : '', id === 'details' ? 'end' : ''].filter(Boolean).join(' ')
-      const button = el('button', marked, label)
+      const button = el('button', state.section === id ? 'on' : '', label)
       button.type = 'button'
       button.setAttribute('aria-pressed', state.section === id ? 'true' : 'false')
       button.addEventListener('click', () => {
