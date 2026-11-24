@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { deskMenu, draftIsActive, placeFromRoute, seasonIdFromRoute } from './menu.js'
+import { deskMenu, draftIsActive, gameIdFromRoute, placeFromRoute, seasonIdFromRoute } from './menu.js'
 
 const SEASON = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const TEAM = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
@@ -71,11 +71,13 @@ test('a draft is active only while picks are still being made', () => {
 })
 
 test('a game leaves the four tabs up and DASHBOARD returns to that season', () => {
-  const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'matchup' })
-  assert.deepEqual(menu.map((item) => item.on), [false, false, false, false])
-  assert.equal(menu[0].path, `/seasons/${SEASON}`)
-  assert.equal(menu[0].section, 'dashboard')
-  assert.equal(menu[2].path, `/teams/${TEAM}`)
+  for (const place of ['matchup', 'report']) {
+    const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place })
+    assert.deepEqual(menu.map((item) => item.on), [false, false, false, false])
+    assert.equal(menu[0].path, `/seasons/${SEASON}`)
+    assert.equal(menu[0].section, 'dashboard')
+    assert.equal(menu[2].path, `/teams/${TEAM}`)
+  }
 })
 
 test('routes name the place and the season', () => {
@@ -86,6 +88,10 @@ test('routes name the place and the season', () => {
   assert.equal(placeFromRoute(`/teams/${TEAM}`), 'roster')
   assert.equal(placeFromRoute(`/teams/${TEAM}/clubhouse`), 'clubhouse')
   assert.equal(placeFromRoute(`/games/${TEAM}`), 'matchup')
+  assert.equal(placeFromRoute(`/games/${TEAM}/report`), 'report')
+  assert.equal(gameIdFromRoute(`/games/${TEAM}`), TEAM)
+  assert.equal(gameIdFromRoute(`/games/${TEAM}/report`), TEAM)
+  assert.equal(gameIdFromRoute(`/seasons/${SEASON}`), '')
   assert.equal(seasonIdFromRoute(`/seasons/${SEASON}`), SEASON)
   assert.equal(seasonIdFromRoute(`/seasons/${SEASON}/draft`), SEASON)
   assert.equal(seasonIdFromRoute(`/teams/${TEAM}`), '')

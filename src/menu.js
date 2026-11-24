@@ -52,8 +52,15 @@ export function placeFromRoute(route) {
   if (route.startsWith('/seasons/')) return 'seasons'
   if (/^\/teams\/[^/]+\/clubhouse$/.test(route)) return 'clubhouse'
   if (route.startsWith('/teams/')) return 'roster'
+  if (/^\/games\/[^/]+\/report$/.test(route)) return 'report'
   if (route.startsWith('/games/')) return 'matchup'
   return 'list'
+}
+
+export function gameIdFromRoute(route) {
+  if (typeof route !== 'string') return ''
+  const match = route.match(/^\/games\/([^/]+)(?:\/report)?$/)
+  return match ? match[1] : ''
 }
 
 export function seasonIdFromRoute(route) {

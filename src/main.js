@@ -7,10 +7,11 @@ import { closeDraft } from './screens/draft.js'
 import { closeTeam, renderTeam } from './screens/team.js'
 import { renderClubhouse } from './screens/clubhouse.js'
 import { renderMatchup } from './screens/matchup.js'
+import { renderReport } from './screens/report.js'
 import { closePopup } from './popup.js'
 import { openSeasonPopup } from './open-season.js'
 import { routeFromHash } from './router.js'
-import { deskMenu, placeFromRoute, seasonIdFromRoute } from './menu.js'
+import { deskMenu, gameIdFromRoute, placeFromRoute, seasonIdFromRoute } from './menu.js'
 import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
@@ -255,15 +256,19 @@ function renderDesk() {
       onOpen: (id) => go(`/seasons/${id}`),
       onOpenDraft: () => go(`/seasons/${seasonIdFromRoute(route)}/draft`),
       onOpenGame: (id) => go(`/games/${id}`),
+      onOpenReport: (id) => go(`/games/${id}/report`),
       setTeam,
       onDesk,
       onDrafting,
     })
     return
   }
+  if (place === 'report') {
+    renderReport(prompt, { gameId: gameIdFromRoute(route), setTeam, onDesk })
+    return
+  }
   if (place === 'matchup') {
-    const gameId = route.slice('/games/'.length)
-    renderMatchup(prompt, { gameId, setTeam, onDesk })
+    renderMatchup(prompt, { gameId: gameIdFromRoute(route), setTeam, onDesk })
     return
   }
   if (place === 'clubhouse') {
@@ -277,7 +282,7 @@ function renderDesk() {
       teamId,
       setTeam,
       onDesk,
-      onOpenGame: (id) => go(`/games/${id}`),
+      onOpenGame: (id) => go(`/games/${id}/report`),
     })
   }
 }

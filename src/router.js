@@ -17,6 +17,6 @@ export function routeFromHash(hash) {
   if (path === '/seasons') return '/seasons'
   if (/^\/seasons\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/draft)?$/i.test(path)) return path
   if (/^\/teams\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/clubhouse)?$/i.test(path)) return path
-  if (/^\/games\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path)) return path
+  if (/^\/games\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/report)?$/i.test(path)) return path
   return '/'
 }

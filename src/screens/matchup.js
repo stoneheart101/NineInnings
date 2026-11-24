@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
-import { boxScore, usedGroups } from '../box.js'
 import { clockLabel, forecastChances, forecastShown } from '../forecast.js'
+import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
 
@@ -71,84 +71,6 @@ function cardNodes(card) {
   const items = Array.isArray(card?.items) ? card.items : []
   if (!items.length) nodes.push(el('p', '', 'NO ITEMS PACKED'))
   else for (const item of items) nodes.push(el('p', '', packedLine(item)))
-  return nodes
-}
-
-function cell(className, text) {
-  return el('span', className, text)
-}
-
-function lineGrid(box) {
-  const node = el('div', 'score-grid')
-  node.style.setProperty('--score-cols', String(box.innings.length + 3))
-  node.append(cell('score-h', ''))
-  for (const inning of box.innings) node.append(cell('score-h', String(inning)))
-  for (const label of ['R', 'H', 'E']) node.append(cell('score-h', label))
-  for (const side of box.sides) {
-    node.append(cell('score-name', side.name))
-    for (const mark of side.marks) node.append(cell('score-n', mark))
-    node.append(cell('score-n', String(side.runs)))
-    node.append(cell('score-n', String(side.hits)))
-    node.append(cell('score-n', String(side.errors)))
-  }
-  return node
-}
-
-function statGrid(rows) {
-  const node = el('div', 'stat-grid')
-  node.append(cell('score-h', ''))
-  for (const label of ['AB', 'H', 'R', 'RBI', 'BB', 'K', 'OUTS']) node.append(cell('score-h', label))
-  for (const row of rows) {
-    node.append(cell('score-name', row.name))
-    for (const key of ['ab', 'h', 'r', 'rbi', 'bb', 'k', 'outs']) node.append(cell('score-n', String(row[key])))
-  }
-  return node
-}
-
-function headed(className, title, nodes, action) {
-  const card = el('div', `card ${className}`)
-  const head = el('div', 'card-head')
-  if (typeof title === 'string') head.append(el('span', 'card-title', title))
-  else {
-    const titleNode = el('span', 'card-title')
-    titleNode.append(title)
-    head.append(titleNode)
-  }
-  if (action) {
-    const actions = el('div', 'card-actions')
-    actions.append(action)
-    head.append(actions)
-  }
-  card.append(head)
-  for (const node of nodes) if (node) card.append(node)
-  return card
-}
-
-function writeupNode(text) {
-  if (typeof text !== 'string' || !text.trim()) return null
-  const parts = text.split(/\n\n+/).map((part) => part.trim()).filter(Boolean)
-  if (!parts.length) return null
-  return headed('writeup', 'THE DAY', parts.map((part) => el('p', '', part)))
-}
-
-function scoreNodes(result) {
-  const box = boxScore(result)
-  if (!box) return [el('p', 'alert', 'THE LINE DID NOT LOAD')]
-  const nodes = [lineGrid(box)]
-  for (const group of box.groups) {
-    nodes.push(el('p', 'section', group.name))
-    nodes.push(statGrid(group.rows))
-  }
-  return nodes
-}
-
-function usedNodes(items, result) {
-  const groups = usedGroups(items, result)
-  const nodes = []
-  for (const group of groups) {
-    nodes.push(el('p', 'section', group.name))
-    for (const name of group.items) nodes.push(el('p', '', name))
-  }
   return nodes
 }
 

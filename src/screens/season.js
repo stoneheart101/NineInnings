@@ -3,6 +3,7 @@ import { statChip } from '../stat-color.js'
 import { clockLabel, dayKey, dayLabel, forecastChances, forecastShown } from '../forecast.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, narrativeLead, playedGames, playedScore } from '../played.js'
+import { rankStandings } from '../standings.js'
 import { closeDraft, renderDraft } from './draft.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -88,7 +89,7 @@ function shownSection(section, draftingNow) {
   return section || 'dashboard'
 }
 
-export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk }) {
+export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, onOpenReport, setTeam, onDesk }) {
   const token = String(Math.random())
   host.dataset.paint = token
   const next = { ready: false, failed: false, game: null }
@@ -108,6 +109,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     draftClosed: false,
     games: [],
     gamesFailed: false,
+    standings: [],
+    standingsFailed: false,
     playError: '',
     section: chosenSection(section),
     loaded: false,
@@ -224,8 +227,56 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function detailsBlock() {
     const wrap = el('div', 'details')
-    wrap.append(seasonBlock(), teamsBlock())
+    const table = standingsBlock()
+    wrap.append(seasonBlock())
+    if (table) wrap.append(table)
+    wrap.append(teamsBlock())
     return wrap
+  }
+
+  function standingsBlock() {
+    const status = state.season?.status
+    const started = status === 'active' || status === 'completed'
+    if (!started && !state.standings.length && !state.standingsFailed) return null
+    const card = el('div', 'card standings')
+    const head = el('div', 'card-head')
+    head.append(el('span', 'card-title', 'STANDINGS'))
+    card.append(head)
+    if (state.standingsFailed) {
+      card.append(el('p', 'alert', 'THE STANDINGS DID NOT LOAD'))
+      return card
+    }
+    const byId = new Map(state.teams.map((team) => [team.id, team]))
+    const rows = rankStandings(state.standings.map((row) => {
+      const team = byId.get(row.team_id)
+      if (!team) return null
+      return {
+        team_id: team.id,
+        name: team.name,
+        wins: row.wins,
+        losses: row.losses,
+        reputation: team.reputation,
+      }
+    }).filter(Boolean))
+    if (!rows.length) {
+      card.append(el('p', '', 'STANDINGS OPEN ON PLAY BALL'))
+      return card
+    }
+    card.append(standingsGrid(rows))
+    return card
+  }
+
+  function standingsGrid(rows) {
+    const node = el('div', 'standings-grid')
+    for (const label of ['', '', 'W', 'L', 'REP']) node.append(el('span', 'score-h', label))
+    for (const row of rows) {
+      node.append(el('span', 'score-n', String(row.rank)))
+      node.append(el('span', 'score-name', row.name))
+      node.append(el('span', 'score-n', String(row.wins)))
+      node.append(el('span', 'score-n', String(row.losses)))
+      node.append(el('span', 'score-n', String(row.reputation)))
+    }
+    return node
   }
 
   function linkCard(className, onOpen) {
@@ -307,7 +358,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   }
 
   function playedCard(game) {
-    const open = () => onOpenGame?.(game.id)
+    const open = () => (onOpenReport || onOpenGame)?.(game.id)
     const card = linkCard('played-card', open)
     if (game?.dev || game?.is_practice) card.classList.add('scrimmage')
     const head = el('div', 'card-head')
@@ -611,7 +662,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   }
 
   async function load() {
-    const [session, season, teams, kids, draft, games] = await Promise.all([
+    const [session, season, teams, kids, draft, games, standings] = await Promise.all([
       supabase.auth.getSession(),
       supabase
         .from('seasons')
@@ -640,6 +691,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .eq('season_id', seasonId)
         .order('starts_at', { ascending: true })
         .order('id', { ascending: true }),
+      supabase
+        .from('standings')
+        .select('team_id, wins, losses')
+        .eq('season_id', seasonId),
     ])
     if (host.dataset.paint !== token || !host.isConnected) return
     state.userId = session.data.session?.user?.id ?? ''
@@ -648,12 +703,16 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     state.draft = draft.error ? null : draft.data
     state.gamesFailed = Boolean(games.error)
     state.games = games.error ? [] : (games.data || [])
+    state.standingsFailed = Boolean(standings.error)
+    state.standings = standings.error ? [] : (standings.data || [])
     if (season.error || teams.error) {
       state.error = ((season.error || teams.error).message || 'THE SEASON DID NOT LOAD.').toUpperCase()
       state.season = null
       state.teams = []
       state.games = []
       state.gamesFailed = false
+      state.standings = []
+      state.standingsFailed = false
       state.missing = false
       state.draft = null
       state.draftFailed = false
@@ -663,6 +722,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       state.teams = []
       state.games = []
       state.gamesFailed = false
+      state.standings = []
+      state.standingsFailed = false
       state.draft = null
       state.draftFailed = false
     } else {

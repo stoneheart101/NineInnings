@@ -538,7 +538,8 @@ input.num {
 }
 
 .score-grid,
-.stat-grid {
+.stat-grid,
+.standings-grid {
   display: grid;
   width: 100%;
   max-width: 100%;
@@ -551,6 +552,10 @@ input.num {
   font-size: 0.82em;
 }
 
+.standings-grid {
+  grid-template-columns: minmax(1.6em, 0.35fr) minmax(4.6em, 2.4fr) repeat(3, minmax(2em, 0.7fr));
+}
+
 .score-grid {
   grid-template-columns: minmax(4.6em, 1.8fr) repeat(var(--score-cols), minmax(1.35em, 1fr));
 }
@@ -560,7 +565,8 @@ input.num {
 }
 
 .score-grid > span,
-.stat-grid > span {
+.stat-grid > span,
+.standings-grid > span {
   min-width: 0;
   padding: 0.12em 0.2em;
   border-right: 1px solid #d0d0d0;
@@ -570,7 +576,8 @@ input.num {
   white-space: nowrap;
 }
 
-.score-grid > .score-name {
+.score-grid > .score-name,
+.standings-grid > .score-name {
   overflow-wrap: anywhere;
   text-align: left;
   white-space: normal;
