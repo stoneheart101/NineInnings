@@ -201,7 +201,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       && draftComplete(season, state.draft)
       && season.commissioner_id === state.userId,
     )
-    const card = el('div', 'card season-facts')
+    const card = el('div', 'card')
     const head = el('div', 'card-head')
     head.append(el('span', 'card-title', season.name))
     const actions = el('div', 'card-actions')
@@ -214,31 +214,15 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       fact('DRAFT', roundsValue(season.draft_rounds)),
     )
     if (season.commissioner_id === state.userId) facts.append(fact('COMMISSIONER', 'YOU'))
-    if (forming && season.commissioner_id === state.userId) {
-      const start = el('button', 'action', 'START THE DRAFT')
-      start.type = 'button'
-      start.disabled = state.busy
-      start.addEventListener('click', onStart)
-      actions.append(start)
-    }
-    if (canStart) {
-      const play = el('button', 'action', 'PLAY BALL')
-      play.type = 'button'
-      play.disabled = state.busy
-      play.addEventListener('click', onPlay)
-      actions.append(play)
-    }
+    if (forming && season.commissioner_id === state.userId) actions.append(seasonAction('START THE DRAFT', onStart))
+    if (canStart) actions.append(seasonAction('PLAY BALL', onPlay))
     if (season.commissioner_id === state.userId) {
-      const remove = el('button', 'action', 'DELETE SEASON')
-      remove.type = 'button'
-      remove.disabled = state.busy
-      remove.addEventListener('click', () => {
+      actions.append(seasonAction('DELETE SEASON', () => {
         state.confirmDelete = true
         state.deleteTyped = ''
         state.deleteError = ''
         paint()
-      })
-      actions.append(remove)
+      }))
     }
     if (actions.childNodes.length) head.append(actions)
     card.append(
@@ -254,9 +238,18 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return card
   }
 
+  function seasonAction(label, onClick) {
+    const button = el('button', '', label)
+    button.type = 'button'
+    button.disabled = state.busy
+    button.addEventListener('click', onClick)
+    return button
+  }
+
   function detailsBlock() {
     const wrap = el('div', 'details')
     const table = standingsBlock()
+    wrap.append(el('p', 'section', 'CURRENT SEASON'))
     wrap.append(seasonBlock())
     if (table) wrap.append(table)
     wrap.append(teamsBlock())
@@ -349,6 +342,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (!state.kids) return null
     const waiting = state.kids.filter((kid) => !kid.team_id && kid.offer)
     if (!waiting.length) return null
+    const wrap = el('div', 'played-list')
+    wrap.append(el('p', 'section', 'RECRUITS!'))
     const row = el('div', 'recruit-note')
     row.append(el('p', '', counted(waiting.length, 'KID IS ON THE RECRUITING BOARD', 'KIDS ARE ON THE RECRUITING BOARD')))
     const open = el('button', '', 'OPEN')
@@ -360,7 +355,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       maybeOpenBoard()
     })
     row.append(open)
-    return row
+    wrap.append(row)
+    return wrap
   }
 
   function nextGameNode() {
@@ -609,6 +605,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function recruitingBlock() {
     const wrap = el('div', 'season-panel')
+    wrap.append(el('p', 'section', 'RECRUITS'))
     if (state.boardError) wrap.append(el('p', 'alert', state.boardError))
     if (!state.kids) {
       wrap.append(el('p', 'alert', 'THE BOARD DID NOT LOAD'))

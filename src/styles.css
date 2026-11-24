@@ -237,7 +237,7 @@ body {
 }
 
 .prompt p.section {
-  margin-top: 0.75em;
+  margin-top: 1em;
 }
 
 .choices {
@@ -457,7 +457,6 @@ input.num {
   display: grid;
   gap: 2px;
   width: 100%;
-  margin-top: 8px;
 }
 
 .fact {
@@ -470,10 +469,6 @@ input.num {
 
 .fact-label {
   color: var(--mark);
-}
-
-.season-facts .action {
-  margin-top: 10px;
 }
 
 .season-status,
@@ -512,6 +507,14 @@ input.num {
 }
 
 .choices.dashboard > .played-list {
+  margin-top: 0;
+}
+
+.choices.dashboard > .played-list:first-child {
+  margin-top: 1em;
+}
+
+.choices.dashboard > .played-list > .section {
   margin-top: 0;
 }
 
@@ -617,7 +620,6 @@ button.action {
 }
 
 .choices.dashboard {
-  padding-top: clamp(28px, 4.5vw, 56px);
   gap: clamp(14px, 2.4vw, 24px);
 }
 
@@ -628,7 +630,6 @@ button.action {
   justify-content: space-between;
   gap: 8px 12px;
   width: 100%;
-  margin-top: 0.75em;
   color: var(--mark);
 }
 
@@ -660,13 +661,32 @@ button.action {
   justify-content: flex-start;
   gap: 2px 12px;
   width: 100%;
-  margin: 0.75em 0 4px;
+  margin: 1em 0 0;
   border-bottom: 2px solid var(--mark);
 }
 
 .subtabs + .details,
-.subtabs + .season-panel {
-  margin-top: clamp(28px, 4.5vw, 56px);
+.subtabs + .season-panel,
+.subtabs + .schedule,
+.subtabs + .draft-host,
+.subtabs + p {
+  margin-top: 1em;
+}
+
+.subtabs + .details > .section:first-child,
+.subtabs + .season-panel > .section:first-child,
+.details .season-panel > .section {
+  margin-top: 0;
+}
+
+.season-panel {
+  display: grid;
+  gap: clamp(14px, 2.4vw, 24px);
+  width: 100%;
+}
+
+.schedule > .game-day:first-child {
+  margin-top: 0;
 }
 
 
@@ -693,6 +713,13 @@ button.action {
   margin-top: 18px;
   padding-top: 12px;
   border-top: 2px solid #d0d0d0;
+}
+
+.choices .season-panel > form.name-team:first-child,
+.choices .season-panel > form.call-kids:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .draft-list {
