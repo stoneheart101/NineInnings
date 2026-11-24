@@ -129,11 +129,17 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
     if (gate.note) practice.append(el('p', '', gate.note))
     if (state.practiceFailed) practice.append(el('p', 'alert', 'THE LAST PRACTICE DID NOT LOAD'))
     if (state.practiceError) practice.append(el('p', 'alert', state.practiceError))
+    const actions = el('div', 'practice-actions')
     const practiceButton = el('button', 'action', 'PRACTICE')
     practiceButton.type = 'button'
     practiceButton.disabled = !gate.open || state.practiceBusy || state.busy || state.lineupBusy || state.practiceFailed
     practiceButton.addEventListener('click', onPractice)
-    practice.append(practiceButton)
+    const devButton = el('button', 'action', 'DEV GAME')
+    devButton.type = 'button'
+    devButton.disabled = season?.status !== 'active' || state.practiceBusy || state.busy || state.lineupBusy
+    devButton.addEventListener('click', onDevGame)
+    actions.append(practiceButton, devButton)
+    practice.append(actions)
     prompt.append(practice)
 
     const board = el('div', 'choices')
@@ -295,20 +301,13 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
     await load()
   }
 
-  async function onPractice() {
-    if (state.practiceBusy || state.busy || state.lineupBusy || !state.team) return
-    const gate = practiceGate({
-      status: seasonOf(state.team)?.status,
-      everyDays: seasonOf(state.team)?.practice_every_days,
-      lastPractice: state.lastPractice,
-      now: Date.now(),
-    })
-    if (!gate.open) return
+  async function startGame(rpc, refused) {
+    if (refused || state.practiceBusy || state.busy || state.lineupBusy || !state.team) return
     state.practiceBusy = true
     state.practiceError = ''
     state.confirmKid = ''
     paint()
-    const { data, error } = await supabase.rpc('start_practice', { team_id: teamId })
+    const { data, error } = await supabase.rpc(rpc, { team_id: teamId })
     if (prompt.dataset.paint !== token) return
     state.practiceBusy = false
     if (error || !data) {
@@ -319,6 +318,20 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
       return
     }
     onOpenGame?.(data)
+  }
+
+  function onPractice() {
+    const gate = practiceGate({
+      status: seasonOf(state.team)?.status,
+      everyDays: seasonOf(state.team)?.practice_every_days,
+      lastPractice: state.lastPractice,
+      now: Date.now(),
+    })
+    startGame('start_practice', !gate.open)
+  }
+
+  function onDevGame() {
+    startGame('start_dev_game', seasonOf(state.team)?.status !== 'active')
   }
 
   async function onRelease(playerId) {
@@ -415,6 +428,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpenGame }) {
         .from('games')
         .select('starts_at')
         .eq('is_practice', true)
+        .eq('dev', false)
         .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
         .order('starts_at', { ascending: false })
         .limit(1),

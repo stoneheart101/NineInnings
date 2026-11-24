@@ -593,6 +593,13 @@ button.action {
   width: 100%;
 }
 
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .subtabs {
   display: flex;
   flex-wrap: wrap;
