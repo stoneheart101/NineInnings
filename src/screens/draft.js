@@ -22,6 +22,10 @@ function kidName(kid) {
   return [kid.given_name, kid.family_name].filter(Boolean).join(' ') || 'KID'
 }
 
+function counted(value, one, many) {
+  return `${value} ${value === 1 ? one : many}`
+}
+
 let room = null
 
 export function closeDraft() {
@@ -31,7 +35,7 @@ export function closeDraft() {
   supabase.removeChannel(current)
 }
 
-export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
+export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
   closeDraft()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -58,11 +62,21 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
   function paint() {
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
-    setTabs?.([{ label: 'SEASON', onClick: onBack }])
-    prompt.append(el('h2', 'screen-name', 'THE DRAFT'))
+    prompt.append(el('h2', 'screen-name', 'DRAFT'))
     const box = el('div', 'choices')
 
     if (!state.loaded) return
+    const mine = state.teams.find((team) => team.coach_id === state.userId)
+    if (mine && state.season) {
+      setTeam?.({
+        name: mine.name,
+        season: state.season.name,
+        purse: `${counted(mine.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(mine.reputation, 'REPUTATION', 'REPUTATION')}`,
+      })
+    } else {
+      setTeam?.(null)
+    }
+    onDesk?.({ seasonId: state.season?.id || '', teamId: mine?.id || '' })
     if (state.missing || !state.season) {
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
@@ -242,7 +256,7 @@ export function renderDraft(prompt, { seasonId, onBack, setTabs }) {
         .maybeSingle(),
       supabase
         .from('teams')
-        .select('id, name, coach_id')
+        .select('id, name, coach_id, bottlecaps, reputation')
         .eq('season_id', seasonId)
         .order('name', { ascending: true }),
       supabase

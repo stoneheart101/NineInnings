@@ -51,14 +51,7 @@ function costLine(item) {
   return parts.join(' AND ')
 }
 
-function draftIsOpen(season, draft) {
-  if (season?.status !== 'drafting' || !draft) return false
-  const order = Array.isArray(draft.order) ? draft.order : []
-  const pickIndex = Number(draft.pick_index)
-  return order.length > 0 && Number.isInteger(pickIndex) && pickIndex < order.length
-}
-
-export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, onOpenRoster, setTabs, setTeam }) {
+export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -76,7 +69,6 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     buyBusy: false,
     missing: false,
     mine: false,
-    draftOpen: false,
     loaded: false,
   }
 
@@ -84,31 +76,13 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     if (prompt.dataset.paint !== token) return
     closePopup()
     prompt.replaceChildren()
-    const tabs = [{ label: 'HOME', onClick: onBack }]
-    if (state.loaded && state.mine && state.team) {
-      if (state.draftOpen) {
-        tabs.push({
-          label: 'THE DRAFT',
-          onClick() {
-            onOpenDraft?.(state.team.season_id)
-          },
-        })
-      }
-      tabs.push({ label: 'THE ROSTER', onClick: () => onOpenRoster?.() })
-      tabs.push({
-        label: 'THE SEASON',
-        onClick() {
-          onOpenSeason?.(state.team.season_id)
-        },
-      })
-    }
-    setTabs?.(tabs)
     prompt.append(el('h2', 'screen-name', 'CLUBHOUSE'))
     const box = el('div', 'choices')
 
     if (!state.loaded) return
     if (state.missing || !state.team) {
       setTeam?.(null)
+      onDesk?.({ seasonId: '', teamId: '' })
       box.append(el('p', '', 'THAT TEAM IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
       prompt.append(box)
@@ -116,11 +90,13 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     }
     if (!state.mine) {
       setTeam?.(null)
+      onDesk?.({ seasonId: state.team.season_id, teamId: '' })
       box.append(el('p', '', 'THAT TEAM IS NOT YOURS'))
       prompt.append(box)
       return
     }
 
+    onDesk?.({ seasonId: state.team.season_id, teamId: state.team.id })
     const season = seasonOf(state.team)
     setTeam?.({
       name: state.team.name,
@@ -296,7 +272,6 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
       state.team = null
       state.missing = false
       state.mine = false
-      state.draftOpen = false
       state.loaded = true
       paint()
       return
@@ -305,7 +280,6 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
       state.missing = true
       state.team = null
       state.mine = false
-      state.draftOpen = false
       state.error = ''
       state.loaded = true
       paint()
@@ -316,7 +290,6 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
     state.mine = team.data.coach_id === state.userId
     state.error = ''
     if (!state.mine) {
-      state.draftOpen = false
       state.shelf = []
       state.packed = []
       state.kids = []
@@ -325,12 +298,7 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
       paint()
       return
     }
-    const [draft, shelf, packed, kids, lineup] = await Promise.all([
-      supabase
-        .from('draft_state')
-        .select('pick_index,order')
-        .eq('season_id', team.data.season_id)
-        .maybeSingle(),
+    const [shelf, packed, kids, lineup] = await Promise.all([
       supabase
         .from('clubhouse_items')
         .select('id, name, blurb, bottlecap_cost, reputation_cost, duration, effect'),
@@ -374,8 +342,6 @@ export function renderClubhouse(prompt, { teamId, onBack, onOpenSeason, onOpenDr
         if (onTeam.has(row.player_id)) state.lineup[row.slot] = row.player_id
       }
     }
-    const season = seasonOf(team.data)
-    state.draftOpen = draft.error ? season?.status === 'drafting' : draftIsOpen(season, draft.data)
     state.loaded = true
     paint()
   }

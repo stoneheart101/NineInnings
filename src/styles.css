@@ -149,11 +149,54 @@ body {
   top: 100%;
   right: 0;
   z-index: 3;
+  display: grid;
+  gap: 2px;
   background: #000;
   border: 2px solid var(--mark);
   padding: 4px 6px 6px;
-  min-width: max-content;
+  min-width: min(16rem, 70vw);
   max-width: min(70vw, 24rem);
+}
+
+.coach-menu[hidden],
+.coach-teams[hidden],
+.coach-rules[hidden],
+.coach-empty[hidden] {
+  display: none;
+}
+
+.coach-rules,
+.coach-empty {
+  margin: 0;
+  text-align: right;
+}
+
+.coach-teams {
+  display: grid;
+  min-width: 0;
+  max-height: min(50dvh, 18rem);
+  overflow: auto;
+}
+
+.coach-team {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  text-align: right;
+  white-space: normal;
+}
+
+.coach-team.on,
+.season-chip.on {
+  color: var(--mark);
+}
+
+.season-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  width: 100%;
+  margin: 12px 0 4px;
 }
 
 .tabs {
@@ -173,8 +216,8 @@ body {
 }
 
 .tabs button {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 0 auto;
+  max-width: 100%;
   text-align: center;
   overflow-wrap: anywhere;
 }
@@ -585,7 +628,11 @@ button.action {
   .tabs button.on:hover,
   .tabs button.on:focus-visible,
   .subtabs button.on:hover,
-  .subtabs button.on:focus-visible {
+  .subtabs button.on:focus-visible,
+  .coach-team.on:hover,
+  .coach-team.on:focus-visible,
+  .season-chip.on:hover,
+  .season-chip.on:focus-visible {
     color: #000;
   }
 }

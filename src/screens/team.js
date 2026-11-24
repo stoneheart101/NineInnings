@@ -44,13 +44,6 @@ function seasonOf(team) {
   return season || null
 }
 
-function draftIsOpen(season, draft) {
-  if (season?.status !== 'drafting' || !draft) return false
-  const order = Array.isArray(draft.order) ? draft.order : []
-  const pickIndex = Number(draft.pick_index)
-  return order.length > 0 && Number.isInteger(pickIndex) && pickIndex < order.length
-}
-
 let room = null
 
 export function closeTeam() {
@@ -60,7 +53,7 @@ export function closeTeam() {
   supabase.removeChannel(current)
 }
 
-export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, onOpenClubhouse, setTabs, setTeam }) {
+export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
   closeTeam()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -79,7 +72,6 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     busy: false,
     missing: false,
     mine: false,
-    draftOpen: false,
     loaded: false,
   }
 
@@ -87,31 +79,13 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     if (prompt.dataset.paint !== token) return
     closePopup()
     prompt.replaceChildren()
-    const tabs = [{ label: 'HOME', onClick: onBack }]
-    if (state.loaded && state.mine && state.team) {
-      if (state.draftOpen) {
-        tabs.push({
-          label: 'THE DRAFT',
-          onClick() {
-            onOpenDraft?.(state.team.season_id)
-          },
-        })
-      }
-      tabs.push({ label: 'CLUBHOUSE', onClick: () => onOpenClubhouse?.(teamId) })
-      tabs.push({
-        label: 'THE SEASON',
-        onClick() {
-          onOpenSeason?.(state.team.season_id)
-        },
-      })
-    }
-    setTabs?.(tabs)
-    prompt.append(el('h2', 'screen-name', 'THE ROSTER'))
+    prompt.append(el('h2', 'screen-name', 'ROSTER'))
     const box = el('div', 'choices')
 
     if (!state.loaded) return
     if (state.missing || !state.team) {
       setTeam?.(null)
+      onDesk?.({ seasonId: '', teamId: '' })
       box.append(el('p', '', 'THAT TEAM IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
       prompt.append(box)
@@ -119,11 +93,13 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     }
     if (!state.mine) {
       setTeam?.(null)
+      onDesk?.({ seasonId: state.team.season_id, teamId: '' })
       box.append(el('p', '', 'THAT TEAM IS NOT YOURS'))
       prompt.append(box)
       return
     }
 
+    onDesk?.({ seasonId: state.team.season_id, teamId: state.team.id })
     const season = seasonOf(state.team)
     setTeam?.({
       name: state.team.name,
@@ -350,7 +326,6 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       state.kids = []
       state.missing = false
       state.mine = false
-      state.draftOpen = false
       state.loaded = true
       paint()
       return
@@ -360,7 +335,6 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
       state.team = null
       state.kids = []
       state.mine = false
-      state.draftOpen = false
       state.error = ''
       state.loaded = true
       paint()
@@ -372,12 +346,11 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
     state.error = ''
     if (!state.mine) {
       state.kids = []
-      state.draftOpen = false
       state.loaded = true
       paint()
       return
     }
-    const [kids, draft, lineup] = await Promise.all([
+    const [kids, lineup] = await Promise.all([
       supabase
         .from('players')
         .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, created_at')
@@ -385,11 +358,6 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
         .order('family_name', { ascending: true })
         .order('given_name', { ascending: true })
         .order('id', { ascending: true }),
-      supabase
-        .from('draft_state')
-        .select('pick_index,order')
-        .eq('season_id', team.data.season_id)
-        .maybeSingle(),
       supabase
         .from('lineups')
         .select('slot, player_id')
@@ -413,8 +381,6 @@ export function renderTeam(prompt, { teamId, onBack, onOpenSeason, onOpenDraft, 
         if (onTeam.has(row.player_id)) state.lineup[row.slot] = row.player_id
       }
     }
-    const season = seasonOf(team.data)
-    state.draftOpen = draft.error ? season?.status === 'drafting' : draftIsOpen(season, draft.data)
     state.loaded = true
     listen(team.data.season_id)
     paint()

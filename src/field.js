@@ -88,14 +88,82 @@ export function drawField(root, { onSignOut } = {}) {
     )
   }
 
-  function setCoach(name) {
-    userMenu.replaceChildren()
+  let coachHooks = {}
+
+  function fillCoachMenu(panel, details) {
+    let rules = panel.querySelector('.coach-rules')
+    if (!rules) {
+      rules = el('p', 'coach-rules', '')
+      panel.prepend(rules)
+    }
+    if (details.rulesVersion == null) {
+      rules.hidden = true
+      rules.textContent = ''
+    } else {
+      rules.hidden = false
+      rules.textContent = `RULES v${details.rulesVersion}`
+    }
+
+    const signOut = panel.querySelector('.coach-sign-out')
+    let list = panel.querySelector('.coach-teams')
+    if (!list) {
+      list = el('div', 'coach-teams')
+      panel.insertBefore(list, signOut)
+    }
+    list.replaceChildren()
+    const teams = details.teams
+    let empty = panel.querySelector('.coach-empty')
+    if (teams == null) {
+      list.hidden = true
+      if (empty) empty.hidden = true
+      return
+    }
+    if (!teams.length) {
+      list.hidden = true
+      if (!empty) {
+        empty = el('p', 'coach-empty', 'NO TEAMS YET')
+        panel.insertBefore(empty, signOut)
+      }
+      empty.hidden = false
+      return
+    }
+    list.hidden = false
+    if (empty) empty.hidden = true
+    for (const team of teams) {
+      const open = team.id === details.teamId
+      const button = el('button', open ? 'coach-team on' : 'coach-team')
+      button.type = 'button'
+      button.setAttribute('role', 'menuitem')
+      if (open) button.setAttribute('aria-current', 'true')
+      button.append(
+        el('span', 'coach-team-name', team.name),
+        el('span', '', team.season || 'SEASON'),
+        el('span', '', team.purse || ''),
+      )
+      button.addEventListener('click', () => {
+        closeMenu()
+        details.onPickTeam?.(team)
+      })
+      list.append(button)
+    }
+  }
+
+  function setCoach(name, details = {}) {
+    coachHooks = details
     const cleaned = String(name || '').trim()
     if (!cleaned) {
+      userMenu.replaceChildren()
       userMenu.hidden = true
       return
     }
     userMenu.hidden = false
+    const current = userMenu.querySelector('.coach-toggle')
+    const currentPanel = userMenu.querySelector('.coach-menu')
+    if (current && currentPanel && current.textContent === cleaned) {
+      fillCoachMenu(currentPanel, details)
+      return
+    }
+    userMenu.replaceChildren()
     const toggle = el('button', 'coach-toggle', cleaned)
     toggle.type = 'button'
     toggle.title = cleaned
@@ -106,7 +174,7 @@ export function drawField(root, { onSignOut } = {}) {
     panel.id = 'coach-menu'
     panel.hidden = true
     panel.setAttribute('role', 'menu')
-    const signOut = el('button', '', 'SIGN OUT')
+    const signOut = el('button', 'coach-sign-out', 'SIGN OUT')
     signOut.type = 'button'
     signOut.setAttribute('role', 'menuitem')
     const alert = el('p', 'alert', '')
@@ -116,7 +184,7 @@ export function drawField(root, { onSignOut } = {}) {
       const opening = panel.hidden
       panel.hidden = !opening
       toggle.setAttribute('aria-expanded', opening ? 'true' : 'false')
-      if (opening) signOut.focus()
+      if (opening) coachHooks.onOpen?.()
     })
     signOut.addEventListener('click', async () => {
       signOut.disabled = true
@@ -133,6 +201,7 @@ export function drawField(root, { onSignOut } = {}) {
       toggle.setAttribute('aria-expanded', 'true')
     })
     panel.append(signOut, alert)
+    fillCoachMenu(panel, details)
     userMenu.append(toggle, panel)
   }
 

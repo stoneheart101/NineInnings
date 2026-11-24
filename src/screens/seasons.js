@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { renderSeason } from './season.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
@@ -43,7 +44,7 @@ function statusLabel(season, draft) {
   return complete ? 'THE DRAFT IS COMPLETE' : season.status.toUpperCase()
 }
 
-export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
+export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, setTeam, onDesk }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -63,9 +64,10 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
 
   function paint() {
     if (prompt.dataset.paint !== token) return
+    const previous = prompt.querySelector(':scope > .season-detail')
+    const keep = previous && previous.dataset.keep === token && previous.dataset.season === seasonId ? previous : null
     prompt.replaceChildren()
     const showForm = state.loaded && (state.seasons.length === 0 || state.opening)
-    setTabs?.([{ label: 'HOME', onClick: onBack }])
 
     const box = el('div', 'choices')
     box.append(el('h2', 'screen-name', 'SEASONS'))
@@ -85,38 +87,74 @@ export function renderSeasons(prompt, { onBack, onOpen, setTabs }) {
     if (state.loaded && !state.seasons.length) {
       box.append(el('p', '', 'NO SEASONS YET'))
     } else if (state.seasons.length) {
-      const list = el('div', 'season-list')
-      for (const season of state.seasons) {
-        const card = el('div', 'season-card')
-        card.tabIndex = 0
-        card.setAttribute('role', 'link')
-        card.addEventListener('click', () => onOpen(season.id))
-        card.addEventListener('keydown', (event) => {
-          if (event.key !== 'Enter' && event.key !== ' ') return
-          event.preventDefault()
-          onOpen(season.id)
-        })
-        const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
-        card.append(
-          el('span', 'season-name', season.name),
-          el('span', 'season-status', statusLabel(season, state.drafts[season.id])),
-          el('span', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
-          el('span', '', practiceLine(season.practice_every_days)),
-          el('span', '', weeksLine(season.weeks)),
-          el('span', '', roundsLine(season.draft_rounds)),
-        )
-        if (season.commissioner_id === state.userId) {
-          card.append(el('span', 'season-role', 'YOU ARE THE COMMISSIONER'))
-        }
-        list.append(card)
-      }
-      box.append(list)
+      box.append(seasonId ? seasonRow() : seasonCards())
     }
 
     if (showForm && !state.seasons.length) box.append(form())
 
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)
+    if (!seasonId) return
+    if (keep) {
+      prompt.append(keep)
+      return
+    }
+    const detail = el('div', 'season-detail')
+    detail.dataset.keep = token
+    detail.dataset.season = seasonId
+    prompt.append(detail)
+    renderSeason(detail, {
+      seasonId,
+      section,
+      onOpenDraft,
+      onOpenGame,
+      setTeam,
+      onDesk,
+    })
+  }
+
+  function seasonCards() {
+    const list = el('div', 'season-list')
+    for (const season of state.seasons) {
+      const card = el('div', 'season-card')
+      card.tabIndex = 0
+      card.setAttribute('role', 'link')
+      card.addEventListener('click', () => onOpen(season.id))
+      card.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onOpen(season.id)
+      })
+      const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
+      card.append(
+        el('span', 'season-name', season.name),
+        el('span', 'season-status', statusLabel(season, state.drafts[season.id])),
+        el('span', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
+        el('span', '', practiceLine(season.practice_every_days)),
+        el('span', '', weeksLine(season.weeks)),
+        el('span', '', roundsLine(season.draft_rounds)),
+      )
+      if (season.commissioner_id === state.userId) {
+        card.append(el('span', 'season-role', 'YOU ARE THE COMMISSIONER'))
+      }
+      list.append(card)
+    }
+    return list
+  }
+
+  function seasonRow() {
+    const row = el('div', 'season-row')
+    for (const season of state.seasons) {
+      const open = season.id === seasonId
+      const button = el('button', open ? 'season-chip on' : 'season-chip', season.name)
+      button.type = 'button'
+      if (open) button.setAttribute('aria-current', 'true')
+      button.addEventListener('click', () => {
+        if (!open) onOpen(season.id)
+      })
+      row.append(button)
+    }
+    return row
   }
 
   function form() {

@@ -148,7 +148,7 @@ function scoreNodes(result) {
   return nodes
 }
 
-export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubhouse, setTabs, setTeam }) {
+export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -200,25 +200,21 @@ export function renderMatchup(prompt, { gameId, onBack, onOpenTeam, onOpenClubho
     if (prompt.dataset.paint !== token) return
     prompt.replaceChildren()
     const game = state.loaded && !state.missing ? state.game : null
-    const mine = playing() ? state.myTeam : null
-    if (mine && state.season) {
+    const mine = state.myTeam
+    if (state.loaded && mine && state.season) {
       setTeam?.({
         name: mine.name,
         season: state.season.name,
         purse: `${counted(mine.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(mine.reputation, 'REPUTATION', 'REPUTATION')}`,
       })
-    } else {
+    } else if (state.loaded) {
       setTeam?.(null)
     }
-    if (!state.loaded || state.missing || !game) {
-      setTabs?.([{ label: 'SEASONS', onClick: () => onBack?.() }])
-    } else {
-      const tabs = [{ label: 'SEASON', onClick: () => onBack?.(game.season_id) }]
-      if (state.myTeam) {
-        tabs.push({ label: 'THE ROSTER', onClick: () => onOpenTeam?.(state.myTeam.id) })
-        tabs.push({ label: 'CLUBHOUSE', onClick: () => onOpenClubhouse?.(state.myTeam.id) })
-      }
-      setTabs?.(tabs)
+    if (state.loaded) {
+      onDesk?.({
+        seasonId: state.season?.id || state.game?.season_id || '',
+        teamId: mine?.id || '',
+      })
     }
     prompt.append(el('h2', 'screen-name', 'THE MATCHUP'))
     if (!state.loaded) return

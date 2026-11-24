@@ -2,15 +2,14 @@ import '@fontsource/vt323'
 import './styles.css'
 import { drawField } from './field.js'
 import { createDesk } from './auth.js'
-import { renderHome } from './screens/home.js'
 import { renderSeasons } from './screens/seasons.js'
-import { renderSeason } from './screens/season.js'
 import { closeDraft, renderDraft } from './screens/draft.js'
 import { closeTeam, renderTeam } from './screens/team.js'
 import { renderClubhouse } from './screens/clubhouse.js'
 import { renderMatchup } from './screens/matchup.js'
 import { closePopup } from './popup.js'
 import { routeFromHash } from './router.js'
+import { deskMenu, placeFromRoute, seasonIdFromRoute } from './menu.js'
 import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
@@ -24,6 +23,110 @@ const { prompt, setCoach, setTeam, setTabs } = drawField(field, {
 
 let coachName = ''
 let rulesVersion = null
+let coachTeams = null
+let teamsRequest = 0
+let rememberedSeasonId = ''
+let rememberedTeamId = ''
+let nextSection = ''
+let holdHeader = false
+
+function counted(value, one, many) {
+  const count = Number(value) || 0
+  return `${count} ${count === 1 ? one : many}`
+}
+
+function menuTeam(row) {
+  const season = Array.isArray(row.seasons) ? row.seasons[0] : row.seasons
+  return {
+    id: row.id,
+    name: row.name,
+    seasonId: row.season_id,
+    season: season?.name || 'SEASON',
+    purse: `${counted(row.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(row.reputation, 'REPUTATION', 'REPUTATION')}`,
+  }
+}
+
+function openSeasonIdFor(route) {
+  const place = placeFromRoute(route)
+  if (place === 'list') return ''
+  return seasonIdFromRoute(route) || rememberedSeasonId
+}
+
+function teamIdFor(route) {
+  const openSeasonId = openSeasonIdFor(route)
+  if (!openSeasonId || rememberedSeasonId !== openSeasonId) return ''
+  return rememberedTeamId
+}
+
+function coachDetails() {
+  return {
+    rulesVersion,
+    teams: coachTeams,
+    teamId: teamIdFor(routeFromHash(window.location.hash)),
+    onPickTeam(team) {
+      rememberedSeasonId = team.seasonId
+      rememberedTeamId = team.id
+      holdHeader = true
+      setTeam({ name: team.name, season: team.season, purse: team.purse })
+      go(`/seasons/${team.seasonId}`)
+    },
+    onOpen() {
+      refreshTeams()
+    },
+  }
+}
+
+function applyTabs() {
+  if (!coachName) return
+  const route = routeFromHash(window.location.hash)
+  const place = placeFromRoute(route)
+  const items = deskMenu({
+    openSeasonId: openSeasonIdFor(route),
+    teamId: teamIdFor(route),
+    place,
+  })
+  setTabs(items.map((item) => ({
+    label: item.label,
+    on: item.on,
+    onClick() {
+      if (item.on && !item.section) return
+      if (item.section) nextSection = item.section
+      go(item.path)
+    },
+  })))
+}
+
+function onDesk(ctx) {
+  const seasonId = ctx?.seasonId || ''
+  const teamId = ctx?.teamId || ''
+  if (seasonId === rememberedSeasonId && teamId === rememberedTeamId) return
+  rememberedSeasonId = seasonId
+  rememberedTeamId = teamId
+  applyTabs()
+  setCoach(coachName, coachDetails())
+  if (teamId && Array.isArray(coachTeams) && !coachTeams.some((team) => team.id === teamId)) refreshTeams()
+}
+
+async function refreshTeams() {
+  const request = ++teamsRequest
+  const session = await supabase.auth.getSession()
+  if (request !== teamsRequest) return
+  const userId = session.data.session?.user?.id
+  if (!userId) {
+    coachTeams = []
+    if (coachName) setCoach(coachName, coachDetails())
+    return
+  }
+  const { data, error } = await supabase
+    .from('teams')
+    .select('id, name, bottlecaps, reputation, season_id, seasons!teams_season_id_fkey(name)')
+    .eq('coach_id', userId)
+    .order('created_at', { ascending: false })
+  if (request !== teamsRequest) return
+  if (error) return
+  coachTeams = (data || []).map(menuTeam)
+  if (coachName) setCoach(coachName, coachDetails())
+}
 
 async function loadRules() {
   const { data, error } = await supabase
@@ -39,92 +142,53 @@ async function loadRules() {
 }
 
 function renderDesk() {
-  setCoach(coachName)
   closePopup()
   closeDraft()
   closeTeam()
   if (!coachName) {
+    setCoach('')
     setTeam(null)
     return
   }
   const route = routeFromHash(window.location.hash)
-  const onTeam = typeof route === 'string' && route.startsWith('/teams/')
-  if (!onTeam) setTeam(null)
-  if (route === '/seasons') {
+  if (!holdHeader) setTeam(null)
+  holdHeader = false
+  setCoach(coachName, coachDetails())
+  applyTabs()
+  const place = placeFromRoute(route)
+  if (place === 'list' || place === 'seasons') {
+    const section = nextSection
+    nextSection = ''
     renderSeasons(prompt, {
-      onBack: () => go('/'),
+      seasonId: seasonIdFromRoute(route),
+      section,
       onOpen: (id) => go(`/seasons/${id}`),
-      setTabs,
-    })
-    return
-  }
-  if (typeof route === 'string' && route.endsWith('/draft')) {
-    const seasonId = route.slice('/seasons/'.length, -'/draft'.length)
-    renderDraft(prompt, {
-      seasonId,
-      onBack: () => go(`/seasons/${seasonId}`),
-      setTabs,
-    })
-    return
-  }
-  if (typeof route === 'string' && route.startsWith('/seasons/')) {
-    const seasonId = route.slice('/seasons/'.length)
-    renderSeason(prompt, {
-      seasonId,
-      onBack: () => go('/seasons'),
-      onOpenDraft: () => go(`/seasons/${seasonId}/draft`),
-      onOpenTeam: (id) => go(`/teams/${id}`),
-      onOpenClubhouse: (id) => go(`/teams/${id}/clubhouse`),
+      onOpenDraft: () => go(`/seasons/${seasonIdFromRoute(route)}/draft`),
       onOpenGame: (id) => go(`/games/${id}`),
-      setTabs,
       setTeam,
+      onDesk,
     })
     return
   }
-  if (typeof route === 'string' && route.startsWith('/games/')) {
+  if (place === 'draft') {
+    const seasonId = seasonIdFromRoute(route)
+    renderDraft(prompt, { seasonId, setTeam, onDesk })
+    return
+  }
+  if (place === 'matchup') {
     const gameId = route.slice('/games/'.length)
-    renderMatchup(prompt, {
-      gameId,
-      onBack: (seasonId) => go(seasonId ? `/seasons/${seasonId}` : '/seasons'),
-      onOpenTeam: (id) => go(`/teams/${id}`),
-      onOpenClubhouse: (id) => go(`/teams/${id}/clubhouse`),
-      setTabs,
-      setTeam,
-    })
+    renderMatchup(prompt, { gameId, setTeam, onDesk })
     return
   }
-  if (typeof route === 'string' && route.startsWith('/teams/') && route.endsWith('/clubhouse')) {
+  if (place === 'clubhouse') {
     const teamId = route.slice('/teams/'.length, -'/clubhouse'.length)
-    renderClubhouse(prompt, {
-      teamId,
-      onBack: () => go('/'),
-      onOpenSeason: (id) => go(`/seasons/${id}`),
-      onOpenDraft: (id) => go(`/seasons/${id}/draft`),
-      onOpenRoster: () => go(`/teams/${teamId}`),
-      setTabs,
-      setTeam,
-    })
+    renderClubhouse(prompt, { teamId, setTeam, onDesk })
     return
   }
-  if (typeof route === 'string' && route.startsWith('/teams/')) {
+  if (place === 'roster') {
     const teamId = route.slice('/teams/'.length)
-    renderTeam(prompt, {
-      teamId,
-      onBack: () => go('/'),
-      onOpenSeason: (id) => go(`/seasons/${id}`),
-      onOpenDraft: (id) => go(`/seasons/${id}/draft`),
-      onOpenClubhouse: () => go(`/teams/${teamId}/clubhouse`),
-      setTabs,
-      setTeam,
-    })
-    return
+    renderTeam(prompt, { teamId, setTeam, onDesk })
   }
-  renderHome(prompt, {
-    rulesVersion,
-    onSeasons: () => go('/seasons'),
-    onOpenTeam: (id) => go(`/teams/${id}`),
-    setTabs,
-  })
 }
 
 function go(path) {
@@ -142,6 +206,7 @@ const desk = createDesk(prompt, {
     }
     renderDesk()
     loadRules()
+    refreshTeams()
   },
 })
 
@@ -161,6 +226,12 @@ supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       coachName = ''
       rulesVersion = null
+      coachTeams = null
+      teamsRequest += 1
+      rememberedSeasonId = ''
+      rememberedTeamId = ''
+      nextSection = ''
+      holdHeader = false
       closeDraft()
       closeTeam()
       closePopup()

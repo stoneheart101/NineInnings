@@ -40,13 +40,6 @@ function coachName(team) {
   return profile?.coach_name || 'COACH'
 }
 
-function draftIsOpen(season, draft) {
-  if (season?.status !== 'drafting' || !draft) return false
-  const order = Array.isArray(draft.order) ? draft.order : []
-  const pickIndex = Number(draft.pick_index)
-  return order.length > 0 && Number.isInteger(pickIndex) && pickIndex < order.length
-}
-
 function draftComplete(season, draft) {
   if (season?.status !== 'drafting' || !draft) return false
   const order = Array.isArray(draft.order) ? draft.order : []
@@ -74,9 +67,9 @@ function roundsLine(rounds) {
   return count === 1 ? 'THE DRAFT HAS 1 ROUND' : `THE DRAFT HAS ${count} ROUNDS`
 }
 
-export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam, onOpenClubhouse, onOpenGame, setTabs, setTeam }) {
+export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk }) {
   const token = String(Math.random())
-  prompt.dataset.paint = token
+  host.dataset.paint = token
   const state = {
     season: null,
     teams: [],
@@ -93,14 +86,15 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     games: [],
     gamesFailed: false,
     playError: '',
-    section: '',
+    section: section === 'teams' || section === 'schedule' || section === 'pool' ? section : '',
     loaded: false,
   }
 
   function paint() {
-    if (prompt.dataset.paint !== token) return
-    prompt.replaceChildren()
-    const season = state.loaded && !state.missing ? state.season : null
+    if (host.dataset.paint !== token || !host.isConnected) return
+    host.replaceChildren()
+    if (!state.loaded) return
+    const season = !state.missing ? state.season : null
     const myTeam = season ? state.teams.find((team) => team.coach_id === state.userId) : null
     if (myTeam && season) {
       setTeam?.({
@@ -111,45 +105,28 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     } else {
       setTeam?.(null)
     }
+    onDesk?.({ seasonId: season?.id || '', teamId: myTeam?.id || '' })
     const forming = season?.status === 'forming'
-    const draftOpen = season?.status === 'drafting' && (state.draftFailed || draftIsOpen(season, state.draft))
-    const tabs = [{ label: 'SEASONS', onClick: onBack }]
-    if (draftOpen) {
-      tabs.push({ label: 'THE DRAFT', onClick: () => onOpenDraft?.() })
-    }
-    if (myTeam) {
-      tabs.push({ label: 'THE ROSTER', onClick: () => onOpenTeam?.(myTeam.id) })
-      tabs.push({ label: 'CLUBHOUSE', onClick: () => onOpenClubhouse?.(myTeam.id) })
-    }
-    if (forming && season.commissioner_id === state.userId) {
-      tabs.push({ label: 'START THE DRAFT', disabled: state.busy, onClick: onStart })
-    }
     const canStart = Boolean(
       season
       && !state.draftFailed
       && draftComplete(season, state.draft)
       && season.commissioner_id === state.userId,
     )
-    if (canStart) {
-      tabs.push({ label: 'PLAY BALL', disabled: state.busy, onClick: onPlay })
-    }
-    setTabs?.(tabs)
-    prompt.append(el('h2', 'screen-name', 'SEASON'))
 
-    if (!state.loaded) return
     if (state.missing || !state.season) {
       const box = el('div', 'choices')
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
-      prompt.append(box)
+      host.append(box)
       return
     }
 
     if (forming && season.commissioner_id === state.userId) {
       const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
-      if (draftNote) prompt.append(el('p', 'alert', draftNote))
+      if (draftNote) host.append(el('p', 'alert', draftNote))
     }
-    if (canStart && state.playError) prompt.append(el('p', 'alert', state.playError))
+    if (canStart && state.playError) host.append(el('p', 'alert', state.playError))
 
     if (!state.section) {
       state.section = season.status === 'active' || state.games.length ? 'schedule' : 'teams'
@@ -167,13 +144,27 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     if (season.commissioner_id === state.userId) {
       box.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
     }
+    if (forming && season.commissioner_id === state.userId) {
+      const start = el('button', 'action', 'START THE DRAFT')
+      start.type = 'button'
+      start.disabled = state.busy
+      start.addEventListener('click', onStart)
+      box.append(start)
+    }
+    if (canStart) {
+      const play = el('button', 'action', 'PLAY BALL')
+      play.type = 'button'
+      play.disabled = state.busy
+      play.addEventListener('click', onPlay)
+      box.append(play)
+    }
     box.append(subtabs())
     if (state.section === 'teams') box.append(teamsBlock())
     else if (state.section === 'pool') box.append(poolBlock())
     else box.append(scheduleBlock())
 
     if (state.error) box.append(el('p', 'alert', state.error))
-    prompt.append(box)
+    host.append(box)
   }
 
   function subtabs() {
@@ -350,7 +341,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     state.section = 'schedule'
     paint()
     const { error } = await supabase.rpc('play_ball', { season_id: seasonId })
-    if (prompt.dataset.paint !== token) return
+    if (host.dataset.paint !== token || !host.isConnected) return
     state.busy = false
     if (error) {
       state.playError = (error.message || 'PLAY BALL DID NOT START.').toUpperCase()
@@ -366,7 +357,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
     state.draftError = ''
     paint()
     const { error } = await supabase.rpc('start_draft', { season_id: seasonId })
-    if (prompt.dataset.paint !== token) return
+    if (host.dataset.paint !== token || !host.isConnected) return
     state.busy = false
     if (error) {
       state.draftError = (error.message || 'THE DRAFT DID NOT START.').toUpperCase()
@@ -467,7 +458,7 @@ export function renderSeason(prompt, { seasonId, onBack, onOpenDraft, onOpenTeam
         .order('starts_at', { ascending: true })
         .order('id', { ascending: true }),
     ])
-    if (prompt.dataset.paint !== token) return
+    if (host.dataset.paint !== token || !host.isConnected) return
     state.userId = session.data.session?.user?.id ?? ''
     state.kids = null
     state.draftFailed = Boolean(draft.error)
