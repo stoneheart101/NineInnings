@@ -12,7 +12,7 @@ export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', draft
   const seasonPath = openSeasonId ? `/seasons/${openSeasonId}` : '/seasons'
   const joined = openSeasonId ? { path: seasonPath, section: 'details' } : { path: '/seasons', section: '' }
   return [
-    { id: 'seasons', label: 'SEASONS', path: seasonPath, section: '', on: place === 'list' || place === 'seasons' },
+    { id: 'seasons', label: 'SEASON', path: seasonPath, section: '', on: place === 'list' || place === 'seasons' },
     {
       id: 'draft',
       label: 'DRAFT',

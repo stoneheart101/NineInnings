@@ -5,9 +5,9 @@ import { deskMenu, draftIsActive, placeFromRoute, seasonIdFromRoute } from './me
 const SEASON = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const TEAM = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
-test('the seasons list sends every tab to the list, with SEASONS showing', () => {
+test('the seasons list sends every tab to the list, with SEASON showing', () => {
   const menu = deskMenu({ place: 'list' })
-  assert.deepEqual(menu.map((item) => item.label), ['SEASONS', 'DRAFT', 'ROSTER', 'CLUBHOUSE'])
+  assert.deepEqual(menu.map((item) => item.label), ['SEASON', 'DRAFT', 'ROSTER', 'CLUBHOUSE'])
   assert.deepEqual(menu.map((item) => item.path), ['/seasons', '/seasons', '/seasons', '/seasons'])
   assert.deepEqual(menu.map((item) => item.on), [true, false, false, false])
   assert.equal(menu[1].disabled, true)
@@ -57,7 +57,7 @@ test('a draft is active only while picks are still being made', () => {
   assert.equal(draftIsActive(season, { order: ['a', 'b'], pick_index: 2 }), false)
 })
 
-test('a game leaves the four tabs up and SEASONS returns to that season', () => {
+test('a game leaves the four tabs up and SEASON returns to that season', () => {
   const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'matchup' })
   assert.deepEqual(menu.map((item) => item.on), [false, false, false, false])
   assert.equal(menu[0].path, `/seasons/${SEASON}`)

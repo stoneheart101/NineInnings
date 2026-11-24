@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { dayLabel, forecastLine, forecastSentence, forecastShown } from '../forecast.js'
+import { dayLabel, forecastChances, forecastLine, forecastShown } from '../forecast.js'
 import { draftIsActive } from '../menu.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -142,7 +142,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       return
     }
 
-    if (!state.section) state.section = 'schedule'
+    if (!state.section) state.section = 'dashboard'
     const box = el('div', 'choices')
     box.append(subtabs())
     if (state.section === 'details') box.append(detailsBlock())
@@ -216,10 +216,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (Number.isNaN(when.getTime())) return null
     const button = el('button', 'next-game')
     button.type = 'button'
-    button.append(
-      el('span', 'game-date', `NEXT GAME ${clockLabel(when)}`),
-      el('span', 'game-forecast', forecastSentence(game)),
-    )
+    const foe = game.opponent || 'TEAM'
+    button.append(el('span', 'game-date', `NEXT GAME VS ${foe} · ${clockLabel(when)}`))
+    if (forecastShown(when)) {
+      const chances = forecastChances(game)
+      if (chances) button.append(el('span', 'game-forecast', chances))
+    }
     button.addEventListener('click', () => onOpenGame?.(game.id))
     return button
   }
@@ -401,11 +403,11 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     state.busy = false
     if (error) {
       state.playError = (error.message || 'PLAY BALL DID NOT START.').toUpperCase()
-      state.section = 'season'
+      state.section = 'details'
       paint()
       return
     }
-    state.section = 'schedule'
+    state.section = 'dashboard'
     await load()
   }
 

@@ -310,11 +310,16 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     const ids = (teams.data || []).map((team) => team.id).filter(Boolean)
     if (!ids.length) return { game: null, failed: false }
     const [homeRes, awayRes] = await Promise.all([
-      supabase.from('games').select('id, starts_at, weather').in('home_team_id', ids).eq('status', 'scheduled').eq('is_practice', false).order('starts_at', { ascending: true }).limit(1),
-      supabase.from('games').select('id, starts_at, weather').in('away_team_id', ids).eq('status', 'scheduled').eq('is_practice', false).order('starts_at', { ascending: true }).limit(1),
+      supabase.from('games').select('id, starts_at, weather, home_team_id, away_team_id').in('home_team_id', ids).eq('status', 'scheduled').eq('is_practice', false).order('starts_at', { ascending: true }).limit(1),
+      supabase.from('games').select('id, starts_at, weather, home_team_id, away_team_id').in('away_team_id', ids).eq('status', 'scheduled').eq('is_practice', false).order('starts_at', { ascending: true }).limit(1),
     ])
     if (homeRes.error || awayRes.error) return { game: null, failed: true }
-    return { game: earlierGame([...(homeRes.data || []), ...(awayRes.data || [])]), failed: false }
+    const game = earlierGame([...(homeRes.data || []), ...(awayRes.data || [])])
+    if (!game) return { game: null, failed: false }
+    const opponentId = ids.includes(game.home_team_id) ? game.away_team_id : game.home_team_id
+    const foe = await supabase.from('teams').select('name').eq('id', opponentId).maybeSingle()
+    if (foe.error) return { game: null, failed: true }
+    return { game: { ...game, opponent: foe.data?.name || 'TEAM' }, failed: false }
   }
 
   async function load() {
