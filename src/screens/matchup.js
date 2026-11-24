@@ -191,7 +191,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       setTeam?.({
         name: mine.name,
         season: state.season.name,
-        purse: `${counted(mine.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(mine.reputation, 'REPUTATION', 'REPUTATION')}`,
+        bottlecaps: mine.bottlecaps,
+        reputation: mine.reputation,
       })
     } else if (state.loaded) {
       setTeam?.(null)

@@ -5,6 +5,12 @@ function el(tag, className, text) {
   return node
 }
 
+function headerPurse(info) {
+  const caps = Number(info?.bottlecaps)
+  const rep = Number(info?.reputation)
+  return `${Number.isFinite(caps) ? caps : 0} BC · ${Number.isFinite(rep) ? rep : 0} REP`
+}
+
 const DIAMOND = `
   <svg viewBox="0 0 320 250" role="img" aria-label="NineInnings">
     <polygon points="24,22 296,22 232,156 160,228 88,156" fill="var(--field)" stroke="#fff" stroke-width="2"/>
@@ -27,12 +33,16 @@ const DIAMOND = `
   </svg>
 `
 
+export function signDiamond() {
+  const node = el('div', 'sign-diamond')
+  node.innerHTML = DIAMOND
+  return node
+}
+
 export function drawField(root, { onSignOut } = {}) {
   root.replaceChildren()
 
   const header = el('header', 'header')
-  const logo = el('div', 'logo')
-  logo.innerHTML = DIAMOND
   const teamInfo = el('div', 'team-info')
   teamInfo.hidden = true
   const corner = el('div', 'corner')
@@ -40,7 +50,7 @@ export function drawField(root, { onSignOut } = {}) {
   const userMenu = el('div', 'user-menu')
   userMenu.hidden = true
   corner.append(brand, userMenu)
-  header.append(logo, teamInfo, corner)
+  header.append(teamInfo, corner)
 
   const tabs = el('nav', 'tabs')
   tabs.hidden = true
@@ -84,7 +94,7 @@ export function drawField(root, { onSignOut } = {}) {
     teamInfo.append(
       el('p', 'team-name', info.name),
       el('p', 'team-season', info.season || 'SEASON'),
-      el('p', 'team-purse', info.purse || ''),
+      el('p', 'team-purse', headerPurse(info)),
     )
   }
 

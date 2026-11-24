@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { dayLabel, forecastLine, forecastShown } from '../forecast.js'
+import { dayLabel, forecastLine, forecastSentence, forecastShown } from '../forecast.js'
 import { draftIsActive } from '../menu.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -69,14 +69,22 @@ function roundsLine(rounds) {
 }
 
 function chosenSection(section) {
+  if (section === 'dashboard') return 'dashboard'
   if (section === 'details' || section === 'season' || section === 'teams') return 'details'
   if (section === 'schedule' || section === 'pool') return section
   return ''
 }
 
+function clockLabel(when) {
+  const hours = String(when.getUTCHours()).padStart(2, '0')
+  const minutes = String(when.getUTCMinutes()).padStart(2, '0')
+  return `${dayLabel(when)} · ${hours}:${minutes} UTC`
+}
+
 export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk, onOpenSlot }) {
   const token = String(Math.random())
   host.dataset.paint = token
+  const next = { ready: false, failed: false, game: null }
   const state = {
     season: null,
     teams: [],
@@ -97,6 +105,14 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     loaded: false,
   }
 
+  host.setNext = (info) => {
+    if (host.dataset.paint !== token) return
+    next.ready = Boolean(info?.ready)
+    next.failed = Boolean(info?.failed)
+    next.game = info?.game || null
+    if (state.loaded && state.section === 'dashboard') paint()
+  }
+
   function paint() {
     if (host.dataset.paint !== token || !host.isConnected) return
     host.replaceChildren()
@@ -107,7 +123,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       setTeam?.({
         name: myTeam.name,
         season: season.name,
-        purse: `${counted(myTeam.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(myTeam.reputation, 'REPUTATION', 'REPUTATION')}`,
+        bottlecaps: myTeam.bottlecaps,
+        reputation: myTeam.reputation,
       })
     } else {
       setTeam?.(null)
@@ -130,7 +147,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     box.append(subtabs())
     if (state.section === 'details') box.append(detailsBlock())
     else if (state.section === 'pool') box.append(poolBlock())
-    else box.append(scheduleBlock())
+    else if (state.section === 'dashboard') {
+      const announcement = nextGameNode()
+      if (announcement) box.append(announcement)
+    } else box.append(scheduleBlock())
 
     if (state.error) box.append(el('p', 'alert', state.error))
     host.append(box)
@@ -147,7 +167,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const wrap = el('div', 'season-panel')
     const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
     wrap.append(
-      el('p', 'season-title', season.name),
       el('p', 'season-status', statusLabel(season, state.draftFailed ? null : state.draft)),
       el('p', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
       el('p', '', practiceLine(season.practice_every_days)),
@@ -188,9 +207,26 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return wrap
   }
 
+  function nextGameNode() {
+    if (!next.ready) return null
+    if (next.failed) return el('p', 'alert', 'THE NEXT GAME DID NOT LOAD')
+    const game = next.game
+    if (!game) return null
+    const when = new Date(game.starts_at)
+    if (Number.isNaN(when.getTime())) return null
+    const button = el('button', 'next-game')
+    button.type = 'button'
+    button.append(
+      el('span', 'game-date', `NEXT GAME ${clockLabel(when)}`),
+      el('span', 'game-forecast', forecastSentence(game)),
+    )
+    button.addEventListener('click', () => onOpenGame?.(game.id))
+    return button
+  }
+
   function subtabs() {
     const row = el('div', 'subtabs')
-    for (const [id, label] of [['schedule', 'SCHEDULE'], ['pool', 'THE POOL'], ['details', 'DETAILS']]) {
+    for (const [id, label] of [['dashboard', 'DASHBOARD'], ['schedule', 'SCHEDULE'], ['pool', 'THE POOL'], ['details', 'DETAILS']]) {
       const button = el('button', state.section === id ? 'on' : '', label)
       button.type = 'button'
       button.setAttribute('aria-pressed', state.section === id ? 'true' : 'false')

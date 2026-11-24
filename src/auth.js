@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { signDiamond } from './field.js'
 
 const COACH_NAME = /^[A-Z0-9][A-Z0-9 .'-]{0,23}$/
 
@@ -60,6 +61,7 @@ export function createDesk(prompt, hooks) {
   }
 
   function paint() {
+    prompt.classList.toggle('sign-in', state.mode === 'menu')
     if (state.mode === 'ready') return
     prompt.dataset.paint = String(Math.random())
     prompt.replaceChildren()
@@ -100,6 +102,7 @@ export function createDesk(prompt, hooks) {
     }
     state.mode = 'ready'
     state.coachName = profile.coach_name
+    prompt.classList.remove('sign-in')
     hooks.onNamed(profile.coach_name)
   }
 
@@ -166,7 +169,7 @@ export function createDesk(prompt, hooks) {
           signInWithGoogle()
         },
       }])
-      return null
+      return signDiamond()
     },
     coach() {
       useTabs([])
@@ -200,6 +203,7 @@ export function createDesk(prompt, hooks) {
         }
         state.mode = 'ready'
         state.coachName = coachName
+        prompt.classList.remove('sign-in')
         hooks.onNamed(coachName)
       }, el('p', '', 'ENTER COACH NAME'), name.wrap, actions(['SAVE'], ['SIGN OUT', signOut]))
     },

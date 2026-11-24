@@ -31,6 +31,8 @@ let drafting = false
 let draftingSeasonId = ''
 let nextSection = ''
 let holdHeader = false
+let pickActive = false
+let openingActive = false
 
 function counted(value, one, many) {
   const count = Number(value) || 0
@@ -44,6 +46,8 @@ function menuTeam(row) {
     name: row.name,
     seasonId: row.season_id,
     season: season?.name || 'SEASON',
+    bottlecaps: row.bottlecaps,
+    reputation: row.reputation,
     purse: `${counted(row.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(row.reputation, 'REPUTATION', 'REPUTATION')}`,
   }
 }
@@ -69,7 +73,12 @@ function coachDetails() {
       rememberedSeasonId = team.seasonId
       rememberedTeamId = team.id
       holdHeader = true
-      setTeam({ name: team.name, season: team.season, purse: team.purse })
+      setTeam({
+        name: team.name,
+        season: team.season,
+        bottlecaps: team.bottlecaps,
+        reputation: team.reputation,
+      })
       go(`/seasons/${team.seasonId}`)
     },
     onOpen() {
@@ -167,7 +176,42 @@ async function loadRules() {
   renderDesk()
 }
 
+async function activeSeasonId() {
+  const session = await supabase.auth.getSession()
+  const userId = session.data.session?.user?.id
+  if (!userId) return ''
+  const [seasons, teams] = await Promise.all([
+    supabase.from('seasons').select('id').eq('status', 'active').order('created_at', { ascending: false }),
+    supabase.from('teams').select('season_id').eq('coach_id', userId),
+  ])
+  if (seasons.error) return ''
+  const active = seasons.data || []
+  if (!active.length) return ''
+  const mine = new Set(teams.error ? [] : (teams.data || []).map((row) => row.season_id))
+  return (active.find((row) => mine.has(row.id)) || active[0]).id
+}
+
+async function openActiveSeason() {
+  prompt.classList.remove('sign-in')
+  prompt.replaceChildren()
+  setCoach(coachName, coachDetails())
+  applyTabs()
+  refreshTeams()
+  const id = await activeSeasonId()
+  if (!coachName) return
+  const route = routeFromHash(window.location.hash)
+  if (route !== '/' && route !== '/seasons') {
+    renderDesk()
+    loadRules()
+    return
+  }
+  if (id) go(`/seasons/${id}`)
+  else renderDesk()
+  loadRules()
+}
+
 function renderDesk() {
+  prompt.classList.remove('sign-in')
   closePopup()
   closeDraft()
   closeTeam()
@@ -231,6 +275,17 @@ const desk = createDesk(prompt, {
     if (routeFromHash(window.location.hash) == null) {
       history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/`)
     }
+    const route = routeFromHash(window.location.hash)
+    const landing = !pickActive && (route === '/' || route === '/seasons')
+    pickActive = true
+    if (landing) {
+      openingActive = true
+      openActiveSeason().finally(() => {
+        openingActive = false
+      })
+      return
+    }
+    if (openingActive) return
     renderDesk()
     loadRules()
     refreshTeams()
@@ -261,6 +316,8 @@ supabase.auth.onAuthStateChange((event, session) => {
       draftingSeasonId = ''
       nextSection = ''
       holdHeader = false
+      pickActive = false
+      openingActive = false
       closeDraft()
       closeTeam()
       closePopup()

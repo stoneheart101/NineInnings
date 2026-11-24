@@ -67,7 +67,7 @@ body {
   position: relative;
   z-index: 2;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px 12px;
   flex: 0 0 auto;
   min-width: 0;
@@ -104,6 +104,15 @@ body {
   max-width: 50%;
 }
 
+.brand,
+.team-info p,
+.coach-toggle {
+  line-height: 1.05;
+  font-size: 1em;
+  font-weight: 400;
+  font-family: inherit;
+}
+
 .brand {
   margin: 0;
   max-width: 100%;
@@ -111,21 +120,17 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: right;
-  font: inherit;
-  font-weight: 400;
-  line-height: 1.05;
 }
 
-.logo {
+.sign-diamond {
+  width: 80%;
   flex: 0 0 auto;
-  height: clamp(48px, 14cqi, 88px);
-  width: auto;
 }
 
-.logo svg {
+.sign-diamond svg {
   display: block;
-  height: 100%;
-  width: auto;
+  width: 100%;
+  height: auto;
 }
 
 .user-menu {
@@ -142,6 +147,7 @@ body {
   white-space: nowrap;
   text-align: right;
   color: var(--mark);
+  padding: 0;
 }
 
 .coach-menu {
@@ -235,6 +241,13 @@ body {
   overscroll-behavior: contain;
 }
 
+.prompt.sign-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .prompt p,
 .prompt form {
   margin: 0;
@@ -305,6 +318,12 @@ select:focus-visible {
   button {
     min-height: 44px;
     padding: 8px 10px;
+  }
+
+  .coach-toggle {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 0 8px;
   }
 }
 

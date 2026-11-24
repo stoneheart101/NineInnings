@@ -100,7 +100,8 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
     setTeam?.({
       name: state.team.name,
       season: season?.name || 'SEASON',
-      purse: `${counted(state.team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(state.team.reputation, 'REPUTATION', 'REPUTATION')}`,
+      bottlecaps: state.team.bottlecaps,
+      reputation: state.team.reputation,
     })
     if (state.error) box.append(el('p', 'alert', state.error))
     if (box.childNodes.length) prompt.append(box)

@@ -1,7 +1,6 @@
 import { supabase } from '../supabase.js'
 import { renderSeason } from './season.js'
 import { draftIsActive } from '../menu.js'
-import { dayLabel, forecastSentence } from '../forecast.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
@@ -21,12 +20,6 @@ function whole(value, min, max) {
 
 function cleanName(value) {
   return value.trim().replace(/\s+/g, ' ').toUpperCase()
-}
-
-function clockLabel(when) {
-  const hours = String(when.getUTCHours()).padStart(2, '0')
-  const minutes = String(when.getUTCMinutes()).padStart(2, '0')
-  return `${dayLabel(when)} · ${hours}:${minutes} UTC`
 }
 
 function earlierGame(rows) {
@@ -95,12 +88,10 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     prompt.replaceChildren()
 
     const box = el('div', 'choices')
-    const next = nextGameNode()
-    if (next) box.append(next)
-    if (state.loaded && !state.seasons.length) {
+    if (state.loaded && !state.seasons.length && !seasonId) {
       box.append(el('p', '', 'NO SEASONS YET'))
-    } else if (state.seasons.length) {
-      box.append(seasonId ? seasonRow() : seasonCards())
+    } else if (state.seasons.length && !seasonId) {
+      box.append(seasonCards())
     }
     if (state.loaded && !seasonId) {
       const control = openControl()
@@ -109,7 +100,7 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     } else if (state.error && !state.opening) {
       box.append(el('p', 'alert', state.error))
     }
-    prompt.append(box)
+    if (box.childNodes.length) prompt.append(box)
     if (!seasonId) {
       if (state.focusName) {
         state.focusName = false
@@ -119,6 +110,7 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     }
     if (keep) {
       prompt.append(keep)
+      keep.setNext?.(nextInfo())
       mountOpen(keep.querySelector('.open-season-slot'))
       return
     }
@@ -135,23 +127,11 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       onDesk,
       onOpenSlot: mountOpen,
     })
+    detail.setNext?.(nextInfo())
   }
 
-  function nextGameNode() {
-    if (!state.loaded) return null
-    if (state.nextFailed) return el('p', 'alert', 'THE NEXT GAME DID NOT LOAD')
-    const game = state.nextGame
-    if (!game) return null
-    const when = new Date(game.starts_at)
-    if (Number.isNaN(when.getTime())) return null
-    const button = el('button', 'next-game')
-    button.type = 'button'
-    button.append(
-      el('span', 'game-date', `NEXT GAME ${clockLabel(when)}`),
-      el('span', 'game-forecast', forecastSentence(game)),
-    )
-    button.addEventListener('click', () => onOpenGame?.(game.id))
-    return button
+  function nextInfo() {
+    return { ready: state.loaded, failed: state.nextFailed, game: state.nextGame }
   }
 
   function openControl() {
@@ -207,21 +187,6 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       list.append(card)
     }
     return list
-  }
-
-  function seasonRow() {
-    const row = el('div', 'season-row')
-    for (const season of state.seasons) {
-      const open = season.id === seasonId
-      const button = el('button', open ? 'season-chip on' : 'season-chip', season.name)
-      button.type = 'button'
-      if (open) button.setAttribute('aria-current', 'true')
-      button.addEventListener('click', () => {
-        if (!open) onOpen(season.id)
-      })
-      row.append(button)
-    }
-    return row
   }
 
   function form() {

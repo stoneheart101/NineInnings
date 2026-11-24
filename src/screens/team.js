@@ -103,7 +103,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     setTeam?.({
       name: state.team.name,
       season: season?.name || 'SEASON',
-      purse: `${counted(state.team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(state.team.reputation, 'REPUTATION', 'REPUTATION')}`,
+      bottlecaps: state.team.bottlecaps,
+      reputation: state.team.reputation,
     })
     const cap = Number(season?.roster_cap)
     if (Number.isInteger(cap) && state.kids.length >= cap) {
