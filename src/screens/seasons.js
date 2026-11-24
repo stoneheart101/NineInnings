@@ -1,5 +1,6 @@
 import { supabase } from '../supabase.js'
 import { renderSeason } from './season.js'
+import { draftIsActive } from '../menu.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
@@ -44,7 +45,7 @@ function statusLabel(season, draft) {
   return complete ? 'THE DRAFT IS COMPLETE' : season.status.toUpperCase()
 }
 
-export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, setTeam, onDesk }) {
+export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, setTeam, onDesk, onDrafting }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -59,6 +60,7 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     rounds: '10',
     loaded: false,
     opening: false,
+    focusName: false,
     drafts: {},
   }
 
@@ -66,37 +68,37 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     if (prompt.dataset.paint !== token) return
     const previous = prompt.querySelector(':scope > .season-detail')
     const keep = previous && previous.dataset.keep === token && previous.dataset.season === seasonId ? previous : null
+    if (state.loaded) {
+      const season = state.seasons.find((item) => item.id === seasonId)
+      onDrafting?.(seasonId || '', season ? draftIsActive(season, state.drafts[seasonId]) : false)
+    }
     prompt.replaceChildren()
-    const showForm = state.loaded && (state.seasons.length === 0 || state.opening)
 
     const box = el('div', 'choices')
     box.append(el('h2', 'screen-name', 'SEASONS'))
-    if (state.loaded && state.seasons.length && !showForm) {
-      const open = el('button', '', 'OPEN A SEASON')
-      open.type = 'button'
-      open.addEventListener('click', () => {
-        state.opening = true
-        state.error = ''
-        paint()
-        prompt.querySelector('[name="season-name"]')?.focus()
-      })
-      box.append(open)
-    }
-    if (showForm && state.seasons.length) box.append(form())
-
     if (state.loaded && !state.seasons.length) {
       box.append(el('p', '', 'NO SEASONS YET'))
     } else if (state.seasons.length) {
       box.append(seasonId ? seasonRow() : seasonCards())
     }
-
-    if (showForm && !state.seasons.length) box.append(form())
-
-    if (state.error) box.append(el('p', 'alert', state.error))
+    if (state.loaded && !seasonId) {
+      const control = openControl()
+      if (control) box.append(control)
+      if (state.error) box.append(el('p', 'alert', state.error))
+    } else if (state.error && !state.opening) {
+      box.append(el('p', 'alert', state.error))
+    }
     prompt.append(box)
-    if (!seasonId) return
+    if (!seasonId) {
+      if (state.focusName) {
+        state.focusName = false
+        prompt.querySelector('[name="season-name"]')?.focus()
+      }
+      return
+    }
     if (keep) {
       prompt.append(keep)
+      mountOpen(keep.querySelector('.open-season-slot'))
       return
     }
     const detail = el('div', 'season-detail')
@@ -110,7 +112,34 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       onOpenGame,
       setTeam,
       onDesk,
+      onOpenSlot: mountOpen,
     })
+  }
+
+  function openControl() {
+    if (!state.loaded) return null
+    if (!state.seasons.length || state.opening) return form()
+    const open = el('button', '', 'OPEN A SEASON')
+    open.type = 'button'
+    open.addEventListener('click', () => {
+      state.opening = true
+      state.error = ''
+      state.focusName = true
+      paint()
+    })
+    return open
+  }
+
+  function mountOpen(slot) {
+    if (!slot) return
+    slot.replaceChildren()
+    const control = openControl()
+    if (control) slot.append(control)
+    if (state.error && state.opening) slot.append(el('p', 'alert', state.error))
+    if (state.focusName) {
+      state.focusName = false
+      slot.querySelector('[name="season-name"]')?.focus()
+    }
   }
 
   function seasonCards() {

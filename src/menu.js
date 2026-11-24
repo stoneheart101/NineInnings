@@ -1,10 +1,26 @@
 // The signed-in menu is the same four tabs on every screen.
-export function deskMenu({ openSeasonId = '', teamId = '', place = 'list' } = {}) {
+export function draftIsActive(season, draft) {
+  if (season?.status !== 'drafting') return false
+  if (!draft) return true
+  const order = Array.isArray(draft.order) ? draft.order : []
+  const pickIndex = Number(draft.pick_index)
+  const complete = order.length > 0 && Number.isInteger(pickIndex) && pickIndex >= order.length
+  return !complete
+}
+
+export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', drafting = false } = {}) {
   const seasonPath = openSeasonId ? `/seasons/${openSeasonId}` : '/seasons'
-  const joined = openSeasonId ? { path: seasonPath, section: 'teams' } : { path: '/seasons', section: '' }
+  const joined = openSeasonId ? { path: seasonPath, section: 'details' } : { path: '/seasons', section: '' }
   return [
     { id: 'seasons', label: 'SEASONS', path: seasonPath, section: '', on: place === 'list' || place === 'seasons' },
-    { id: 'draft', label: 'DRAFT', path: openSeasonId ? `/seasons/${openSeasonId}/draft` : '/seasons', section: '', on: place === 'draft' },
+    {
+      id: 'draft',
+      label: 'DRAFT',
+      path: openSeasonId ? `/seasons/${openSeasonId}/draft` : '/seasons',
+      section: '',
+      on: place === 'draft',
+      disabled: !openSeasonId || !drafting,
+    },
     {
       id: 'roster',
       label: 'ROSTER',

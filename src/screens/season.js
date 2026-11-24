@@ -1,6 +1,7 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
 import { dayLabel, forecastLine, forecastShown } from '../forecast.js'
+import { draftIsActive } from '../menu.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -67,7 +68,13 @@ function roundsLine(rounds) {
   return count === 1 ? 'THE DRAFT HAS 1 ROUND' : `THE DRAFT HAS ${count} ROUNDS`
 }
 
-export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk }) {
+function chosenSection(section) {
+  if (section === 'details' || section === 'season' || section === 'teams') return 'details'
+  if (section === 'schedule' || section === 'pool') return section
+  return ''
+}
+
+export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, setTeam, onDesk, onOpenSlot }) {
   const token = String(Math.random())
   host.dataset.paint = token
   const state = {
@@ -86,7 +93,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     games: [],
     gamesFailed: false,
     playError: '',
-    section: section === 'season' || section === 'teams' || section === 'schedule' || section === 'pool' ? section : '',
+    section: chosenSection(section),
     loaded: false,
   }
 
@@ -105,7 +112,11 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     } else {
       setTeam?.(null)
     }
-    onDesk?.({ seasonId: season?.id || '', teamId: myTeam?.id || '' })
+    onDesk?.({
+      seasonId: season?.id || '',
+      teamId: myTeam?.id || '',
+      drafting: draftIsActive(season, state.draftFailed ? null : state.draft),
+    })
     if (state.missing || !state.season) {
       const box = el('div', 'choices')
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
@@ -114,13 +125,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       return
     }
 
-    if (!state.section) {
-      state.section = season.status === 'active' || state.games.length ? 'schedule' : 'teams'
-    }
+    if (!state.section) state.section = 'schedule'
     const box = el('div', 'choices')
     box.append(subtabs())
-    if (state.section === 'season') box.append(seasonBlock())
-    else if (state.section === 'teams') box.append(teamsBlock())
+    if (state.section === 'details') box.append(detailsBlock())
     else if (state.section === 'pool') box.append(poolBlock())
     else box.append(scheduleBlock())
 
@@ -169,10 +177,22 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return wrap
   }
 
+  function detailsBlock() {
+    const wrap = el('div', 'season-panel')
+    wrap.append(...seasonBlock().childNodes, ...teamsBlock().childNodes)
+    if (onOpenSlot) {
+      const slot = el('div', 'open-season-slot')
+      wrap.append(slot)
+      onOpenSlot(slot)
+    }
+    return wrap
+  }
+
   function subtabs() {
     const row = el('div', 'subtabs')
-    for (const [id, label] of [['season', 'SEASON'], ['teams', 'TEAMS'], ['schedule', 'SCHEDULE'], ['pool', 'THE POOL']]) {
-      const button = el('button', state.section === id ? 'on' : '', label)
+    for (const [id, label] of [['schedule', 'SCHEDULE'], ['pool', 'THE POOL'], ['details', 'DETAILS']]) {
+      const marked = [state.section === id ? 'on' : '', id === 'details' ? 'end' : ''].filter(Boolean).join(' ')
+      const button = el('button', marked, label)
       button.type = 'button'
       button.setAttribute('aria-pressed', state.section === id ? 'true' : 'false')
       button.addEventListener('click', () => {

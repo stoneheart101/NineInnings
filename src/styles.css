@@ -274,8 +274,8 @@ select:focus-visible {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  button:hover,
-  button:focus-visible,
+  button:not(.season-chip):not(:disabled):hover,
+  button:not(.season-chip):not(:disabled):focus-visible,
   .season-card:hover,
   .season-card:focus-visible {
     background: var(--mark);
@@ -531,6 +531,20 @@ button.action {
   color: var(--mark);
 }
 
+.subtabs button.end {
+  margin-left: auto;
+}
+
+.open-season-slot {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.tabs button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .sex-m {
   color: #9ec9ff;
 }
@@ -625,14 +639,12 @@ button.action {
 @media (hover: hover) and (pointer: fine) {
   .sort-row button.on:hover,
   .sort-row button.on:focus-visible,
-  .tabs button.on:hover,
-  .tabs button.on:focus-visible,
+  .tabs button.on:hover:not(:disabled),
+  .tabs button.on:focus-visible:not(:disabled),
   .subtabs button.on:hover,
   .subtabs button.on:focus-visible,
   .coach-team.on:hover,
-  .coach-team.on:focus-visible,
-  .season-chip.on:hover,
-  .season-chip.on:focus-visible {
+  .coach-team.on:focus-visible {
     color: #000;
   }
 }

@@ -27,6 +27,8 @@ let coachTeams = null
 let teamsRequest = 0
 let rememberedSeasonId = ''
 let rememberedTeamId = ''
+let drafting = false
+let draftingSeasonId = ''
 let nextSection = ''
 let holdHeader = false
 
@@ -76,19 +78,32 @@ function coachDetails() {
   }
 }
 
+function assignDrafting(seasonId, active) {
+  const nextId = seasonId || ''
+  const next = Boolean(nextId && active)
+  if (next === drafting && nextId === draftingSeasonId) return false
+  drafting = next
+  draftingSeasonId = nextId
+  return true
+}
+
 function applyTabs() {
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
   const place = placeFromRoute(route)
+  const openSeasonId = openSeasonIdFor(route)
   const items = deskMenu({
-    openSeasonId: openSeasonIdFor(route),
+    openSeasonId,
     teamId: teamIdFor(route),
     place,
+    drafting: openSeasonId !== '' && openSeasonId === draftingSeasonId && drafting,
   })
   setTabs(items.map((item) => ({
     label: item.label,
     on: item.on,
+    disabled: item.disabled,
     onClick() {
+      if (item.disabled) return
       if (item.on && !item.section) return
       if (item.section) nextSection = item.section
       go(item.path)
@@ -96,10 +111,21 @@ function applyTabs() {
   })))
 }
 
+function onDrafting(seasonId, active) {
+  if (!assignDrafting(seasonId, active)) return
+  applyTabs()
+}
+
 function onDesk(ctx) {
   const seasonId = ctx?.seasonId || ''
   const teamId = ctx?.teamId || ''
-  if (seasonId === rememberedSeasonId && teamId === rememberedTeamId) return
+  const reported = ctx != null && Object.hasOwn(ctx, 'drafting')
+  const draftChanged = reported
+    ? assignDrafting(seasonId, ctx.drafting)
+    : seasonId !== rememberedSeasonId
+      ? assignDrafting(seasonId, false)
+      : false
+  if (seasonId === rememberedSeasonId && teamId === rememberedTeamId && !draftChanged) return
   rememberedSeasonId = seasonId
   rememberedTeamId = teamId
   applyTabs()
@@ -167,6 +193,7 @@ function renderDesk() {
       onOpenGame: (id) => go(`/games/${id}`),
       setTeam,
       onDesk,
+      onDrafting,
     })
     return
   }
@@ -230,6 +257,8 @@ supabase.auth.onAuthStateChange((event, session) => {
       teamsRequest += 1
       rememberedSeasonId = ''
       rememberedTeamId = ''
+      drafting = false
+      draftingSeasonId = ''
       nextSection = ''
       holdHeader = false
       closeDraft()

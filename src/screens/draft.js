@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { draftIsActive } from '../menu.js'
 import { statChip } from '../stat-color.js'
 
 const STATS = [
@@ -76,7 +77,11 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk }) {
     } else {
       setTeam?.(null)
     }
-    onDesk?.({ seasonId: state.season?.id || '', teamId: mine?.id || '' })
+    onDesk?.({
+      seasonId: state.season?.id || '',
+      teamId: mine?.id || '',
+      drafting: draftIsActive(state.season, state.draft),
+    })
     if (state.missing || !state.season) {
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
