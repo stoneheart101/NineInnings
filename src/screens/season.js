@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { dayLabel, forecastChances, forecastLine, forecastShown } from '../forecast.js'
+import { dayLabel, forecastChances, forecastShown } from '../forecast.js'
 import { draftIsActive } from '../menu.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -53,19 +53,25 @@ function statusLabel(season, draft) {
   return season.status.toUpperCase()
 }
 
-function practiceLine(days) {
+function fact(label, value) {
+  const row = el('div', 'fact')
+  row.append(el('span', 'fact-label', label), el('span', '', value))
+  return row
+}
+
+function practiceValue(days) {
   const count = Number(days)
-  return `PRACTICE GAMES EVERY ${count === 1 ? '1 DAY' : `${count} DAYS`}`
+  return count === 1 ? 'EVERY DAY' : `EVERY ${count} DAYS`
 }
 
-function weeksLine(weeks) {
+function weeksValue(weeks) {
   const count = Number(weeks)
-  return count === 1 ? 'THE SEASON LASTS 1 WEEK' : `THE SEASON LASTS ${count} WEEKS`
+  return count === 1 ? '1 WEEK' : `${count} WEEKS`
 }
 
-function roundsLine(rounds) {
+function roundsValue(rounds) {
   const count = Number(rounds)
-  return count === 1 ? 'THE DRAFT HAS 1 ROUND' : `THE DRAFT HAS ${count} ROUNDS`
+  return count === 1 ? '1 ROUND' : `${count} ROUNDS`
 }
 
 function chosenSection(section) {
@@ -164,18 +170,21 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       && draftComplete(season, state.draft)
       && season.commissioner_id === state.userId,
     )
-    const wrap = el('div', 'season-panel')
+    const wrap = el('div', 'season-facts')
     const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
-    wrap.append(
-      el('p', 'season-status', statusLabel(season, state.draftFailed ? null : state.draft)),
-      el('p', '', `OFFICIAL GAMES ON ${days.join(' ')}`),
-      el('p', '', practiceLine(season.practice_every_days)),
-      el('p', '', weeksLine(season.weeks)),
-      el('p', '', roundsLine(season.draft_rounds)),
+    const facts = el('div', 'facts')
+    facts.append(
+      fact('OFFICIAL DAYS', days.join(' ') || 'NONE'),
+      fact('PRACTICE', practiceValue(season.practice_every_days)),
+      fact('WEEKS', weeksValue(season.weeks)),
+      fact('DRAFT', roundsValue(season.draft_rounds)),
     )
-    if (season.commissioner_id === state.userId) {
-      wrap.append(el('p', 'season-role', 'YOU ARE THE COMMISSIONER'))
-    }
+    if (season.commissioner_id === state.userId) facts.append(fact('COMMISSIONER', 'YOU'))
+    wrap.append(
+      el('p', 'season-title', season.name),
+      el('p', 'season-status', statusLabel(season, state.draftFailed ? null : state.draft)),
+      facts,
+    )
     if (forming && season.commissioner_id === state.userId) {
       const draftNote = state.draftError || (state.teams.length < 2 ? 'NEED AT LEAST TWO TEAMS' : '')
       if (draftNote) wrap.append(el('p', 'alert', draftNote))
@@ -197,8 +206,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   }
 
   function detailsBlock() {
-    const wrap = el('div', 'season-panel')
-    wrap.append(...seasonBlock().childNodes, ...teamsBlock().childNodes)
+    const wrap = el('div', 'details')
+    wrap.append(seasonBlock(), teamsBlock())
     if (onOpenSlot) {
       const slot = el('div', 'open-season-slot')
       wrap.append(slot)
@@ -246,6 +255,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const season = state.season
     const myTeam = state.teams.find((team) => team.coach_id === state.userId)
     const wrap = el('div', 'season-panel')
+    wrap.append(el('p', 'section', 'TEAMS'))
     if (!state.teams.length) {
       wrap.append(el('p', '', 'NO TEAMS YET'))
     } else {
@@ -314,14 +324,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       for (const game of day.games) {
         playing.add(game.home_team_id)
         playing.add(game.away_team_id)
+        const card = el('div', 'game-box')
         const match = el('button', 'game-match')
         match.type = 'button'
         match.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
         match.addEventListener('click', () => onOpenGame?.(game.id))
-        block.append(match)
+        card.append(match)
         if (forecastShown(day.when)) {
-          block.append(el('p', 'game-forecast', forecastLine(game)))
+          const chances = forecastChances(game)
+          if (chances) card.append(el('p', 'game-forecast', chances))
         }
+        block.append(card)
       }
       for (const team of state.teams) {
         if (!playing.has(team.id)) block.append(el('p', 'game-bye', `${team.name} HAS A BYE`))

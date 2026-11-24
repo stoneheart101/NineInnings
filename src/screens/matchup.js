@@ -1,5 +1,5 @@
 import { supabase } from '../supabase.js'
-import { dayLabel, forecastLine, forecastShown } from '../forecast.js'
+import { dayLabel, forecastChances, forecastShown } from '../forecast.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
 
@@ -219,7 +219,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     match.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
     box.append(match)
     if (!Number.isNaN(when.getTime()) && forecastShown(when)) {
-      box.append(el('p', 'game-forecast', forecastLine(game)))
+      const chances = forecastChances(game)
+      if (chances) box.append(el('p', 'game-forecast', chances))
     }
 
     if (game.status === 'final' || game.result) {
