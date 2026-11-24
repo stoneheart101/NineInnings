@@ -25,35 +25,16 @@ const { prompt, setCoach, setTeam, setTabs } = drawField(field, {
 
 let coachName = ''
 let rulesVersion = null
-let coachTeams = null
-let teamsRequest = 0
+let coachSeasons = null
+let seasonsRequest = 0
 let rememberedSeasonId = ''
 let rememberedTeamId = ''
 let drafting = false
 let draftingSeasonId = ''
 let nextSection = ''
 let menuSection = ''
-let holdHeader = false
 let pickActive = false
 let openingActive = false
-
-function counted(value, one, many) {
-  const count = Number(value) || 0
-  return `${count} ${count === 1 ? one : many}`
-}
-
-function menuTeam(row) {
-  const season = Array.isArray(row.seasons) ? row.seasons[0] : row.seasons
-  return {
-    id: row.id,
-    name: row.name,
-    seasonId: row.season_id,
-    season: season?.name || 'SEASON',
-    bottlecaps: row.bottlecaps,
-    reputation: row.reputation,
-    purse: `${counted(row.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(row.reputation, 'REPUTATION', 'REPUTATION')}`,
-  }
-}
 
 function openSeasonIdFor(route) {
   const place = placeFromRoute(route)
@@ -68,24 +49,18 @@ function teamIdFor(route) {
 }
 
 function coachDetails() {
+  const route = routeFromHash(window.location.hash)
   return {
     rulesVersion,
-    teams: coachTeams,
-    teamId: teamIdFor(routeFromHash(window.location.hash)),
-    onPickTeam(team) {
-      rememberedSeasonId = team.seasonId
-      rememberedTeamId = team.id
-      holdHeader = true
-      setTeam({
-        name: team.name,
-        season: team.season,
-        bottlecaps: team.bottlecaps,
-        reputation: team.reputation,
-      })
-      go(`/seasons/${team.seasonId}`)
+    seasons: coachSeasons,
+    seasonId: openSeasonIdFor(route),
+    onPickSeason(season) {
+      const current = openSeasonIdFor(routeFromHash(window.location.hash))
+      if (season.id !== current) nextSection = 'dashboard'
+      go(`/seasons/${season.id}`)
     },
     onOpen() {
-      refreshTeams()
+      refreshSeasons()
     },
     onOpenSeason({ reopen }) {
       openSeasonPopup({
@@ -159,27 +134,30 @@ function onDesk(ctx) {
   if (reportedSection) menuSection = section
   applyTabs()
   setCoach(coachName, coachDetails())
-  if (teamId && Array.isArray(coachTeams) && !coachTeams.some((team) => team.id === teamId)) refreshTeams()
+  if (seasonId && Array.isArray(coachSeasons) && !coachSeasons.some((season) => season.id === seasonId)) refreshSeasons()
 }
 
-async function refreshTeams() {
-  const request = ++teamsRequest
+async function refreshSeasons() {
+  const request = ++seasonsRequest
   const session = await supabase.auth.getSession()
-  if (request !== teamsRequest) return
+  if (request !== seasonsRequest) return
   const userId = session.data.session?.user?.id
   if (!userId) {
-    coachTeams = []
+    coachSeasons = []
     if (coachName) setCoach(coachName, coachDetails())
     return
   }
   const { data, error } = await supabase
-    .from('teams')
-    .select('id, name, bottlecaps, reputation, season_id, seasons!teams_season_id_fkey(name)')
-    .eq('coach_id', userId)
+    .from('seasons')
+    .select('id, name, status')
     .order('created_at', { ascending: false })
-  if (request !== teamsRequest) return
+  if (request !== seasonsRequest) return
   if (error) return
-  coachTeams = (data || []).map(menuTeam)
+  coachSeasons = (data || []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    status: String(row.status || '').toUpperCase(),
+  }))
   if (coachName) setCoach(coachName, coachDetails())
 }
 
@@ -216,7 +194,7 @@ async function openActiveSeason() {
   prompt.replaceChildren()
   setCoach(coachName, coachDetails())
   applyTabs()
-  refreshTeams()
+  refreshSeasons()
   const id = await activeSeasonId()
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
@@ -241,8 +219,7 @@ function renderDesk() {
     return
   }
   const route = routeFromHash(window.location.hash)
-  if (!holdHeader) setTeam(null)
-  holdHeader = false
+  setTeam(null)
   setCoach(coachName, coachDetails())
   applyTabs()
   const place = placeFromRoute(route)
@@ -316,7 +293,7 @@ const desk = createDesk(prompt, {
     if (openingActive) return
     renderDesk()
     loadRules()
-    refreshTeams()
+    refreshSeasons()
   },
 })
 
@@ -336,15 +313,14 @@ supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       coachName = ''
       rulesVersion = null
-      coachTeams = null
-      teamsRequest += 1
+      coachSeasons = null
+      seasonsRequest += 1
       rememberedSeasonId = ''
       rememberedTeamId = ''
       drafting = false
       draftingSeasonId = ''
       nextSection = ''
       menuSection = ''
-      holdHeader = false
       pickActive = false
       openingActive = false
       closeDraft()

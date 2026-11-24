@@ -8,6 +8,7 @@ import { rankStandings } from '../standings.js'
 import { closeDraft, renderDraft } from './draft.js'
 import { closePopup, mountPopup } from '../popup.js'
 import { sameSeasonName } from '../season-name.js'
+import { nextOfficial } from '../next-game.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -95,7 +96,6 @@ function shownSection(section, draftingNow) {
 export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, onOpenReport, onLeave, setTeam, onDesk }) {
   const token = String(Math.random())
   host.dataset.paint = token
-  const next = { ready: false, failed: false, game: null }
   const state = {
     season: null,
     teams: [],
@@ -125,14 +125,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     deleteError: '',
     section: chosenSection(section),
     loaded: false,
-  }
-
-  host.setNext = (info) => {
-    if (host.dataset.paint !== token) return
-    next.ready = Boolean(info?.ready)
-    next.failed = Boolean(info?.failed)
-    next.game = info?.game || null
-    if (state.loaded && state.section === 'dashboard') paint()
   }
 
   function paint() {
@@ -329,12 +321,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   function futureBlock() {
     const wrap = el('div', 'played-list')
     wrap.append(el('p', 'section', 'CURRENT'))
-    if (!next.ready) return wrap
-    if (next.failed) {
+    const team = myTeam()
+    if (!team) {
+      wrap.append(el('p', '', 'NO GAME COMING'))
+      return wrap
+    }
+    if (state.gamesFailed) {
       wrap.append(el('p', 'alert', 'THE NEXT GAME DID NOT LOAD'))
       return wrap
     }
-    wrap.append(nextGameNode() || el('p', '', 'NO GAME COMING'))
+    const game = nextOfficial(state.games, team.id, state.teams)
+    wrap.append(game ? nextGameNode(game) : el('p', '', 'NO GAME COMING'))
     return wrap
   }
 
@@ -359,9 +356,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return wrap
   }
 
-  function nextGameNode() {
-    const game = next.game
-    if (!game) return null
+  function nextGameNode(game) {
     const when = new Date(game.starts_at)
     if (Number.isNaN(when.getTime())) return null
     const open = () => onOpenGame?.(game.id)

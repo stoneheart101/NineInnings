@@ -11,17 +11,6 @@ function el(tag, className, text) {
   return node
 }
 
-function earlierGame(rows) {
-  let best = null
-  for (const row of rows) {
-    if (!row?.id) continue
-    const at = Date.parse(row.starts_at)
-    if (Number.isNaN(at)) continue
-    if (!best || at < best.at) best = { row, at }
-  }
-  return best?.row ?? null
-}
-
 function practiceLine(days) {
   const count = Number(days)
   return `PRACTICE GAMES EVERY ${count === 1 ? '1 DAY' : `${count} DAYS`}`
@@ -60,8 +49,6 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     error: '',
     loaded: false,
     drafts: {},
-    nextGame: null,
-    nextFailed: false,
   }
 
   function paint() {
@@ -85,7 +72,6 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     if (!seasonId) return
     if (keep) {
       prompt.append(keep)
-      keep.setNext?.(nextInfo())
       return
     }
     const detail = el('div', 'season-detail')
@@ -102,11 +88,6 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       setTeam,
       onDesk,
     })
-    detail.setNext?.(nextInfo())
-  }
-
-  function nextInfo() {
-    return { ready: state.loaded, failed: state.nextFailed, game: state.nextGame }
   }
 
   function seasonCards() {
@@ -146,29 +127,10 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     return list
   }
 
-  async function loadNext(userId) {
-    if (!userId) return { game: null, failed: false }
-    const teams = await supabase.from('teams').select('id').eq('coach_id', userId)
-    if (teams.error) return { game: null, failed: true }
-    const ids = (teams.data || []).map((team) => team.id).filter(Boolean)
-    if (!ids.length) return { game: null, failed: false }
-    const [homeRes, awayRes] = await Promise.all([
-      supabase.from('games').select('id, starts_at, weather, home_team_id, away_team_id').in('home_team_id', ids).eq('status', 'scheduled').eq('is_practice', false).order('starts_at', { ascending: true }).limit(1),
-      supabase.from('games').select('id, starts_at, weather, home_team_id, away_team_id').in('away_team_id', ids).eq('status', 'scheduled').eq('is_practice', false).order('starts_at', { ascending: true }).limit(1),
-    ])
-    if (homeRes.error || awayRes.error) return { game: null, failed: true }
-    const game = earlierGame([...(homeRes.data || []), ...(awayRes.data || [])])
-    if (!game) return { game: null, failed: false }
-    const opponentId = ids.includes(game.home_team_id) ? game.away_team_id : game.home_team_id
-    const foe = await supabase.from('teams').select('name').eq('id', opponentId).maybeSingle()
-    if (foe.error) return { game: null, failed: true }
-    return { game: { ...game, opponent: foe.data?.name || 'TEAM' }, failed: false }
-  }
-
   async function load() {
     const session = await supabase.auth.getSession()
     const userId = session.data.session?.user?.id ?? ''
-    const [seasons, drafts, next] = await Promise.all([
+    const [seasons, drafts] = await Promise.all([
       supabase
         .from('seasons')
         .select('id, name, commissioner_id, status, official_weekdays, practice_every_days, weeks, draft_rounds')
@@ -176,11 +138,8 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       supabase
         .from('draft_state')
         .select('season_id, pick_index, order'),
-      loadNext(userId),
     ])
     state.userId = userId
-    state.nextGame = next.game
-    state.nextFailed = next.failed
     state.drafts = {}
     if (!drafts.error) {
       for (const row of drafts.data || []) state.drafts[row.season_id] = row

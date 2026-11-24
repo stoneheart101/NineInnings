@@ -161,14 +161,14 @@ body {
   margin: 0;
 }
 
-.coach-teams {
+.coach-seasons {
   display: grid;
   min-width: 0;
   max-height: min(40dvh, 16rem);
   overflow: auto;
 }
 
-.coach-team {
+.coach-season {
   display: grid;
   width: 100%;
   max-width: 100%;
@@ -210,7 +210,7 @@ body {
 .tabs button.on:not(:disabled),
 .subtabs button.on,
 .sort-row button.on,
-.coach-team.on {
+.coach-season.on {
   background: var(--mark);
   color: #000;
 }

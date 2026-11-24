@@ -101,28 +101,27 @@ export function drawField(root, { onSignOut } = {}) {
     if (details.rulesVersion != null) {
       body.append(el('p', 'coach-rules', `RULES v${details.rulesVersion}`))
     }
-    const teams = details.teams
-    if (Array.isArray(teams) && teams.length) {
-      const list = el('div', 'coach-teams')
-      for (const team of teams) {
-        const open = team.id === details.teamId
-        const button = el('button', open ? 'coach-team on' : 'coach-team', '')
+    const seasons = details.seasons
+    if (Array.isArray(seasons) && seasons.length) {
+      const list = el('div', 'coach-seasons')
+      for (const season of seasons) {
+        const open = season.id === details.seasonId
+        const button = el('button', open ? 'coach-season on' : 'coach-season', '')
         button.type = 'button'
         if (open) button.setAttribute('aria-current', 'true')
         button.append(
-          el('span', 'coach-team-name', team.name),
-          el('span', '', team.season || 'SEASON'),
-          el('span', '', team.purse || ''),
+          el('span', 'coach-season-name', season.name),
+          el('span', '', season.status || ''),
         )
         button.addEventListener('click', () => {
           closePopup()
-          details.onPickTeam?.(team)
+          details.onPickSeason?.(season)
         })
         list.append(button)
       }
       body.append(list)
-    } else if (Array.isArray(teams)) {
-      body.append(el('p', 'coach-empty', 'NO TEAMS YET'))
+    } else if (Array.isArray(seasons)) {
+      body.append(el('p', 'coach-empty', 'NO SEASONS YET'))
     }
     const openSeason = el('button', '', 'OPEN A SEASON')
     openSeason.type = 'button'
