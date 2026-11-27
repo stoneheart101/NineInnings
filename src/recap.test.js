@@ -77,6 +77,7 @@ test('the recap starts with the forecast and says the break once', () => {
   assert.match(heard, /THE TOP OF THE FIRST\. GOONIES SCORES 2 RUNS\. PAT SMITH PUTS ONE UP AND THE WIND TAKES IT OUT\./)
   assert.equal(heard.includes('THE TOP OF THE SECOND'), false)
   assert.match(heard, /THE BOTTOM OF THE FOURTH\. RIVER RATS SCORES 2 RUNS\. HERE COMES SAM LEE, AND THE SLIDE ARRIVES IN A TANGLE\./)
+  assert.equal(parts.at(-2), 'FOR GOONIES, PAT SMITH FINISHES WITH 3 HITS, 2 DRIVEN IN, AND 1 RUN. FOR RIVER RATS, SAM LEE FINISHES WITH 2 HITS, 1 DRIVEN IN, AND 2 RUNS.')
   assert.equal(parts.at(-1), 'AND THAT IS YOUR BALLGAME. RIVER RATS TAKES IT AT HOME, 3 TO 2.')
   assert.equal(recapClose(called), parts.at(-1))
 })

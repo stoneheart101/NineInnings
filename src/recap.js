@@ -235,11 +235,11 @@ export function recapParts(game, extras = {}) {
     const park = parkLine(weather)
     if (park) parts.push(park)
   }
-  const highlights = highlightLine(result)
-  if (highlights) parts.push(highlights)
   const advantages = advantageLine(result, extras.used, extras.perkIds)
   if (advantages) parts.push(advantages)
   parts.push(...rundown(result, shift))
+  const highlights = highlightLine(result)
+  if (highlights) parts.push(highlights)
   const close = callLine(result)
   if (close) parts.push(close)
   return parts
