@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { clockLabel, clockLabel12, dayKey, forecastShown, forecastWords, weatherReport } from '../forecast.js'
+import { clockLabel, clockLabel12, dayKey, forecastReport, weatherReport } from '../forecast.js'
 import { neighborhoodPlayLabel, practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, historyPage, narrativeLead, playedGames, playedScore, vsSides } from '../played.js'
@@ -495,10 +495,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const foe = game.opponent || 'TEAM'
     head.append(el('span', 'card-title', `NEXT GAME VS ${foe}`), cardAction('OPEN', open))
     card.append(head, el('p', 'game-date', clockLabel(when)))
-    if (forecastShown(when)) {
-      const words = forecastWords(game)
-      if (words) card.append(el('p', 'game-forecast', words))
-    }
+    const words = forecastReport(game)
+    if (words) card.append(el('p', 'game-forecast', words))
     return card
   }
 
@@ -820,11 +818,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         card.append(head)
         const when = new Date(game.starts_at)
         if (!Number.isNaN(when.getTime())) card.append(el('p', 'game-date', clockLabel(when)))
-        if (forecastShown(day.when)) {
-          const played = game.status === 'final' || Boolean(game.result)
-          const words = played ? weatherReport(game) : forecastWords(game)
-          if (words) card.append(el('p', 'game-forecast', words))
-        }
+        const played = game.status === 'final' || Boolean(game.result)
+        const words = played ? weatherReport(game) : forecastReport(game)
+        if (words) card.append(el('p', 'game-forecast', words))
         block.append(card)
       }
       for (const team of state.teams) {

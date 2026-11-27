@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { actualLine, clockLabel, clockLabel12, dayKey, dayLabel, forecastLine, forecastShown, forecastWords, weatherReport } from './forecast.js'
+import { actualLine, clockLabel, clockLabel12, dayKey, dayLabel, forecastLine, forecastReport, weatherReport } from './forecast.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
@@ -40,48 +40,71 @@ test('the schedule groups a game by the local calendar day', () => {
   assert.equal(dayKey(when), '2026-11-24')
 })
 
-const sample = {
+const called = {
   weather: {
-    sentence: 'Light rain and wind in',
+    forecast: {
+      report: 'From the weather desk. This one looks mostly cloudy and cool, about 58 degrees, with a light breeze blowing in.',
+    },
+    opening: {
+      report: 'Live from the park. Mostly cloudy and cool, 54 degrees, with a light breeze blowing in. It is a little cooler than we called.',
+    },
+    shift: {
+      inning: 4,
+      half: 'top',
+      report: 'We break in from the top of the fourth. A light rain has started. 54 degrees, with a light breeze blowing in.',
+    },
+  },
+}
+
+const played = {
+  weather: {
+    sky: 'heavy_rain',
+    wind: 'cross',
+    heat: 'cold',
+    sentence: 'Heavy rain, crosswind, and cold',
     chances: [
-      { type: 'CLEAR', percent: 40 },
-      { type: 'LIGHT RAIN', percent: 70 },
-      { type: 'FOG', percent: 9 },
-      { type: 'WIND IN', percent: 70 },
-      { type: 'HOT AND HUMID', percent: 15 },
+      { type: 'CLEAR', percent: 100 },
+      { type: 'LIGHT RAIN', percent: 14 },
+      { type: 'COLD', percent: 11 },
     ],
   },
 }
 
-test('an upcoming forecast is words, highest chance first, with no percents', () => {
-  const line = forecastWords(sample)
-  assert.equal(line, 'LIGHT RAIN, WIND IN, CLEAR, AND HOT AND HUMID')
+test('a future game reads the stored forecast as a desk report', () => {
+  const line = forecastReport(called)
+  assert.equal(line, 'FROM THE WEATHER DESK. THIS ONE LOOKS MOSTLY CLOUDY AND COOL, ABOUT 58 DEGREES, WITH A LIGHT BREEZE BLOWING IN.')
   assert.equal(line.includes('%'), false)
-  assert.equal(forecastWords({ weather: { chances: [{ type: 'fog', percent: 10 }] } }), 'FOG')
-  assert.equal(forecastWords({ weather: { chances: [{ type: 'FOG', percent: 9 }] } }), '')
-  assert.equal(forecastWords({ weather: { chances: [{ type: 'COLD', percent: 12 }, { type: 'CLEAR', percent: 80 }] } }), 'CLEAR AND COLD')
-  assert.equal(forecastWords({}), '')
+  assert.equal(forecastReport({}), '')
+  assert.equal(forecastReport({ weather: { forecast: { report: '  ' } } }), '')
 })
 
-test('a finished game reads the stored weather sentence', () => {
-  assert.equal(weatherReport(sample), 'LIGHT RAIN AND WIND IN')
-  assert.equal(weatherReport(sample).includes('%'), false)
+test('a played game reads the park report and a top or bottom break-in', () => {
+  const line = weatherReport(called)
+  assert.equal(line.includes('LIVE FROM THE PARK'), true)
+  assert.equal(line.includes('WE BREAK IN FROM THE TOP OF THE FOURTH'), true)
+  assert.equal(line.includes('%'), false)
+  assert.equal(weatherReport({
+    weather: {
+      opening: { report: 'Live from the park. Clear and mild, 68 degrees, and the air is still.' },
+      shift: null,
+    },
+  }), 'LIVE FROM THE PARK. CLEAR AND MILD, 68 DEGREES, AND THE AIR IS STILL.')
+})
+
+test('a game already played reads a desk report from the stored sky, wind, and heat', () => {
+  const line = weatherReport(played)
+  assert.equal(line, 'LIVE FROM THE PARK. HEAVY RAIN AND COLD, WITH A STEADY WIND ACROSS THE DIAMOND.')
+  assert.equal(line.includes('%'), false)
+  assert.equal(line.includes('CLEAR'), false)
   assert.equal(weatherReport({ weather: { sentence: '  ' } }), '')
-  assert.equal(weatherReport({ weather: { chances: sample.weather.chances } }), '')
   assert.equal(weatherReport({}), '')
 })
 
-test('a review names the forecast and the actual weather apart', () => {
-  assert.equal(forecastLine(sample), 'FORECAST · LIGHT RAIN, WIND IN, CLEAR, AND HOT AND HUMID')
-  assert.equal(actualLine(sample), 'ACTUAL · LIGHT RAIN AND WIND IN')
+test('a review names the forecast and the park report apart', () => {
+  assert.equal(forecastLine(called), forecastReport(called))
+  assert.equal(actualLine(called), weatherReport(called))
+  assert.equal(forecastLine(played), '')
+  assert.equal(actualLine(played), weatherReport(played))
   assert.equal(forecastLine({}), '')
   assert.equal(actualLine({}), '')
-  assert.equal(forecastLine({ weather: { sentence: 'Clear' } }), '')
-  assert.equal(actualLine({ weather: { chances: sample.weather.chances } }), '')
-})
-
-test('a forecast shows through the tenth day and stays off after that', () => {
-  const now = new Date('2026-11-27T15:00:00.000Z')
-  assert.equal(forecastShown(new Date('2026-12-07T15:00:00.000Z'), now), true)
-  assert.equal(forecastShown(new Date('2026-12-08T15:00:00.000Z'), now), false)
 })

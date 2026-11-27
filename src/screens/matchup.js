@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
-import { clockLabel, forecastShown, forecastWords } from '../forecast.js'
+import { clockLabel, forecastReport } from '../forecast.js'
 import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
 import { filledNine, filledOrder } from '../nine.js'
@@ -161,8 +161,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
     if (summary) matchNodes.push(...reviewNotes(game))
-    else if (!Number.isNaN(when.getTime()) && forecastShown(when)) {
-      const words = forecastWords(game)
+    else {
+      const words = forecastReport(game)
       if (words) matchNodes.push(el('p', 'game-forecast', words))
     }
     const homeLock = state.locks.find((row) => row.team_id === game.home_team_id)

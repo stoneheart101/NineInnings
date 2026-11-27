@@ -23,49 +23,66 @@ export function clockLabel12(when) {
   return `${dayLabel(when)} · ${hour}:${minutes} ${suffix}`
 }
 
-function rankedChances(game) {
-  const chances = game?.weather?.chances
-  if (!Array.isArray(chances)) return []
-  const ranked = []
-  chances.forEach((row, index) => {
-    const type = typeof row?.type === 'string' ? row.type.trim().toUpperCase() : ''
-    const percent = Number(row?.percent)
-    if (!type || !Number.isInteger(percent) || percent < 10) return
-    ranked.push({ type, percent, index })
-  })
-  ranked.sort((left, right) => right.percent - left.percent || left.index - right.index)
-  return ranked
+function clean(value) {
+  if (typeof value !== 'string') return ''
+  return value.trim().toUpperCase()
 }
 
-function joinWords(parts) {
-  if (parts.length === 0) return ''
-  if (parts.length === 1) return parts[0]
-  if (parts.length === 2) return `${parts[0]} AND ${parts[1]}`
-  return `${parts.slice(0, -1).join(', ')}, AND ${parts[parts.length - 1]}`
+function skyWords(sky) {
+  if (sky === 'clear') return 'CLEAR'
+  if (sky === 'partly') return 'PARTLY CLOUDY'
+  if (sky === 'cloudy') return 'MOSTLY CLOUDY'
+  if (sky === 'light_rain') return 'LIGHT RAIN'
+  if (sky === 'heavy_rain') return 'HEAVY RAIN'
+  if (sky === 'fog') return 'FOG'
+  return ''
 }
 
-export function forecastWords(game) {
-  return joinWords(rankedChances(game).map((row) => row.type))
+function heatWords(heat) {
+  if (heat === 'cold') return 'COLD'
+  if (heat === 'cool') return 'COOL'
+  if (heat === 'mild') return 'MILD'
+  if (heat === 'warm') return 'WARM'
+  if (heat === 'hot') return 'HOT'
+  return ''
+}
+
+function windWords(wind, speed) {
+  if (wind === 'calm' || !wind) return 'AND THE AIR IS STILL'
+  const breeze = speed === 'breeze'
+  const kind = breeze ? 'A LIGHT BREEZE' : 'A STEADY WIND'
+  if (wind === 'in') return `WITH ${kind} BLOWING IN`
+  if (wind === 'out') return `WITH ${kind} BLOWING OUT`
+  if (wind === 'cross') return `WITH ${kind} ACROSS THE DIAMOND`
+  return ''
+}
+
+function legacyDesk(weather) {
+  if (!weather || typeof weather !== 'object') return ''
+  const sky = skyWords(weather.sky)
+  const heat = heatWords(weather.heat)
+  const wind = windWords(weather.wind, weather.wind_speed)
+  if (!sky || !heat || !wind) return clean(weather.sentence)
+  return `LIVE FROM THE PARK. ${sky} AND ${heat}, ${wind}.`
+}
+
+export function forecastReport(game) {
+  return clean(game?.weather?.forecast?.report)
 }
 
 export function weatherReport(game) {
-  const sentence = game?.weather?.sentence
-  if (typeof sentence !== 'string') return ''
-  return sentence.trim().toUpperCase()
+  const opening = clean(game?.weather?.opening?.report)
+  if (opening) {
+    const shift = clean(game?.weather?.shift?.report)
+    return shift ? `${opening} ${shift}` : opening
+  }
+  return legacyDesk(game?.weather)
 }
 
 export function forecastLine(game) {
-  const words = forecastWords(game)
-  return words ? `FORECAST · ${words}` : ''
+  return forecastReport(game)
 }
 
 export function actualLine(game) {
-  const words = weatherReport(game)
-  return words ? `ACTUAL · ${words}` : ''
-}
-
-export function forecastShown(when, now = new Date()) {
-  const day = Math.floor(when.getTime() / 86400000)
-  const today = Math.floor(now.getTime() / 86400000)
-  return day - today <= 10
+  return weatherReport(game)
 }
