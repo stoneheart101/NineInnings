@@ -246,8 +246,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       && season.commissioner_id === state.userId,
     )
     const card = el('div', 'card')
-    const head = el('div', 'card-head')
-    head.append(el('span', 'card-title', season.name))
     const actions = el('div', 'card-actions')
     const days = (season.official_weekdays || []).map((day) => DAYS[day] || '').filter(Boolean)
     const facts = el('div', 'facts')
@@ -268,9 +266,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         paint()
       }))
     }
-    if (actions.childNodes.length) head.append(actions)
+    if (actions.childNodes.length) card.append(actions)
     card.append(
-      head,
       el('p', 'season-status', statusLabel(season, state.draftFailed ? null : state.draft)),
       facts,
     )
@@ -338,10 +335,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   function detailsBlock() {
     const wrap = el('div', 'details')
     const table = standingsBlock()
-    wrap.append(el('p', 'section', 'CURRENT SEASON'))
-    wrap.append(seasonBlock())
+    wrap.append(el('p', 'section', state.season.name))
     if (table) wrap.append(table)
     wrap.append(teamsBlock())
+    wrap.append(seasonBlock())
     return wrap
   }
 
@@ -501,14 +498,15 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return best
   }
 
-  function playButton(label, onPlay, disabled) {
+  function playLink(label, onPlay, disabled) {
     const button = el('button', '', label)
     button.type = 'button'
     button.disabled = disabled
-    button.addEventListener('click', onPlay)
-    const actions = el('div', 'card-actions')
-    actions.append(button)
-    return actions
+    button.addEventListener('click', () => {
+      if (button.disabled) return
+      onPlay()
+    })
+    return button
   }
 
   function playCards() {
@@ -531,25 +529,24 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     )
     const wrap = el('div', 'play-cards')
     if (state.lineupFailed) wrap.append(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
-    const practice = el('div', 'card')
-    const practiceHead = el('div', 'card-head')
-    practiceHead.append(
-      el('span', 'card-title', 'PLAY A GAME VS THE NEIGHBORHOOD RABBLE'),
-      playButton('PLAY', () => startScrimmage('start_practice', 'practice', !gate.open || !full), !gate.open || busy || !full),
-    )
-    practice.append(practiceHead)
+    const practice = el('div', 'play-link')
+    practice.append(playLink(
+      'PLAY A GAME VS THE NEIGHBORHOOD RABBLE',
+      () => startScrimmage('start_practice', 'practice', !gate.open || !full),
+      !gate.open || busy || !full,
+    ))
     if (gate.note) practice.append(el('p', state.gamesFailed ? 'alert' : '', gate.note))
     const practiceWhy = scrimmageReason({ busy, open: gate.open, full, known })
     if (practiceWhy) practice.append(el('p', 'why', practiceWhy))
     if (state.scrimmageKind === 'practice' && state.scrimmageError) practice.append(el('p', 'alert', state.scrimmageError))
-    const dev = el('div', 'card')
-    const devHead = el('div', 'card-head')
+    const dev = el('div', 'play-link')
     const devActive = season?.status === 'active'
-    devHead.append(
-      el('span', 'card-title', 'PLAY A DEV GAME'),
-      playButton('PLAY', () => startScrimmage('start_dev_game', 'dev', !devActive || !full), !devActive || busy || !full),
-    )
-    dev.append(devHead, el('p', '', 'DOES NOT START THE PRACTICE WAIT'))
+    dev.append(playLink(
+      'PLAY A DEV GAME',
+      () => startScrimmage('start_dev_game', 'dev', !devActive || !full),
+      !devActive || busy || !full,
+    ))
+    dev.append(el('p', '', 'DOES NOT START THE PRACTICE WAIT'))
     if (!devActive) dev.append(el('p', '', 'PRACTICE STARTS WHEN THE SEASON DOES'))
     const devWhy = scrimmageReason({ busy, open: devActive, full, known })
     if (devWhy) dev.append(el('p', 'why', devWhy))
@@ -731,9 +728,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         const head = el('div', 'card-head')
         head.append(el('span', 'card-title', team.name))
         card.append(head, el('span', '', coachName(team)))
-        if (team.coach_id === state.userId) {
-          card.append(el('span', 'season-role', 'YOUR TEAM'))
-        }
         list.append(card)
       }
       wrap.append(list)
@@ -1181,9 +1175,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         if (price.climbing) card.append(el('p', '', 'THIS BREAK IS FOR CLUBS THAT ARE STILL CLIMBING'))
         if (price.likesBench) card.append(el('p', '', 'LIKES A CLUB THAT IS NOT IN FIRST'))
         if (bid) {
-          card.append(el('p', '', 'BIDDING'))
-          card.append(el('p', '', highBidLine(bid)))
-          if (joined) card.append(el('p', '', 'YOU ARE IN THIS BID'))
+          const bidding = el('div', 'card bid-box')
+          bidding.append(el('p', '', 'BIDDING'), el('p', '', highBidLine(bid)))
+          if (joined) bidding.append(el('p', '', 'YOU ARE IN THIS BID'))
+          card.append(bidding)
         }
       }
     }

@@ -625,6 +625,20 @@ button.action {
   width: 100%;
 }
 
+.play-link {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  justify-items: start;
+}
+
+.card.bid-box {
+  justify-self: center;
+  width: max-content;
+  max-width: 100%;
+  text-align: center;
+}
+
 .choices.dashboard {
   gap: clamp(14px, 2.4vw, 24px);
 }
