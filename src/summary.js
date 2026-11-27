@@ -1,5 +1,5 @@
 import { boxScore, usedGroups } from './box.js'
-import { recapParts } from './recap.js'
+import { recapMarks, recapParts, recapPieces } from './recap.js'
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -67,11 +67,32 @@ function dayCopy(text) {
   return block
 }
 
+function painted(text, marks) {
+  const node = el('p', '')
+  for (const piece of recapPieces(text, marks)) {
+    if (!piece.tone) node.append(document.createTextNode(piece.text))
+    else node.append(el('span', piece.tone === 'mine' ? 'recap-mine' : 'recap-foe', piece.text))
+  }
+  return node
+}
+
+export function sidedTitle(first, second, myTeamId) {
+  const title = el('span', 'game-match')
+  const playing = myTeamId && (myTeamId === first?.id || myTeamId === second?.id)
+  const name = (side) => {
+    if (!playing) return document.createTextNode(side?.name || 'TEAM')
+    return el('span', side?.id === myTeamId ? 'recap-mine' : 'recap-foe', side?.name || 'TEAM')
+  }
+  title.append(name(first), document.createTextNode(' VS '), name(second))
+  return title
+}
+
 export function reviewNotes(game, extras) {
   const parts = recapParts(game, extras)
   if (parts.length) {
+    const marks = recapMarks(game, extras?.myTeamId)
     const block = el('div', 'day-copy')
-    for (const part of parts) block.append(el('p', '', part))
+    for (const part of parts) block.append(painted(part, marks))
     return [block]
   }
   const day = dayCopy(game?.narrative)

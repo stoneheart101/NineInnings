@@ -600,6 +600,18 @@ input.num {
   margin-top: 0.75em;
 }
 
+.card.recap-card {
+  background: #000;
+}
+
+.recap-mine {
+  color: #7eb6ff;
+}
+
+.recap-foe {
+  color: #ffb15a;
+}
+
 .side-box > .section:first-child,
 .box-score > .section:first-child,
 .used-items > .section:first-child {

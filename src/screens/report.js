@@ -1,7 +1,7 @@
 import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
 import { clockLabel } from '../forecast.js'
-import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
+import { headed, reviewNotes, scoreNodes, sidedTitle, usedNodes } from '../summary.js'
 import { homePerkForGame, homePerkIdsForGame } from '../home-perk.js'
 import { vsSides } from '../played.js'
 
@@ -83,19 +83,21 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
       matchNodes.push(...reviewNotes(game, {
         used: state.usedFailed ? [] : state.used,
         perkIds: homePerkIdsForGame(perkArgs),
+        myTeamId: state.myTeam?.id || '',
       }))
     } else {
       const fieldLine = homePerkForGame(perkArgs)
       if (fieldLine) matchNodes.push(el('p', '', fieldLine))
     }
-    const matchTitle = el('span', 'game-match')
     const [first, second] = vsSides(
       { id: game.away_team_id, name: sideName(game.away_team_id) },
       { id: game.home_team_id, name: sideName(game.home_team_id) },
       state.myTeam?.id || '',
     )
-    matchTitle.append(document.createTextNode(`${first.name} VS ${second.name}`))
-    box.append(headed('matchup-card', matchTitle, matchNodes))
+    const matchTitle = finished
+      ? sidedTitle(first, second, state.myTeam?.id || '')
+      : el('span', 'game-match', `${first.name} VS ${second.name}`)
+    box.append(headed(finished ? 'matchup-card recap-card' : 'matchup-card', matchTitle, matchNodes))
 
     if (!finished) {
       box.append(el('p', '', 'THIS GAME HAS NOT BEEN PLAYED'))

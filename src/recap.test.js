@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { recapClose, recapParts } from './recap.js'
+import { recapClose, recapMarks, recapParts, recapPieces } from './recap.js'
 
 const away = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const home = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
@@ -98,6 +98,26 @@ test('a stored day with no forecast is one park line', () => {
     'LIVE FROM THE PARK. HEAVY RAIN AND COLD, WITH A STEADY WIND ACROSS THE DIAMOND.',
     'AND WE ARE STILL EVEN, 0 TO 0.',
   ])
+})
+
+test('this coach is blue and the other side is orange', () => {
+  const text = 'FOR NEIGHBORHOOD, ELI ELLIS FINISHES WITH 1 HIT. FOR SPITBALLZ, CARA ALI FINISHES WITH 2 HITS. AND THAT IS YOUR BALLGAME. SPITBALLZ TAKES IT AT HOME, 1 TO 0.'
+  const pieces = recapPieces(text, [
+    { name: 'Spitballz', tone: 'mine' },
+    { name: 'Cara Ali', tone: 'mine' },
+    { name: 'Neighborhood', tone: 'foe' },
+    { name: 'Eli Ellis', tone: 'foe' },
+    { name: 'Ali', tone: 'mine' },
+  ])
+  assert.deepEqual(pieces.filter((piece) => piece.tone === 'mine').map((piece) => piece.text), ['SPITBALLZ', 'CARA ALI', 'SPITBALLZ'])
+  assert.deepEqual(pieces.filter((piece) => piece.tone === 'foe').map((piece) => piece.text), ['NEIGHBORHOOD', 'ELI ELLIS'])
+  assert.equal(pieces.map((piece) => piece.text).join(''), text)
+  const marks = recapMarks(called, home)
+  assert.equal(marks.find((mark) => mark.name === 'RIVER RATS')?.tone, 'mine')
+  assert.equal(marks.find((mark) => mark.name === 'SAM LEE')?.tone, 'mine')
+  assert.equal(marks.find((mark) => mark.name === 'GOONIES')?.tone, 'foe')
+  assert.equal(marks.find((mark) => mark.name === 'PAT SMITH')?.tone, 'foe')
+  assert.deepEqual(recapMarks(called, 'cccccccc-cccc-cccc-cccc-cccccccccccc'), [])
 })
 
 test('a game with no line has no recap', () => {

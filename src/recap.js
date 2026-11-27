@@ -248,3 +248,78 @@ export function recapParts(game, extras = {}) {
 export function recapClose(game) {
   return callLine(game?.result)
 }
+
+function sideNames(result, teamId) {
+  const names = []
+  const side = result?.away?.team_id === teamId ? result.away : result?.home?.team_id === teamId ? result.home : null
+  const team = clean(side?.name)
+  if (team) names.push(team)
+  for (const row of Array.isArray(result?.lines) ? result.lines : []) {
+    if (row?.team_id !== teamId) continue
+    const name = clean(row?.name)
+    if (name) names.push(name)
+  }
+  return names
+}
+
+export function recapMarks(game, myTeamId) {
+  const result = game?.result
+  if (!result || !myTeamId) return []
+  const awayId = result.away?.team_id
+  const homeId = result.home?.team_id
+  const mineId = myTeamId === awayId || myTeamId === homeId ? myTeamId : ''
+  if (!mineId) return []
+  const foeId = mineId === awayId ? homeId : awayId
+  const marks = []
+  for (const name of sideNames(result, mineId)) marks.push({ name, tone: 'mine' })
+  for (const name of sideNames(result, foeId)) marks.push({ name, tone: 'foe' })
+  return marks
+}
+
+function boundary(text, index) {
+  return index < 0 || index >= text.length || !/[A-Z0-9']/.test(text[index])
+}
+
+export function recapPieces(text, marks) {
+  const source = typeof text === 'string' ? text : ''
+  const list = []
+  const seen = new Set()
+  for (const mark of marks || []) {
+    const name = clean(mark?.name)
+    const tone = mark?.tone === 'mine' || mark?.tone === 'foe' ? mark.tone : ''
+    if (!tone || name.length < 2 || seen.has(`${tone}:${name}`)) continue
+    seen.add(`${tone}:${name}`)
+    list.push({ name, tone })
+  }
+  list.sort((left, right) => right.name.length - left.name.length || left.name.localeCompare(right.name))
+  const upper = source.toUpperCase()
+  const pieces = []
+  let plain = ''
+  const flush = () => {
+    if (!plain) return
+    pieces.push({ text: plain, tone: '' })
+    plain = ''
+  }
+  let index = 0
+  while (index < source.length) {
+    let hit = null
+    for (const mark of list) {
+      if (!upper.startsWith(mark.name, index)) continue
+      const end = index + mark.name.length
+      if (boundary(upper, index - 1) && boundary(upper, end)) {
+        hit = mark
+        break
+      }
+    }
+    if (hit) {
+      flush()
+      pieces.push({ text: source.slice(index, index + hit.name.length), tone: hit.tone })
+      index += hit.name.length
+    } else {
+      plain += source[index]
+      index += 1
+    }
+  }
+  flush()
+  return pieces
+}
