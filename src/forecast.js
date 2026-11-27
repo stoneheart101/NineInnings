@@ -54,6 +54,16 @@ export function weatherReport(game) {
   return sentence.trim().toUpperCase()
 }
 
+export function forecastLine(game) {
+  const words = forecastWords(game)
+  return words ? `FORECAST · ${words}` : ''
+}
+
+export function actualLine(game) {
+  const words = weatherReport(game)
+  return words ? `ACTUAL · ${words}` : ''
+}
+
 export function forecastShown(when, now = new Date()) {
   const day = Math.floor(when.getTime() / 86400000)
   const today = Math.floor(now.getTime() / 86400000)

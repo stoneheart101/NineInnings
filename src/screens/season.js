@@ -45,11 +45,6 @@ function cleanName(value) {
   return value.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
-function coachName(team) {
-  const profile = Array.isArray(team.profiles) ? team.profiles[0] : team.profiles
-  return profile?.coach_name || 'COACH'
-}
-
 function draftComplete(season, draft) {
   return season?.status === 'drafting' && draftIsComplete(draft)
 }
@@ -337,7 +332,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const table = standingsBlock()
     wrap.append(el('p', 'section', state.season.name))
     if (table) wrap.append(table)
-    wrap.append(teamsBlock())
     wrap.append(el('p', 'section', 'DETAILS'))
     wrap.append(seasonBlock())
     return wrap
@@ -714,28 +708,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return node
   }
 
-  function teamsBlock() {
-    const season = state.season
-    const myTeam = state.teams.find((team) => team.coach_id === state.userId)
-    const wrap = el('div', 'season-panel')
-    wrap.append(el('p', 'section', 'TEAMS'))
-    if (!state.teams.length) {
-      wrap.append(el('p', '', 'NO TEAMS YET'))
-    } else {
-      const list = el('div', 'team-list')
-      for (const team of state.teams) {
-        const card = el('div', 'card team-card')
-        const head = el('div', 'card-head')
-        head.append(el('span', 'card-title', team.name))
-        card.append(head, el('span', '', coachName(team)))
-        list.append(card)
-      }
-      wrap.append(list)
-    }
-    if (season.status !== 'forming' && !myTeam) wrap.append(el('p', '', 'TEAMS JOIN WHILE THE SEASON IS FORMING'))
-    return wrap
-  }
-
   function poolBlock() {
     const wrap = el('div', 'season-panel')
     if (state.kids) {
@@ -1009,8 +981,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const leader = bid.high_team_id === team?.id
     const note = highBidNote(leader)
     if (note) {
-      card.append(head, el('p', '', highBidLine(bid)), el('p', '', note))
+      card.append(head, el('p', '', highBidLine(bid)))
       if (state.bidError && state.bidKid === kid.id) card.append(el('p', 'alert', state.bidError))
+      card.append(el('p', 'card-wait', note))
       return card
     }
     const price = coachPrice(kid)
@@ -1174,12 +1147,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         const price = coachPrice(kid)
         if (price.climbing) card.append(el('p', '', 'THIS BREAK IS FOR CLUBS THAT ARE STILL CLIMBING'))
         if (price.likesBench) card.append(el('p', '', 'LIKES A CLUB THAT IS NOT IN FIRST'))
-        if (bid) {
-          const bidding = el('div', 'card bid-box')
-          bidding.append(el('p', '', 'BIDDING'), el('p', '', highBidLine(bid)))
-          if (joined) bidding.append(el('p', '', 'YOU ARE IN THIS BID'))
-          card.append(bidding)
-        }
       }
     }
     const stats = el('span', 'kid-stats')
@@ -1189,6 +1156,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       card.append(state.bidsFailed
         ? el('p', 'alert', 'THE BIDS DID NOT LOAD')
         : el('p', 'card-wait', tryoutWaitLine(coachesLeft(kid))))
+    } else if (!passed && bid && kid.offer && kid.offer !== 'tryout') {
+      card.append(el('p', 'card-wait', 'BIDDING IS IN PROGRESS'))
     }
     return card
   }
@@ -1426,7 +1395,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       seasonRow(),
       supabase
         .from('teams')
-        .select('id, name, coach_id, bottlecaps, reputation, profiles!teams_coach_id_fkey(coach_name)')
+        .select('id, name, coach_id, bottlecaps, reputation')
         .eq('season_id', seasonId)
         .order('created_at', { ascending: true }),
       supabase

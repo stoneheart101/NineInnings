@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { clockLabel, clockLabel12, dayKey, dayLabel, forecastShown, forecastWords, weatherReport } from './forecast.js'
+import { actualLine, clockLabel, clockLabel12, dayKey, dayLabel, forecastLine, forecastShown, forecastWords, weatherReport } from './forecast.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
@@ -69,6 +69,15 @@ test('a finished game reads the stored weather sentence', () => {
   assert.equal(weatherReport({ weather: { sentence: '  ' } }), '')
   assert.equal(weatherReport({ weather: { chances: sample.weather.chances } }), '')
   assert.equal(weatherReport({}), '')
+})
+
+test('a review names the forecast and the actual weather apart', () => {
+  assert.equal(forecastLine(sample), 'FORECAST · LIGHT RAIN, WIND IN, CLEAR, AND HOT AND HUMID')
+  assert.equal(actualLine(sample), 'ACTUAL · LIGHT RAIN AND WIND IN')
+  assert.equal(forecastLine({}), '')
+  assert.equal(actualLine({}), '')
+  assert.equal(forecastLine({ weather: { sentence: 'Clear' } }), '')
+  assert.equal(actualLine({ weather: { chances: sample.weather.chances } }), '')
 })
 
 test('a forecast shows through the tenth day and stays off after that', () => {

@@ -1,7 +1,7 @@
 import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
-import { clockLabel, forecastShown, forecastWords, weatherReport } from '../forecast.js'
-import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
+import { clockLabel, forecastShown, forecastWords } from '../forecast.js'
+import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
 import { filledNine } from '../nine.js'
 import { WHY, lockReason } from '../why.js'
@@ -155,10 +155,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     const summary = game.status === 'final' || Boolean(game.result)
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
-    if (summary) {
-      const weather = weatherReport(game)
-      if (weather) matchNodes.push(el('p', 'game-forecast', weather))
-    } else if (!Number.isNaN(when.getTime()) && forecastShown(when)) {
+    if (summary) matchNodes.push(...reviewNotes(game))
+    else if (!Number.isNaN(when.getTime()) && forecastShown(when)) {
       const words = forecastWords(game)
       if (words) matchNodes.push(el('p', 'game-forecast', words))
     }
@@ -173,9 +171,6 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
         const used = usedNodes(state.used, game.result)
         if (used.length) box.append(headed('used-items', 'USED', used))
       }
-      const writeup = writeupNode(game.narrative)
-      if (writeup) box.append(writeup)
-      else box.append(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
     }
     if (!game.is_practice && playing()) {
       const foeId = state.myTeam.id === game.home_team_id ? game.away_team_id : game.home_team_id

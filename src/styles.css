@@ -12,6 +12,13 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 html {
@@ -403,8 +410,7 @@ input.num {
 .game-box,
 .draft-pick,
 .side-box,
-.box-score,
-.writeup {
+.box-score {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -512,6 +518,13 @@ input.num {
   overflow-wrap: anywhere;
 }
 
+.day-copy {
+  display: grid;
+  gap: 0.75em;
+  width: 100%;
+  margin-top: 0.35em;
+}
+
 .choices.dashboard > .played-list {
   margin-top: 0;
 }
@@ -535,7 +548,6 @@ input.num {
 .side-box,
 .box-score,
 .used-items,
-.writeup,
 .matchup-card {
   margin-top: 0.75em;
 }
@@ -596,10 +608,6 @@ input.num {
   color: var(--mark);
 }
 
-.writeup {
-  gap: 0.75em;
-}
-
 .side-actions {
   display: flex;
   flex-wrap: wrap;
@@ -642,13 +650,6 @@ button.edge {
   width: auto;
   max-width: 100%;
   text-align: right;
-}
-
-.card.bid-box {
-  justify-self: center;
-  width: max-content;
-  max-width: 100%;
-  text-align: center;
 }
 
 .choices.dashboard {

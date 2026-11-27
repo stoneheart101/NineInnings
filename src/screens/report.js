@@ -1,7 +1,7 @@
 import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
-import { clockLabel, weatherReport } from '../forecast.js'
-import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
+import { clockLabel } from '../forecast.js'
+import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -61,17 +61,14 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     }
 
     const when = new Date(game.starts_at)
+    const finished = game.status === 'final' || Boolean(game.result)
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
-    if (game.status === 'final' || game.result) {
-      const weather = weatherReport(game)
-      if (weather) matchNodes.push(el('p', 'game-forecast', weather))
-    }
+    if (finished) matchNodes.push(...reviewNotes(game))
     const matchTitle = el('span', 'game-match')
     matchTitle.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
     box.append(headed('matchup-card', matchTitle, matchNodes))
 
-    const finished = game.status === 'final' || Boolean(game.result)
     if (!finished) {
       box.append(el('p', '', 'THIS GAME HAS NOT BEEN PLAYED'))
     } else {
@@ -81,9 +78,6 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
         const used = usedNodes(state.used, game.result)
         if (used.length) box.append(headed('used-items', 'USED', used))
       }
-      const writeup = writeupNode(game.narrative)
-      if (writeup) box.append(writeup)
-      else box.append(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
     }
     if (state.error) box.append(el('p', 'alert', state.error))
     prompt.append(box)

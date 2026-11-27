@@ -1,4 +1,5 @@
 import { boxScore, usedGroups } from './box.js'
+import { actualLine, forecastLine } from './forecast.js'
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -57,11 +58,25 @@ export function headed(className, title, nodes, action) {
   return card
 }
 
-export function writeupNode(text) {
+function dayCopy(text) {
   if (typeof text !== 'string' || !text.trim()) return null
   const parts = text.split(/\n\n+/).map((part) => part.trim()).filter(Boolean)
   if (!parts.length) return null
-  return headed('writeup', 'THE DAY', parts.map((part) => el('p', '', part)))
+  const block = el('div', 'day-copy')
+  for (const part of parts) block.append(el('p', '', part))
+  return block
+}
+
+export function reviewNotes(game) {
+  const nodes = []
+  const forecast = forecastLine(game)
+  const actual = actualLine(game)
+  if (forecast) nodes.push(el('p', 'game-forecast', forecast))
+  if (actual) nodes.push(el('p', 'game-forecast', actual))
+  const day = dayCopy(game?.narrative)
+  if (day) nodes.push(day)
+  else nodes.push(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
+  return nodes
 }
 
 export function scoreNodes(result) {
