@@ -30,6 +30,6 @@ export function playedGames(games) {
 
 export function historyPage(games, expanded) {
   const all = Array.isArray(games) ? games : []
-  if (expanded || all.length <= 3) return { shown: all.slice(), more: false }
-  return { shown: all.slice(0, 3), more: true }
+  if (expanded || all.length <= 2) return { shown: all.slice(), more: false }
+  return { shown: all.slice(0, 2), more: true }
 }

@@ -156,7 +156,8 @@ body {
 .coach-menu {
   display: grid;
   gap: 2px;
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
 }
 
 .user-menu .coach-dropdown {
@@ -164,7 +165,8 @@ body {
   top: 100%;
   right: 0;
   z-index: 3;
-  width: min(22rem, 100cqi);
+  width: max-content;
+  max-width: min(36em, 100cqi);
   max-height: min(24rem, 50dvh);
   margin-top: 6px;
   overflow: auto;
@@ -172,29 +174,25 @@ body {
   color: var(--ink);
 }
 
-.coach-rules,
-.coach-viewing,
 .coach-empty {
   margin: 0;
-}
-
-.coach-viewing {
-  overflow-wrap: anywhere;
 }
 
 .coach-seasons {
   display: grid;
   min-width: 0;
+  max-width: 100%;
   max-height: min(40dvh, 16rem);
   overflow: auto;
 }
 
 .coach-season {
-  display: grid;
-  width: 100%;
+  display: block;
   max-width: 100%;
   text-align: left;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .season-row {
@@ -583,8 +581,15 @@ input.num {
   margin-top: 1em;
 }
 
-.choices.dashboard > .played-list > .section {
+.choices.dashboard > .played-list > .section,
+.choices.dashboard > .standings-list > .section {
   margin-top: 0;
+}
+
+.standings-list {
+  display: grid;
+  gap: clamp(14px, 2.4vw, 24px);
+  width: 100%;
 }
 
 .schedule .mine {

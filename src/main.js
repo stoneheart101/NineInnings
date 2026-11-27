@@ -26,7 +26,6 @@ const { prompt, setCoach, setTeam, setTabs } = drawField(field, {
 })
 
 let coachName = ''
-let rulesVersion = null
 let coachSeasons = null
 let seasonsRequest = 0
 let rememberedSeasonId = ''
@@ -55,7 +54,6 @@ function teamIdFor(route) {
 function coachDetails() {
   const route = routeFromHash(window.location.hash)
   return {
-    rulesVersion,
     seasons: coachSeasons,
     seasonId: openSeasonIdFor(route),
     onPickSeason(season) {
@@ -189,19 +187,6 @@ async function refreshSeasons() {
   }
 }
 
-async function loadRules() {
-  const { data, error } = await supabase
-    .from('game_settings')
-    .select('version')
-    .order('version', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  const next = error || data?.version == null ? null : data.version
-  if (next === rulesVersion) return
-  rulesVersion = next
-  renderDesk()
-}
-
 async function activeSeasonId() {
   const session = await supabase.auth.getSession()
   const userId = session.data.session?.user?.id
@@ -228,12 +213,10 @@ async function openActiveSeason() {
   const route = routeFromHash(window.location.hash)
   if (route !== '/' && route !== '/seasons') {
     renderDesk()
-    loadRules()
     return
   }
   if (id) go(`/seasons/${id}`)
   else renderDesk()
-  loadRules()
 }
 
 function renderDesk() {
@@ -354,7 +337,6 @@ const desk = createDesk(prompt, {
     }
     if (openingActive) return
     renderDesk()
-    loadRules()
     refreshSeasons()
   },
 })
@@ -374,7 +356,6 @@ supabase.auth.onAuthStateChange((event, session) => {
   window.setTimeout(() => {
     if (event === 'SIGNED_OUT') {
       coachName = ''
-      rulesVersion = null
       coachSeasons = null
       seasonsRequest += 1
       rememberedSeasonId = ''

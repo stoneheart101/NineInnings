@@ -1,12 +1,13 @@
 const STOPS = [
-  [0, [214, 69, 69]],
-  [33, [224, 122, 34]],
-  [66, [224, 198, 58]],
-  [100, [62, 168, 90]],
+  [20, [214, 69, 69]],
+  [40, [224, 122, 34]],
+  [60, [224, 198, 58]],
+  [80, [62, 168, 90]],
 ]
 
 export function statColor(value) {
-  const n = Math.max(0, Math.min(100, Number(value)))
+  const raw = Number(value)
+  const n = Number.isFinite(raw) ? Math.max(20, Math.min(80, raw)) : 20
   let index = 1
   while (index < STOPS.length - 1 && n > STOPS[index][0]) index += 1
   const [leftAt, left] = STOPS[index - 1]

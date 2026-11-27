@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { clockLabel, clockLabel12, dayKey, dayLabel, forecastShown, forecastWords, weatherReport } from '../forecast.js'
+import { clockLabel, clockLabel12, dayKey, forecastShown, forecastWords, weatherReport } from '../forecast.js'
 import { neighborhoodPlayLabel, practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, historyPage, narrativeLead, playedGames, playedScore } from '../played.js'
@@ -195,19 +195,23 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       closeDraft()
       const shown = dashboardShows({ status: season.status, hasTeam: Boolean(myTeam) })
       if (shown.setup) box.append(setupBlock())
-      else if (shown.outside) box.append(el('p', '', 'YOU ARE NOT IN THIS SEASON'))
       else {
-        const chores = choreBlock()
-        if (chores) box.append(chores)
-        const bids = bidBlock()
-        if (bids) box.append(bids)
-        const tryouts = tryoutBlock()
-        if (tryouts) box.append(tryouts)
-        if (shown.next) box.append(futureBlock())
-        if (shown.play) {
-          const play = playCards()
-          if (play) box.append(play)
+        if (shown.outside) box.append(el('p', '', 'YOU ARE NOT IN THIS SEASON'))
+        else {
+          const chores = choreBlock()
+          if (chores) box.append(chores)
+          const bids = bidBlock()
+          if (bids) box.append(bids)
+          const tryouts = tryoutBlock()
+          if (tryouts) box.append(tryouts)
+          if (shown.next) box.append(futureBlock())
+          if (shown.play) {
+            const play = playCards()
+            if (play) box.append(play)
+          }
         }
+        const standings = standingsSection()
+        if (standings) box.append(standings)
         if (shown.played) box.append(historyBlock())
       }
       if (state.boardError && !recruitShown()) box.append(el('p', 'alert', state.boardError))
@@ -342,11 +346,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function detailsBlock() {
     const wrap = el('div', 'details')
-    const table = standingsBlock()
-    wrap.append(el('p', 'section', state.season.name))
-    if (table) wrap.append(table)
     wrap.append(el('p', 'section', 'DETAILS'))
     wrap.append(seasonBlock())
+    return wrap
+  }
+
+  function standingsSection() {
+    const table = standingsBlock()
+    if (!table) return null
+    const wrap = el('div', 'standings-list')
+    wrap.append(el('p', 'section', state.season.name))
+    wrap.append(table)
     return wrap
   }
 
@@ -807,7 +817,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     for (const day of days.values()) {
       const block = el('div', 'game-day')
       const playing = new Set()
-      block.append(el('p', 'game-date', dayLabel(day.when)))
       for (const game of day.games) {
         playing.add(game.home_team_id)
         playing.add(game.away_team_id)

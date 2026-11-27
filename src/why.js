@@ -9,7 +9,7 @@ export const WHY = {
   assignOrder: 'ASSIGN THE BATTING ORDER FIRST',
   rosterChange: 'A ROSTER CHANGE IS IN PROGRESS',
   purchase: 'THAT PURCHASE IS IN PROGRESS',
-  cannotAfford: 'YOU CANNOT AFFORD THAT',
+  cannotAfford: 'YOU CANNOT AFFORD THIS',
   alreadyPacked: 'ONE IS ALREADY PACKED',
   pick: 'THAT PICK IS IN PROGRESS',
   signingOut: 'SIGNING OUT',

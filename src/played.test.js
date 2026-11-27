@@ -31,12 +31,13 @@ test('history keeps finals and puts the newest first', () => {
   assert.deepEqual(games.map((game) => game.id), ['d', 'c', 'b'])
 })
 
-test('history shows three games until the rest are opened', () => {
+test('history shows two games until the rest are opened', () => {
   const games = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
-  assert.deepEqual(historyPage(games, false).shown.map((game) => game.id), ['a', 'b', 'c'])
+  assert.deepEqual(historyPage(games, false).shown.map((game) => game.id), ['a', 'b'])
   assert.equal(historyPage(games, false).more, true)
   assert.deepEqual(historyPage(games, true).shown.map((game) => game.id), ['a', 'b', 'c', 'd'])
   assert.equal(historyPage(games, true).more, false)
-  assert.equal(historyPage(games.slice(0, 3), false).more, false)
+  assert.equal(historyPage(games.slice(0, 2), false).more, false)
+  assert.equal(historyPage(games.slice(0, 3), false).more, true)
   assert.equal(historyPage(null, false).more, false)
 })

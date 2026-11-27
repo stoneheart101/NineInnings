@@ -5,6 +5,7 @@ import { WHY, buyReason, deleteReason, lockReason, scrimmageReason } from './why
 test('a purchase says why it is closed', () => {
   assert.equal(buyReason({ busy: true, packed: true, afford: false }), WHY.purchase)
   assert.equal(buyReason({ busy: false, packed: true, afford: false }), WHY.alreadyPacked)
+  assert.equal(WHY.cannotAfford, 'YOU CANNOT AFFORD THIS')
   assert.equal(buyReason({ busy: false, packed: false, afford: false }), WHY.cannotAfford)
   assert.equal(buyReason({ busy: false, packed: false, afford: true }), '')
 })

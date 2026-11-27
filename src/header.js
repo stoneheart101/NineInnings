@@ -21,16 +21,21 @@ export function headerLines(info) {
   ]
 }
 
+export function seasonMenuLabel(season) {
+  const name = season?.name || ''
+  const status = String(season?.status || '').trim().toLowerCase()
+  return status ? `${name} (${status})` : name
+}
+
 export function coachMenuBlocks(details) {
   const blocks = []
-  if (details?.rulesVersion != null) blocks.push({ kind: 'rules', text: `RULES v${details.rulesVersion}` })
   const seasons = details?.seasons
   if (Array.isArray(seasons) && seasons.length) {
-    blocks.push({ kind: 'note', text: 'THIS LIST IS THE SEASON YOU ARE VIEWING. PICK ONE TO SWITCH IT.' })
     blocks.push({
       kind: 'seasons',
       seasons: seasons.map((season) => ({
         season,
+        label: seasonMenuLabel(season),
         open: season.id === details.seasonId,
       })),
     })

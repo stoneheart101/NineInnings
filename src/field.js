@@ -140,8 +140,6 @@ export function drawField(root, { onSignOut } = {}) {
     const alert = el('p', 'alert', signOutAlert)
     alert.hidden = !signOutAlert
     for (const block of coachMenuBlocks(details)) {
-      if (block.kind === 'rules') body.append(el('p', 'coach-rules', block.text))
-      if (block.kind === 'note') body.append(el('p', 'coach-viewing', block.text))
       if (block.kind === 'empty') body.append(el('p', 'coach-empty', block.text))
       if (block.kind === 'seasons') {
         const list = el('div', 'coach-seasons')
@@ -149,10 +147,7 @@ export function drawField(root, { onSignOut } = {}) {
           const button = el('button', row.open ? 'coach-season on' : 'coach-season', '')
           button.type = 'button'
           if (row.open) button.setAttribute('aria-current', 'true')
-          button.append(
-            el('span', 'coach-season-name', row.season.name),
-            el('span', '', row.season.status || ''),
-          )
+          button.append(el('span', 'coach-season-name', row.label))
           button.addEventListener('click', () => {
             closeCoachMenu()
             details.onPickSeason?.(row.season)
