@@ -6,16 +6,7 @@ import { WHY } from '../why.js'
 import { hideToast, showToast } from '../toast.js'
 import { teamTabRow } from '../team-tabs.js'
 import { perkLine } from '../home-perk.js'
-
-const STATS = [
-  ['contact', 'CONTACT'],
-  ['power', 'POWER'],
-  ['eye', 'EYE'],
-  ['speed', 'SPEED'],
-  ['glove', 'GLOVE'],
-  ['arm', 'ARM'],
-  ['stamina', 'STAMINA'],
-]
+import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 
 const SLOTS = [
   [1, 'MOUND'],
@@ -81,6 +72,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     mine: false,
     loaded: false,
     held: { bottlecaps: 0, reputation: 0 },
+    detailId: '',
   }
 
   function dropped() {
@@ -100,7 +92,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     if (prompt.dataset.paint !== token) return
     if (state.busy || state.lineupBusy) showToast(WHY.rosterChange, token)
     else hideToast(token)
-    if (popupKind() !== 'coach' && popupKind() !== 'season') closePopup()
+    if (popupKind() !== 'coach' && popupKind() !== 'season' && popupKind() !== 'kid') closePopup()
     prompt.replaceChildren()
     const box = el('div', 'choices')
 
@@ -111,6 +103,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       box.append(el('p', '', 'THAT TEAM IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
       prompt.append(box)
+      state.detailId = ''
+      if (popupKind() === 'kid') closePopup()
       return
     }
     if (!state.mine) {
@@ -118,6 +112,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       onDesk?.({ seasonId: state.team.season_id, teamId: '' })
       box.append(el('p', '', 'THAT TEAM IS NOT YOURS'))
       prompt.append(box)
+      state.detailId = ''
+      if (popupKind() === 'kid') closePopup()
       return
     }
 
@@ -170,7 +166,24 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
           paint()
         },
       })
+    } else {
+      presentKid()
     }
+  }
+
+  function presentKid() {
+    const kid = state.kids.find((item) => item.id === state.detailId)
+    if (!kid) {
+      state.detailId = ''
+      if (popupKind() === 'kid') closePopup()
+      return
+    }
+    showKidPopup({
+      id: kid.id,
+      name: kidLabel(kid),
+      stats: kid.base_stats,
+      onClose() { state.detailId = '' },
+    })
   }
 
   function kidLabel(kid) {
@@ -197,7 +210,10 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       paint()
     })
     const actions = el('div', 'card-actions')
-    actions.append(release)
+    actions.append(release, detailsButton(() => {
+      state.detailId = kid.id
+      presentKid()
+    }))
     head.append(actions)
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
@@ -205,7 +221,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     if (brought) card.append(el('span', '', brought))
     if (kid.penalty_until_game_id) card.append(el('p', '', 'PLAYING FLAT'))
     const stats = el('span', 'kid-stats')
-    for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
+    for (const [stat, label] of KID_STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
     card.append(pickers(kid))
     if (state.lineupError && state.lineupKid === kid.id) {

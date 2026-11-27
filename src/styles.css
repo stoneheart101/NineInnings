@@ -878,6 +878,41 @@ button.edge {
   width: 100%;
 }
 
+.stat-bars {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.stat-bar {
+  display: grid;
+  grid-template-columns: 8ch minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.stat-bar-label {
+  color: var(--mark);
+}
+
+.stat-bar-track {
+  display: block;
+  height: 0.7em;
+  min-height: 10px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+}
+
+.stat-bar-fill {
+  display: block;
+  height: 100%;
+}
+
+.stat-bar .stat-num {
+  text-align: right;
+}
+
 .lineup-slot {
   width: auto;
   max-width: 100%;

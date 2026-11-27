@@ -6,7 +6,7 @@ import { draftIsActive } from '../menu.js'
 import { gameKind, historyPage, narrativeLead, playedGames, playedScore } from '../played.js'
 import { rankStandings } from '../standings.js'
 import { closeDraft, renderDraft } from './draft.js'
-import { closePopup, mountPopup } from '../popup.js'
+import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { sameSeasonName } from '../season-name.js'
 import { nextOfficial } from '../next-game.js'
 import { draftComplete as draftIsComplete, setupRows, shouldAutoStart } from '../setup.js'
@@ -19,17 +19,9 @@ import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } fr
 import { coachesWaiting, compareRecruits, highBidNote, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
 import { heldPurse } from '../held-purse.js'
 import { perkLine } from '../home-perk.js'
+import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
-const STATS = [
-  ['contact', 'CONTACT'],
-  ['power', 'POWER'],
-  ['eye', 'EYE'],
-  ['speed', 'SPEED'],
-  ['glove', 'GLOVE'],
-  ['arm', 'ARM'],
-  ['stamina', 'STAMINA'],
-]
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -147,6 +139,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     confirmDelete: false,
     deleteTyped: '',
     deleteError: '',
+    detailId: '',
     section: chosenSection(section),
     loaded: false,
   }
@@ -192,6 +185,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
       host.append(box)
+      state.detailId = ''
+      if (popupKind() === 'kid') closePopup()
       return
     }
 
@@ -228,9 +223,26 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
     if (state.error) box.append(el('p', 'alert', state.error))
     host.append(box)
-    if (state.confirmDelete && season && season.commissioner_id === state.userId) deletePopup(season)
+    const deleting = Boolean(state.confirmDelete && season && season.commissioner_id === state.userId)
+    if (deleting) deletePopup(season)
     const covering = state.coverKid && (state.kids || []).find((kid) => kid.id === state.coverKid)
     if (covering) coverPopup(covering)
+    else if (!deleting && visible !== 'draft') presentKid()
+  }
+
+  function presentKid() {
+    const kid = (state.kids || []).find((item) => item.id === state.detailId)
+    if (!kid) {
+      state.detailId = ''
+      if (popupKind() === 'kid') closePopup()
+      return
+    }
+    showKidPopup({
+      id: kid.id,
+      name: kidName(kid),
+      stats: kid.base_stats,
+      onClose() { state.detailId = '' },
+    })
   }
 
   function seasonBlock() {
@@ -967,6 +979,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       const card = el('div', 'card tryout')
       const head = el('div', 'card-head')
       head.append(el('span', 'card-title', kidName(kid)))
+      const actions = el('div', 'card-actions')
+      actions.append(detailsButton(() => openDetails(kid)))
+      head.append(actions)
       card.append(head, el('p', 'card-wait', tryoutWaitLine(coachesLeft(kid))))
       wrap.append(card)
     }
@@ -981,10 +996,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const card = el('div', 'card')
     const head = el('div', 'card-head')
     head.append(el('span', 'card-title', kidName(kid)))
+    const actions = el('div', 'card-actions')
     const team = myTeam()
     const leader = bid.high_team_id === team?.id
     const note = highBidNote(leader)
     if (note) {
+      actions.append(detailsButton(() => openDetails(kid)))
+      head.append(actions)
       card.append(head, el('p', '', highBidLine(bid)))
       if (state.bidError && state.bidKid === kid.id) card.append(el('p', 'alert', state.bidError))
       card.append(el('p', 'card-wait', note))
@@ -1005,7 +1023,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const capShift = Boolean(leader && capDue && capDue.reputation !== standing.reputation)
     const repShort = Boolean(repPay && !canPay(team, repPay))
     const capShort = Boolean(capPay && !canPay(team, capPay))
-    const actions = el('div', 'card-actions')
     const repButton = bidButton('RAISE REPUTATION', () => onBid('raise', kid.id, 'reputation'))
     const capButton = bidButton('RAISE BOTTLECAPS', () => onBid('raise', kid.id, 'bottlecaps'))
     const repClosed = state.bidBusy || full || !repDue || repShort || repShift
@@ -1022,6 +1039,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         paint()
       }))
     }
+    actions.append(detailsButton(() => openDetails(kid)))
     head.append(actions)
     card.append(head, el('p', '', highBidLine(bid)))
     if (!price) card.append(el('p', 'alert', 'THE PRICE DID NOT LOAD'))
@@ -1104,12 +1122,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
     head.append(title)
+    const actions = el('div', 'card-actions')
     const team = myTeam()
     const bid = openBid(kid)
     const joined = offerFor(bid, team?.id)
     let reason = ''
     if (kid.offer && team && !passed) {
-      const actions = el('div', 'card-actions')
       const closed = recruitReason(kid)
       if (kid.offer === 'tryout' && !offered) {
         const button = bidButton('TRYOUT', () => onBid('tryout', kid.id))
@@ -1136,11 +1154,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
           actions.append(pass)
         }
       }
-      if (actions.childNodes.length) head.append(actions)
       const showReason = kid.offer === 'tryout' ? !offered && closed : !joined && closed
       if (showReason) reason = closed
       else if (joined && state.bidBusy) reason = 'THAT BID IS IN PROGRESS'
     }
+    actions.append(detailsButton(() => openDetails(kid)))
+    head.append(actions)
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const brought = perkLine(kid.home_perk)
@@ -1157,7 +1176,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       }
     }
     const stats = el('span', 'kid-stats')
-    for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
+    for (const [stat, label] of KID_STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
     if (reason) card.append(el('p', 'why', reason))
     if (passed) card.append(el('p', 'card-wait', 'PASSED'))
@@ -1169,6 +1188,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       card.append(el('p', 'card-wait', 'BIDDING IS IN PROGRESS'))
     }
     return card
+  }
+
+  function openDetails(kid) {
+    state.detailId = kid.id
+    state.coverKid = ''
+    presentKid()
   }
 
   function deletePopup(season) {

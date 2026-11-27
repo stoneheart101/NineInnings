@@ -4,16 +4,8 @@ import { draftIsActive } from '../menu.js'
 import { statChip } from '../stat-color.js'
 import { draftedKids, draftedLine, poolPick } from '../draft-board.js'
 import { perkLine } from '../home-perk.js'
-
-const STATS = [
-  ['contact', 'CONTACT'],
-  ['power', 'POWER'],
-  ['eye', 'EYE'],
-  ['speed', 'SPEED'],
-  ['glove', 'GLOVE'],
-  ['arm', 'ARM'],
-  ['stamina', 'STAMINA'],
-]
+import { closePopup, popupKind } from '../popup.js'
+import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -59,6 +51,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     loaded: false,
     openClubs: {},
     held: { bottlecaps: 0, reputation: 0 },
+    detailId: '',
   }
 
   function teamName(id) {
@@ -94,6 +87,8 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
       prompt.append(box)
+      state.detailId = ''
+      if (popupKind() === 'kid') closePopup()
       return
     }
 
@@ -112,6 +107,27 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     prompt.append(box)
     if (clock && order.length) prompt.append(orderMore(order, pickIndex))
     if (state.draft) prompt.append(board(order, clock))
+    presentKid()
+  }
+
+  function kidLabel(kid) {
+    const nick = kid.nickname ? ` "${kid.nickname}"` : ''
+    return `${kidName(kid)}${nick}`
+  }
+
+  function presentKid() {
+    const kid = state.kids.find((item) => item.id === state.detailId)
+    if (!kid) {
+      state.detailId = ''
+      if (popupKind() === 'kid') closePopup()
+      return
+    }
+    showKidPopup({
+      id: kid.id,
+      name: kidLabel(kid),
+      stats: kid.base_stats,
+      onClose() { state.detailId = '' },
+    })
   }
 
   function orderMore(order, pickIndex) {
@@ -220,7 +236,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
 
   function sortRow() {
     const row = el('div', 'sort-row')
-    for (const [stat, label] of STATS) {
+    for (const [stat, label] of KID_STATS) {
       const link = el('button', state.sort === stat ? 'on' : '', label)
       link.type = 'button'
       link.addEventListener('click', () => {
@@ -236,7 +252,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     const row = el('div', 'drafted-kid')
     row.append(el('span', 'season-name', kid.name))
     const stats = el('span', 'kid-stats')
-    for (const [stat, label] of STATS) stats.append(statChip(label, kid.stats?.[stat]))
+    for (const [stat, label] of KID_STATS) stats.append(statChip(label, kid.stats?.[stat]))
     row.append(stats)
     return row
   }
@@ -251,20 +267,30 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
     head.append(title)
+    const actions = el('div', 'card-actions')
+    actions.append(detailsButton(() => {
+      state.detailId = kid.id
+      presentKid()
+    }))
+    head.append(actions)
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const brought = perkLine(kid.home_perk)
     if (brought) card.append(el('span', '', brought))
     const stats = el('span', 'kid-stats')
-    for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
+    for (const [stat, label] of KID_STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
     if (state.pickError && state.pickKid === kid.id) card.append(el('p', 'alert', state.pickError))
     if (!pick.enabled) return card
     card.tabIndex = 0
     card.setAttribute('role', 'button')
     const choose = () => onPick(kid.id)
-    card.addEventListener('click', choose)
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('button')) return
+      choose()
+    })
     card.addEventListener('keydown', (event) => {
+      if (event.target !== card) return
       if (event.key !== 'Enter' && event.key !== ' ') return
       event.preventDefault()
       choose()
