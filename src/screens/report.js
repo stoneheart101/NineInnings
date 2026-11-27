@@ -2,6 +2,7 @@ import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
 import { clockLabel } from '../forecast.js'
 import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
+import { homePerkForGame } from '../home-perk.js'
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -24,6 +25,8 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     loaded: false,
     used: [],
     usedFailed: false,
+    locks: [],
+    locksFailed: false,
     held: { bottlecaps: 0, reputation: 0 },
   }
 
@@ -65,6 +68,14 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
     if (finished) matchNodes.push(...reviewNotes(game))
+    const fieldLine = homePerkForGame({
+      final: finished,
+      homeLocked: state.locks.some((row) => row.team_id === game.home_team_id),
+      lockPerk: state.locks.find((row) => row.team_id === game.home_team_id)?.home_perk ?? null,
+      livePerk: state.teams.find((team) => team.id === game.home_team_id)?.home_perk ?? null,
+      locksKnown: !state.locksFailed,
+    })
+    if (fieldLine) matchNodes.push(el('p', '', fieldLine))
     const matchTitle = el('span', 'game-match')
     matchTitle.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
     box.append(headed('matchup-card', matchTitle, matchNodes))
@@ -99,13 +110,16 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
   }
 
   async function load() {
-    const [session, gameRes, usedRes] = await Promise.all([
+    const [session, gameRes, usedRes, lockRes] = await Promise.all([
       supabase.auth.getSession(),
       supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, is_practice, weather, result, narrative').eq('id', gameId).maybeSingle(),
       supabase.rpc('used_clubhouse_items', { game_id: gameId }),
+      supabase.from('lineup_locks').select('team_id, home_perk').eq('game_id', gameId),
     ])
     if (prompt.dataset.paint !== token) return
     state.userId = session.data.session?.user?.id ?? ''
+    state.locksFailed = Boolean(lockRes.error)
+    state.locks = lockRes.error ? [] : (lockRes.data || [])
     state.usedFailed = Boolean(usedRes.error)
     state.used = usedRes.error || !Array.isArray(usedRes.data) ? [] : usedRes.data
     if (gameRes.error) {
@@ -127,7 +141,7 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     state.missing = false
     const [seasonRes, teamsRes] = await Promise.all([
       supabase.from('seasons').select('id, name').eq('id', state.game.season_id).maybeSingle(),
-      supabase.from('teams').select('id, name, coach_id, bottlecaps, reputation').eq('season_id', state.game.season_id).order('created_at', { ascending: true }),
+      supabase.from('teams').select('id, name, coach_id, bottlecaps, reputation, home_perk').eq('season_id', state.game.season_id).order('created_at', { ascending: true }),
     ])
     if (prompt.dataset.paint !== token) return
     if (seasonRes.error || teamsRes.error) {

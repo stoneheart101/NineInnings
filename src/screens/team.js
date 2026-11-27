@@ -4,6 +4,7 @@ import { statChip } from '../stat-color.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { WHY } from '../why.js'
 import { teamTabRow } from '../team-tabs.js'
+import { perkLine } from '../home-perk.js'
 
 const STATS = [
   ['contact', 'CONTACT'],
@@ -184,6 +185,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     head.append(actions)
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
+    const brought = perkLine(kid.home_perk)
+    if (brought) card.append(el('span', '', brought))
     if (kid.penalty_until_game_id) card.append(el('p', '', 'PLAYING FLAT'))
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
@@ -469,7 +472,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     const [kids, lineup, held] = await Promise.all([
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, tryout_status, penalty_until_game_id, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, tryout_status, penalty_until_game_id, home_perk, created_at')
         .eq('team_id', teamId)
         .order('family_name', { ascending: true })
         .order('given_name', { ascending: true })

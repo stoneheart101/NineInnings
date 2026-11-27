@@ -5,6 +5,7 @@ import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
 import { filledNine, filledOrder } from '../nine.js'
 import { WHY, lockReason } from '../why.js'
+import { homePerkForGame } from '../home-perk.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
 
@@ -162,6 +163,14 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       const words = forecastWords(game)
       if (words) matchNodes.push(el('p', 'game-forecast', words))
     }
+    const fieldLine = homePerkForGame({
+      final: summary,
+      homeLocked: state.locks.some((row) => row.team_id === game.home_team_id),
+      lockPerk: state.locks.find((row) => row.team_id === game.home_team_id)?.home_perk ?? null,
+      livePerk: state.teams.find((team) => team.id === game.home_team_id)?.home_perk ?? null,
+      locksKnown: !state.lockFailed,
+    })
+    if (fieldLine) matchNodes.push(el('p', '', fieldLine))
     const matchTitle = el('span', 'game-match')
     matchTitle.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
     box.append(headed('matchup-card', matchTitle, matchNodes))
@@ -336,7 +345,11 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     }
     state.card = data
     if (state.myTeam && !state.locks.some((row) => row.team_id === state.myTeam.id)) {
-      state.locks = state.locks.concat([{ game_id: gameId, team_id: state.myTeam.id }])
+      state.locks = state.locks.concat([{
+        game_id: gameId,
+        team_id: state.myTeam.id,
+        home_perk: state.myTeam.id === state.game?.home_team_id ? state.myTeam.home_perk ?? null : null,
+      }])
     }
     paint()
   }
@@ -345,7 +358,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     const [session, gameRes, lockRes, cardRes, usedRes] = await Promise.all([
       supabase.auth.getSession(),
       supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, weather, is_practice, result, narrative').eq('id', gameId).maybeSingle(),
-      supabase.from('lineup_locks').select('game_id, team_id, locked_at').eq('game_id', gameId),
+      supabase.from('lineup_locks').select('game_id, team_id, locked_at, home_perk').eq('game_id', gameId),
       supabase.rpc('own_locked_card', { game_id: gameId }),
       supabase.rpc('used_clubhouse_items', { game_id: gameId }),
     ])
@@ -376,7 +389,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     state.missing = false
     const [seasonRes, teamsRes] = await Promise.all([
       supabase.from('seasons').select('id, name, commissioner_id').eq('id', state.game.season_id).maybeSingle(),
-      supabase.from('teams').select('id, name, coach_id, bottlecaps, reputation, season_id').eq('season_id', state.game.season_id).order('created_at', { ascending: true }),
+      supabase.from('teams').select('id, name, coach_id, bottlecaps, reputation, home_perk, season_id').eq('season_id', state.game.season_id).order('created_at', { ascending: true }),
     ])
     if (prompt.dataset.paint !== token) return
     if (seasonRes.error || teamsRes.error) {

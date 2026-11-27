@@ -930,6 +930,15 @@ button.edge {
   margin-bottom: 0.75em;
 }
 
+.home-field {
+  width: 100%;
+  margin-bottom: 1em;
+}
+
+.perk-on {
+  color: var(--mark);
+}
+
 .shelf-list {
   display: grid;
   gap: clamp(14px, 2.4vw, 24px);

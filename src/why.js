@@ -16,6 +16,7 @@ export const WHY = {
   seasonOpening: 'THE SEASON IS OPENING',
   signingIn: 'SIGNING IN',
   coachName: 'SAVING THE COACH NAME',
+  perkSaving: 'THAT CHOICE IS IN PROGRESS',
 }
 
 export function buyReason({ busy = false, packed = false, afford = false } = {}) {

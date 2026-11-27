@@ -3,6 +3,7 @@ import { fetchHeld } from '../held-purse.js'
 import { draftIsActive } from '../menu.js'
 import { statChip } from '../stat-color.js'
 import { draftedKids, draftedLine, poolPick } from '../draft-board.js'
+import { perkLine } from '../home-perk.js'
 
 const STATS = [
   ['contact', 'CONTACT'],
@@ -252,6 +253,8 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     head.append(title)
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
+    const brought = perkLine(kid.home_perk)
+    if (brought) card.append(el('span', '', brought))
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
@@ -310,7 +313,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
         .maybeSingle(),
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, home_perk, created_at')
         .eq('season_id', seasonId)
         .order('family_name', { ascending: true })
         .order('given_name', { ascending: true })

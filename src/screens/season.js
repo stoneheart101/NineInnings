@@ -18,6 +18,7 @@ import { WHY, deleteReason, scrimmageReason } from '../why.js'
 import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
 import { coachesWaiting, compareRecruits, highBidNote, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
 import { heldPurse } from '../held-purse.js'
+import { perkLine } from '../home-perk.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -1139,6 +1140,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       card.append(head)
     }
     if (kid.flavor) card.append(el('span', '', kid.flavor))
+    const brought = perkLine(kid.home_perk)
+    if (brought) card.append(el('span', '', brought))
     if (!passed && kid.offer === 'tryout' && !offered) {
       card.append(el('p', '', 'THE KID PICKS A TEAM ONCE EVERY COACH HAS CHOSEN'))
     } else if (!passed && kid.offer && kid.offer !== 'tryout') {
@@ -1401,7 +1404,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .order('created_at', { ascending: true }),
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, offer, reputation_cost, bottlecap_cost, preference, settings_version, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, offer, reputation_cost, bottlecap_cost, preference, home_perk, settings_version, created_at')
         .eq('season_id', seasonId)
         .order('created_at', { ascending: true })
         .order('id', { ascending: true }),

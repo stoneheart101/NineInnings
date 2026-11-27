@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/menu.test.js src/practice-wait.test.js src/played.test.js src/box.test.js src/forecast.test.js src/standings.test.js src/router.test.js src/season-name.test.js src/next-game.test.js src/header.test.js src/why.test.js src/setup.test.js src/season-view.test.js src/draft-board.test.js src/shelf.test.js src/live.test.js src/nine.test.js src/chores.test.js src/recruit-price.test.js src/recruit-board.test.js src/held-purse.test.js"
+    "test": "node --test src/menu.test.js src/practice-wait.test.js src/played.test.js src/box.test.js src/forecast.test.js src/standings.test.js src/router.test.js src/season-name.test.js src/next-game.test.js src/header.test.js src/why.test.js src/setup.test.js src/season-view.test.js src/draft-board.test.js src/shelf.test.js src/live.test.js src/nine.test.js src/chores.test.js src/recruit-price.test.js src/recruit-board.test.js src/held-purse.test.js src/home-perk.test.js"
   },
   "dependencies": {
     "@fontsource/vt323": "^5.2.7",
