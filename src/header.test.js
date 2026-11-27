@@ -8,7 +8,7 @@ test('the header names the team and the purse and leaves the season off', () => 
   const lines = headerLines({ name: 'WEST SIDE', season: 'SUMMER', bottlecaps: 20, reputation: 10 })
   assert.deepEqual(lines.map((line) => line.role), ['name', 'purse'])
   assert.equal(lines[0].text, 'WEST SIDE')
-  assert.equal(lines[1].text, '20 BC · 10 REP')
+  assert.equal(lines[1].text, '10 REP · 20 BC')
   assert.equal(JSON.stringify(lines).includes('SUMMER'), false)
 })
 
@@ -19,7 +19,7 @@ test('the seasons list leaves the header team spot empty', () => {
 
 test('a missing purse reads as zero', () => {
   const lines = headerLines({ name: 'WEST SIDE' })
-  assert.equal(lines[1].text, '0 BC · 0 REP')
+  assert.equal(lines[1].text, '0 REP · 0 BC')
 })
 
 test('a high bid stays in the header after the purse', () => {
@@ -30,9 +30,9 @@ test('a high bid stays in the header after the purse', () => {
     heldBottlecaps: 5,
     heldReputation: 4,
   })
-  assert.equal(lines[1].text, '3 BC 2 REP (5 BC 4 REP held in high bid)')
+  assert.equal(lines[1].text, '2 REP 3 BC (4 REP 5 BC held in high bid)')
   const idle = headerLines({ name: 'WEST SIDE', bottlecaps: 3, reputation: 2, heldBottlecaps: 0, heldReputation: 0 })
-  assert.equal(idle[1].text, '3 BC · 2 REP')
+  assert.equal(idle[1].text, '2 REP · 3 BC')
 })
 
 test('the coach menu says this list is the season you are viewing and that picking one switches it', () => {

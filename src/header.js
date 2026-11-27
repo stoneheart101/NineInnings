@@ -8,9 +8,9 @@ function headerPurse(info) {
   const shownHeldCaps = Number.isFinite(heldCaps) ? heldCaps : 0
   const shownHeldRep = Number.isFinite(heldRep) ? heldRep : 0
   if (shownHeldCaps > 0 || shownHeldRep > 0) {
-    return `${shownCaps} BC ${shownRep} REP (${shownHeldCaps} BC ${shownHeldRep} REP held in high bid)`
+    return `${shownRep} REP ${shownCaps} BC (${shownHeldRep} REP ${shownHeldCaps} BC held in high bid)`
   }
-  return `${shownCaps} BC · ${shownRep} REP`
+  return `${shownRep} REP · ${shownCaps} BC`
 }
 
 export function headerLines(info) {

@@ -338,6 +338,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     wrap.append(el('p', 'section', state.season.name))
     if (table) wrap.append(table)
     wrap.append(teamsBlock())
+    wrap.append(el('p', 'section', 'DETAILS'))
     wrap.append(seasonBlock())
     return wrap
   }
@@ -499,7 +500,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   }
 
   function playLink(label, onPlay, disabled) {
-    const button = el('button', '', label)
+    const button = el('button', 'edge', label)
     button.type = 'button'
     button.disabled = disabled
     button.addEventListener('click', () => {
@@ -546,7 +547,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       () => startScrimmage('start_dev_game', 'dev', !devActive || !full),
       !devActive || busy || !full,
     ))
-    dev.append(el('p', '', 'DOES NOT START THE PRACTICE WAIT'))
     if (!devActive) dev.append(el('p', '', 'PRACTICE STARTS WHEN THE SEASON DOES'))
     const devWhy = scrimmageReason({ busy, open: devActive, full, known })
     if (devWhy) dev.append(el('p', 'why', devWhy))
@@ -605,7 +605,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const page = historyPage(games, state.historyOpen)
     for (const game of page.shown) wrap.append(playedCard(game))
     if (page.more) {
-      const more = el('button', '', 'MORE...')
+      const more = el('button', 'edge', 'MORE...')
       more.type = 'button'
       more.addEventListener('click', () => {
         state.historyOpen = true
