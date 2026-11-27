@@ -1,5 +1,5 @@
 import { boxScore, usedGroups } from './box.js'
-import { actualLine, forecastLine } from './forecast.js'
+import { recapParts } from './recap.js'
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -67,16 +67,16 @@ function dayCopy(text) {
   return block
 }
 
-export function reviewNotes(game) {
-  const nodes = []
-  const forecast = forecastLine(game)
-  const actual = actualLine(game)
-  if (forecast) nodes.push(el('p', 'game-forecast', forecast))
-  if (actual) nodes.push(el('p', 'game-forecast', actual))
+export function reviewNotes(game, extras) {
+  const parts = recapParts(game, extras)
+  if (parts.length) {
+    const block = el('div', 'day-copy')
+    for (const part of parts) block.append(el('p', '', part))
+    return [block]
+  }
   const day = dayCopy(game?.narrative)
-  if (day) nodes.push(day)
-  else nodes.push(el('p', 'alert', 'THE WRITEUP DID NOT LOAD'))
-  return nodes
+  if (day) return [day]
+  return [el('p', 'alert', 'THE WRITEUP DID NOT LOAD')]
 }
 
 export function scoreNodes(result) {

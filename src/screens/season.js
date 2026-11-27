@@ -4,6 +4,7 @@ import { clockLabel, clockLabel12, dayKey, forecastReport, weatherReport } from 
 import { neighborhoodPlayLabel, practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, historyPage, narrativeLead, playedGames, playedScore, vsSides } from '../played.js'
+import { recapClose } from '../recap.js'
 import { rankStandings } from '../standings.js'
 import { closeDraft, renderDraft } from './draft.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
@@ -643,7 +644,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (!Number.isNaN(when.getTime())) bits.push(clockLabel12(when))
     const detail = bits.filter(Boolean).join(' · ')
     card.append(head, el('p', '', detail))
-    const lead = narrativeLead(game.narrative)
+    const lead = recapClose(game) || narrativeLead(game.narrative)
     if (lead) card.append(el('p', '', lead))
     return card
   }

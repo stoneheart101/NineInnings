@@ -2,7 +2,7 @@ import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
 import { clockLabel } from '../forecast.js'
 import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
-import { homePerkForGame } from '../home-perk.js'
+import { homePerkForGame, homePerkIdsForGame } from '../home-perk.js'
 import { vsSides } from '../played.js'
 
 function el(tag, className, text) {
@@ -69,9 +69,8 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     const finished = game.status === 'final' || Boolean(game.result)
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
-    if (finished) matchNodes.push(...reviewNotes(game))
     const homeLock = state.locks.find((row) => row.team_id === game.home_team_id)
-    const fieldLine = homePerkForGame({
+    const perkArgs = {
       final: finished,
       homeLocked: Boolean(homeLock),
       lockPerk: homeLock?.home_perk ?? null,
@@ -79,8 +78,16 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
       lockKidPerks: homeLock?.kid_perks || [],
       liveKidPerks: state.liveKidPerks,
       locksKnown: !state.locksFailed,
-    })
-    if (fieldLine) matchNodes.push(el('p', '', fieldLine))
+    }
+    if (finished) {
+      matchNodes.push(...reviewNotes(game, {
+        used: state.usedFailed ? [] : state.used,
+        perkIds: homePerkIdsForGame(perkArgs),
+      }))
+    } else {
+      const fieldLine = homePerkForGame(perkArgs)
+      if (fieldLine) matchNodes.push(el('p', '', fieldLine))
+    }
     const matchTitle = el('span', 'game-match')
     const [first, second] = vsSides(
       { id: game.away_team_id, name: sideName(game.away_team_id) },

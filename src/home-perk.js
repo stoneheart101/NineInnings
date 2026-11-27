@@ -105,7 +105,7 @@ export function perkChoices(kids) {
   }))
 }
 
-export function homePerkForGame({
+export function homePerkIdsForGame({
   final = false,
   homeLocked = false,
   lockPerk = null,
@@ -114,9 +114,20 @@ export function homePerkForGame({
   liveKidPerks = null,
   locksKnown = true,
 } = {}) {
-  if (!locksKnown) return ''
+  if (!locksKnown) return []
   const frozen = final || homeLocked
   const chosen = frozen ? lockPerk : livePerk
   const extras = frozen ? lockKidPerks : liveKidPerks
-  return homeFieldsLine([chosen, ...(extras || [])])
+  const wanted = new Set()
+  for (const id of [chosen, ...(extras || [])]) {
+    if (perkById(id)) wanted.add(id)
+  }
+  return [
+    ...HOME_PERKS.filter((perk) => wanted.has(perk.id)).map((perk) => perk.id),
+    ...KID_PERKS.filter((perk) => wanted.has(perk.id)).map((perk) => perk.id),
+  ]
+}
+
+export function homePerkForGame(args) {
+  return homeFieldsLine(homePerkIdsForGame(args))
 }

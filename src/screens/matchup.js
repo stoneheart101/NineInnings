@@ -5,7 +5,7 @@ import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
 import { filledNine, filledOrder } from '../nine.js'
 import { WHY, lockReason } from '../why.js'
-import { homePerkForGame } from '../home-perk.js'
+import { homePerkForGame, homePerkIdsForGame } from '../home-perk.js'
 import { vsSides } from '../played.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
@@ -160,13 +160,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     const summary = game.status === 'final' || Boolean(game.result)
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
-    if (summary) matchNodes.push(...reviewNotes(game))
-    else {
-      const words = forecastReport(game)
-      if (words) matchNodes.push(el('p', 'game-forecast', words))
-    }
     const homeLock = state.locks.find((row) => row.team_id === game.home_team_id)
-    const fieldLine = homePerkForGame({
+    const perkArgs = {
       final: summary,
       homeLocked: Boolean(homeLock),
       lockPerk: homeLock?.home_perk ?? null,
@@ -174,8 +169,18 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       lockKidPerks: homeLock?.kid_perks || [],
       liveKidPerks: state.liveKidPerks,
       locksKnown: !state.lockFailed,
-    })
-    if (fieldLine) matchNodes.push(el('p', '', fieldLine))
+    }
+    if (summary) {
+      matchNodes.push(...reviewNotes(game, {
+        used: state.usedFailed ? [] : state.used,
+        perkIds: homePerkIdsForGame(perkArgs),
+      }))
+    } else {
+      const words = forecastReport(game)
+      if (words) matchNodes.push(el('p', 'game-forecast', words))
+      const fieldLine = homePerkForGame(perkArgs)
+      if (fieldLine) matchNodes.push(el('p', '', fieldLine))
+    }
     const matchTitle = el('span', 'game-match')
     const [first, second] = vsSides(
       { id: game.away_team_id, name: sideName(game.away_team_id) },
