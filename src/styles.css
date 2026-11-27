@@ -207,7 +207,7 @@ body {
 
 .tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
   gap: 2px 10px;
@@ -222,10 +222,17 @@ body {
 }
 
 .tabs button {
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   max-width: 100%;
+  min-width: 0;
   text-align: center;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+}
+
+.tabs button.shrink {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tabs button.on:not(:disabled),
@@ -514,10 +521,11 @@ input.num {
 }
 
 .fact {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 2px 16px;
+  display: grid;
+  grid-template-columns: max-content minmax(0, max-content);
+  justify-content: start;
+  column-gap: 0.75em;
+  row-gap: 2px;
   width: 100%;
 }
 
@@ -734,6 +742,7 @@ button.edge {
 .subtabs + .draft-host,
 .subtabs + .choices,
 .subtabs + .clubhouse,
+.subtabs + .home-field,
 .subtabs + p {
   margin-top: 1em;
 }

@@ -7,6 +7,7 @@ import { closeDraft } from './screens/draft.js'
 import { closeSeason } from './screens/season.js'
 import { closeTeam, renderTeam } from './screens/team.js'
 import { renderClubhouse } from './screens/clubhouse.js'
+import { renderHomeField } from './screens/home-field.js'
 import { closeMatchup, renderMatchup } from './screens/matchup.js'
 import { renderReport } from './screens/report.js'
 import { closePopup } from './popup.js'
@@ -104,16 +105,21 @@ function applyTabs() {
   const openSeasonId = openSeasonIdFor(route)
   if (place === 'list') menuSection = ''
   const section = place === 'draft' ? 'draft' : place === 'recruiting' ? 'recruiting' : place === 'seasons' ? (nextSection || menuSection || 'dashboard') : ''
+  const seasonName = openSeasonId
+    ? (coachSeasons || []).find((season) => season.id === openSeasonId)?.name || ''
+    : ''
   const items = deskMenu({
     openSeasonId,
     teamId: teamIdFor(route),
     place,
     section,
+    seasonName,
     drafting: openSeasonId !== '' && openSeasonId === draftingSeasonId && drafting,
     forming: openSeasonId !== '' && openSeasonId === formingSeasonId && forming,
   })
   setTabs(items.map((item) => ({
     label: item.label,
+    shrink: item.shrink,
     on: item.on,
     disabled: item.disabled,
     onClick() {
@@ -177,7 +183,10 @@ async function refreshSeasons() {
     name: row.name,
     status: String(row.status || '').toUpperCase(),
   }))
-  if (coachName) setCoach(coachName, coachDetails())
+  if (coachName) {
+    setCoach(coachName, coachDetails())
+    applyTabs()
+  }
 }
 
 async function loadRules() {
@@ -284,7 +293,19 @@ function renderDesk() {
       setTeam,
       onDesk,
       onOpen(tab) {
-        if (tab === 'roster') go(`/teams/${teamId}`)
+        openTeamTab(teamId, tab)
+      },
+    })
+    return
+  }
+  if (place === 'field') {
+    const teamId = route.slice('/teams/'.length, -'/field'.length)
+    renderHomeField(prompt, {
+      teamId,
+      setTeam,
+      onDesk,
+      onOpen(tab) {
+        openTeamTab(teamId, tab)
       },
     })
     return
@@ -296,10 +317,16 @@ function renderDesk() {
       setTeam,
       onDesk,
       onOpen(tab) {
-        if (tab === 'clubhouse') go(`/teams/${teamId}/clubhouse`)
+        openTeamTab(teamId, tab)
       },
     })
   }
+}
+
+function openTeamTab(teamId, tab) {
+  if (tab === 'clubhouse') go(`/teams/${teamId}/clubhouse`)
+  else if (tab === 'field') go(`/teams/${teamId}/field`)
+  else go(`/teams/${teamId}`)
 }
 
 function go(path) {

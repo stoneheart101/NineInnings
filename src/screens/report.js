@@ -27,6 +27,7 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     usedFailed: false,
     locks: [],
     locksFailed: false,
+    liveKidPerks: [],
     held: { bottlecaps: 0, reputation: 0 },
   }
 
@@ -68,11 +69,14 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
     if (finished) matchNodes.push(...reviewNotes(game))
+    const homeLock = state.locks.find((row) => row.team_id === game.home_team_id)
     const fieldLine = homePerkForGame({
       final: finished,
-      homeLocked: state.locks.some((row) => row.team_id === game.home_team_id),
-      lockPerk: state.locks.find((row) => row.team_id === game.home_team_id)?.home_perk ?? null,
+      homeLocked: Boolean(homeLock),
+      lockPerk: homeLock?.home_perk ?? null,
       livePerk: state.teams.find((team) => team.id === game.home_team_id)?.home_perk ?? null,
+      lockKidPerks: homeLock?.kid_perks || [],
+      liveKidPerks: state.liveKidPerks,
       locksKnown: !state.locksFailed,
     })
     if (fieldLine) matchNodes.push(el('p', '', fieldLine))
@@ -114,7 +118,7 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
       supabase.auth.getSession(),
       supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, is_practice, weather, result, narrative').eq('id', gameId).maybeSingle(),
       supabase.rpc('used_clubhouse_items', { game_id: gameId }),
-      supabase.from('lineup_locks').select('team_id, home_perk').eq('game_id', gameId),
+      supabase.from('lineup_locks').select('team_id, home_perk, kid_perks').eq('game_id', gameId),
     ])
     if (prompt.dataset.paint !== token) return
     state.userId = session.data.session?.user?.id ?? ''
@@ -139,11 +143,13 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     }
     state.game = gameRes.data
     state.missing = false
-    const [seasonRes, teamsRes] = await Promise.all([
+    const [seasonRes, teamsRes, perkRes] = await Promise.all([
       supabase.from('seasons').select('id, name').eq('id', state.game.season_id).maybeSingle(),
       supabase.from('teams').select('id, name, coach_id, bottlecaps, reputation, home_perk').eq('season_id', state.game.season_id).order('created_at', { ascending: true }),
+      supabase.from('players').select('home_perk').eq('team_id', state.game.home_team_id).not('home_perk', 'is', null),
     ])
     if (prompt.dataset.paint !== token) return
+    state.liveKidPerks = perkRes.error ? [] : (perkRes.data || []).map((row) => row.home_perk).filter(Boolean)
     if (seasonRes.error || teamsRes.error) {
       state.error = ((seasonRes.error || teamsRes.error).message || 'THE GAME DID NOT LOAD.').toUpperCase()
       state.loaded = true

@@ -35,9 +35,22 @@ export function perkLine(id) {
   return perk ? `BRINGS ${perk.label}` : ''
 }
 
+export function homeFieldNames(ids) {
+  const wanted = new Set()
+  for (const id of ids || []) {
+    if (perkById(id)) wanted.add(id)
+  }
+  return HOME_PERKS.filter((perk) => wanted.has(perk.id)).map((perk) => perk.label)
+}
+
 export function homeFieldLine(id) {
-  const perk = perkById(id)
-  return perk ? `HOME FIELD: ${perk.label}` : ''
+  const names = homeFieldNames([id])
+  return names.length ? `HOME FIELD: ${names[0]}` : ''
+}
+
+export function homeFieldsLine(ids) {
+  const names = homeFieldNames(ids)
+  return names.length ? `HOME FIELD: ${names.join(', ')}` : ''
 }
 
 export function perkChoices(kids) {
@@ -63,9 +76,13 @@ export function homePerkForGame({
   homeLocked = false,
   lockPerk = null,
   livePerk = null,
+  lockKidPerks = null,
+  liveKidPerks = null,
   locksKnown = true,
 } = {}) {
   if (!locksKnown) return ''
-  if (final || homeLocked) return homeFieldLine(lockPerk)
-  return homeFieldLine(livePerk)
+  const frozen = final || homeLocked
+  const chosen = frozen ? lockPerk : livePerk
+  const extras = frozen ? lockKidPerks : liveKidPerks
+  return homeFieldsLine([chosen, ...(extras || [])])
 }

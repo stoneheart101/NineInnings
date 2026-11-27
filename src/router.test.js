@@ -5,6 +5,13 @@ import { routeFromHash } from './router.js'
 const GAME = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 const SEASON = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 
+test('home field is a team route', () => {
+  const team = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+  assert.equal(routeFromHash(`#/teams/${team}/field`), `/teams/${team}/field`)
+  assert.equal(routeFromHash(`#/teams/${team}/clubhouse`), `/teams/${team}/clubhouse`)
+  assert.equal(routeFromHash(`#/teams/${team}/field/extra`), '/')
+})
+
 test('the recruiting board is a season route', () => {
   assert.equal(routeFromHash(`#/seasons/${SEASON}/recruiting`), `/seasons/${SEASON}/recruiting`)
   assert.equal(routeFromHash(`#/seasons/${SEASON}`), `/seasons/${SEASON}`)

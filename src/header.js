@@ -8,7 +8,7 @@ function headerPurse(info) {
   const shownHeldCaps = Number.isFinite(heldCaps) ? heldCaps : 0
   const shownHeldRep = Number.isFinite(heldRep) ? heldRep : 0
   if (shownHeldCaps > 0 || shownHeldRep > 0) {
-    return `${shownRep} REP ${shownCaps} BC (${shownHeldRep} REP ${shownHeldCaps} BC held in high bid)`
+    return `${shownRep} REP ${shownCaps} BC (${shownHeldRep} REP ${shownHeldCaps} BC in bid)`
   }
   return `${shownRep} REP · ${shownCaps} BC`
 }

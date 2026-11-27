@@ -106,6 +106,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     used: [],
     usedFailed: false,
     lockFailed: false,
+    liveKidPerks: [],
     nextGameId: null,
     nextFailed: false,
     held: { bottlecaps: 0, reputation: 0 },
@@ -163,11 +164,14 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       const words = forecastWords(game)
       if (words) matchNodes.push(el('p', 'game-forecast', words))
     }
+    const homeLock = state.locks.find((row) => row.team_id === game.home_team_id)
     const fieldLine = homePerkForGame({
       final: summary,
-      homeLocked: state.locks.some((row) => row.team_id === game.home_team_id),
-      lockPerk: state.locks.find((row) => row.team_id === game.home_team_id)?.home_perk ?? null,
+      homeLocked: Boolean(homeLock),
+      lockPerk: homeLock?.home_perk ?? null,
       livePerk: state.teams.find((team) => team.id === game.home_team_id)?.home_perk ?? null,
+      lockKidPerks: homeLock?.kid_perks || [],
+      liveKidPerks: state.liveKidPerks,
       locksKnown: !state.lockFailed,
     })
     if (fieldLine) matchNodes.push(el('p', '', fieldLine))
@@ -349,6 +353,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
         game_id: gameId,
         team_id: state.myTeam.id,
         home_perk: state.myTeam.id === state.game?.home_team_id ? state.myTeam.home_perk ?? null : null,
+        kid_perks: state.myTeam.id === state.game?.home_team_id ? state.liveKidPerks : [],
       }])
     }
     paint()
@@ -358,7 +363,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     const [session, gameRes, lockRes, cardRes, usedRes] = await Promise.all([
       supabase.auth.getSession(),
       supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, weather, is_practice, result, narrative').eq('id', gameId).maybeSingle(),
-      supabase.from('lineup_locks').select('game_id, team_id, locked_at, home_perk').eq('game_id', gameId),
+      supabase.from('lineup_locks').select('game_id, team_id, locked_at, home_perk, kid_perks').eq('game_id', gameId),
       supabase.rpc('own_locked_card', { game_id: gameId }),
       supabase.rpc('used_clubhouse_items', { game_id: gameId }),
     ])
@@ -387,11 +392,13 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     }
     state.game = gameRes.data
     state.missing = false
-    const [seasonRes, teamsRes] = await Promise.all([
+    const [seasonRes, teamsRes, perkRes] = await Promise.all([
       supabase.from('seasons').select('id, name, commissioner_id').eq('id', state.game.season_id).maybeSingle(),
       supabase.from('teams').select('id, name, coach_id, bottlecaps, reputation, home_perk, season_id').eq('season_id', state.game.season_id).order('created_at', { ascending: true }),
+      supabase.from('players').select('home_perk').eq('team_id', state.game.home_team_id).not('home_perk', 'is', null),
     ])
     if (prompt.dataset.paint !== token) return
+    state.liveKidPerks = perkRes.error ? [] : (perkRes.data || []).map((row) => row.home_perk).filter(Boolean)
     if (seasonRes.error || teamsRes.error) {
       state.error = ((seasonRes.error || teamsRes.error).message || 'THE GAME DID NOT LOAD.').toUpperCase()
       state.loaded = true

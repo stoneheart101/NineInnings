@@ -3,7 +3,6 @@ import { fetchHeld } from '../held-purse.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { alreadyPacked, AVAILABLE_NOTE, itemCost, shelfBlurb } from '../shelf.js'
 import { WHY, buyReason } from '../why.js'
-import { perkChoices } from '../home-perk.js'
 import { teamTabRow } from '../team-tabs.js'
 
 const SLOTS = [
@@ -57,9 +56,6 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
     buyError: '',
     buyItem: '',
     buyBusy: false,
-    perkBusy: false,
-    perkId: '',
-    perkError: '',
     missing: false,
     mine: false,
     loaded: false,
@@ -122,7 +118,6 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
 
   function shelfBlock() {
     const block = el('div', 'clubhouse')
-    block.append(homeFieldBlock())
     if (state.packed.length) {
       block.append(el('p', 'section', 'PACKED FOR NEXT GAME'))
       const packed = el('div', 'packed-list')
@@ -140,64 +135,6 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
       block.append(shelf)
     }
     return block
-  }
-
-  function homeFieldBlock() {
-    const wrap = el('div', 'home-field')
-    wrap.append(el('p', 'section', 'HOME FIELD'))
-    wrap.append(el('p', '', 'PICK ONE. IT STAYS ON FOR EVERY HOME GAME. AN AWAY GAME DOES NOT USE IT. A GAME DOES NOT SPEND IT.'))
-    const choices = perkChoices(state.kids)
-    if (state.rosterError) wrap.append(el('p', 'alert', state.rosterError))
-    else if (!choices.length) wrap.append(el('p', '', 'NO PERK ON THE ROSTER'))
-    else {
-      const list = el('div', 'shelf-list')
-      for (const perk of choices) list.append(perkCard(perk))
-      wrap.append(list)
-    }
-    if (state.perkError) wrap.append(el('p', 'alert', state.perkError))
-    return wrap
-  }
-
-  function perkCard(perk) {
-    const card = el('div', 'card kid-card')
-    const head = el('div', 'card-head')
-    const title = el('span', 'kid-title')
-    const name = el('span', state.team?.home_perk === perk.id ? 'season-name perk-on' : 'season-name', perk.label)
-    title.append(name)
-    head.append(title)
-    const on = state.team?.home_perk === perk.id
-    const button = el('button', '', on ? 'CLEAR' : 'CHOOSE')
-    button.type = 'button'
-    button.disabled = state.perkBusy
-    button.addEventListener('click', () => onPerk(on ? null : perk.id))
-    const actions = el('div', 'card-actions')
-    actions.append(button)
-    head.append(actions)
-    card.append(head)
-    card.append(el('span', '', perk.blurb))
-    card.append(el('span', '', `ON THE ROSTER: ${perk.kids.join(', ')}`))
-    if (state.perkBusy && state.perkId === perk.id) card.append(el('p', 'why', WHY.perkSaving))
-    return card
-  }
-
-  async function onPerk(perk) {
-    if (state.perkBusy || !state.team) return
-    state.perkBusy = true
-    state.perkId = perk || state.team?.home_perk || ''
-    state.perkError = ''
-    paint()
-    const { error } = await supabase.rpc('set_home_perk', { team_id: state.team.id, perk })
-    if (prompt.dataset.paint !== token) return
-    state.perkBusy = false
-    state.perkId = ''
-    if (error) {
-      state.perkError = (error.message || 'THE HOME FIELD DID NOT SAVE.').toUpperCase()
-      paint()
-      return
-    }
-    state.perkError = ''
-    state.team.home_perk = perk
-    await load()
   }
 
   function packedLine(row) {
@@ -326,7 +263,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
       supabase.auth.getSession(),
       supabase
         .from('teams')
-        .select('id, name, coach_id, bottlecaps, reputation, home_perk, season_id, seasons!teams_season_id_fkey(name, roster_cap, status)')
+        .select('id, name, coach_id, bottlecaps, reputation, season_id, seasons!teams_season_id_fkey(name, roster_cap, status)')
         .eq('id', teamId)
         .maybeSingle(),
     ])
@@ -374,7 +311,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
         .order('bought_at', { ascending: true }),
       supabase
         .from('players')
-        .select('id, given_name, family_name, nickname, home_perk')
+        .select('id, given_name, family_name, nickname')
         .eq('team_id', teamId),
       supabase
         .from('lineups')

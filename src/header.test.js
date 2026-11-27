@@ -30,7 +30,7 @@ test('a high bid stays in the header after the purse', () => {
     heldBottlecaps: 5,
     heldReputation: 4,
   })
-  assert.equal(lines[1].text, '2 REP 3 BC (4 REP 5 BC held in high bid)')
+  assert.equal(lines[1].text, '2 REP 3 BC (4 REP 5 BC in bid)')
   const idle = headerLines({ name: 'WEST SIDE', bottlecaps: 3, reputation: 2, heldBottlecaps: 0, heldReputation: 0 })
   assert.equal(idle[1].text, '2 REP · 3 BC')
 })

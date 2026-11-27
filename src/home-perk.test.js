@@ -10,7 +10,7 @@ test('a perk names itself on the kid and on the home game', () => {
   assert.equal(homeFieldLine(''), '')
 })
 
-test('the clubhouse lists the perks the roster brings', () => {
+test('the roster lists the perks kids bring', () => {
   const choices = perkChoices([
     { given_name: 'OTIS', family_name: 'PARK', home_perk: 'fast_grass' },
     { given_name: 'MAYA', family_name: 'CHEN', home_perk: 'short_fence' },
@@ -29,4 +29,12 @@ test('a locked home game keeps the perk it was given', () => {
   assert.equal(homePerkForGame({ final: true, lockPerk: null, livePerk: 'fast_grass' }), '')
   assert.equal(homePerkForGame({ homeLocked: false, livePerk: 'loud_block' }), 'HOME FIELD: LOUD BLOCK')
   assert.equal(homePerkForGame({ locksKnown: false, livePerk: 'loud_block', lockPerk: 'high_sun' }), '')
+  assert.equal(
+    homePerkForGame({ homeLocked: true, lockPerk: 'short_fence', lockKidPerks: ['fast_grass', 'short_fence', 'nope'] }),
+    'HOME FIELD: SHORT FENCE, FAST GRASS',
+  )
+  assert.equal(
+    homePerkForGame({ homeLocked: false, livePerk: null, liveKidPerks: ['loud_block'] }),
+    'HOME FIELD: LOUD BLOCK',
+  )
 })

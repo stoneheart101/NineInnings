@@ -46,9 +46,13 @@ test('TEAM opens the roster, and the clubhouse is a subtab', () => {
   const club = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'clubhouse' })
   assert.equal(club[2].on, true)
   assert.equal(club[2].path, `/teams/${TEAM}`)
-  assert.deepEqual(teamTabs(TEAM).map((tab) => tab.label), ['ROSTER', 'CLUBHOUSE'])
+  assert.deepEqual(teamTabs(TEAM).map((tab) => tab.label), ['ROSTER', 'HOME FIELD', 'CLUBHOUSE'])
   assert.equal(teamTabs(TEAM)[0].path, `/teams/${TEAM}`)
-  assert.equal(teamTabs(TEAM)[1].path, `/teams/${TEAM}/clubhouse`)
+  assert.equal(teamTabs(TEAM)[1].path, `/teams/${TEAM}/field`)
+  assert.equal(teamTabs(TEAM)[2].path, `/teams/${TEAM}/clubhouse`)
+  const field = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'field' })
+  assert.equal(field[2].on, true)
+  assert.equal(field[2].path, `/teams/${TEAM}`)
 })
 
 test('a forming season opens DETAILS from the SEASON tab', () => {
@@ -81,11 +85,16 @@ test('a draft is active only while picks are still being made', () => {
   assert.equal(draftIsActive(season, { order: ['a', 'b'], pick_index: 2 }), false)
 })
 
-test('the recruiting route keeps SEASON on and names that season', () => {
-  const menu = deskMenu({ openSeasonId: SEASON, place: 'recruiting' })
+test('the recruiting route keeps the season tab on and names that season', () => {
+  const menu = deskMenu({ openSeasonId: SEASON, place: 'recruiting', seasonName: 'SUMMER BLOCK' })
   assert.equal(menu[0].on, false)
   assert.equal(menu[1].on, true)
+  assert.equal(menu[1].label, 'SUMMER BLOCK')
+  assert.equal(menu[1].shrink, true)
   assert.equal(menu[1].section, 'schedule')
+  const unnamed = deskMenu({ openSeasonId: SEASON, place: 'recruiting' })
+  assert.equal(unnamed[1].label, 'SEASON')
+  assert.equal(unnamed[1].shrink, false)
 })
 
 test('a game leaves the three tabs up and DASHBOARD returns to that season', () => {
@@ -107,6 +116,7 @@ test('routes name the place and the season', () => {
   assert.equal(placeFromRoute(`/seasons/${SEASON}/recruiting`), 'recruiting')
   assert.equal(placeFromRoute(`/teams/${TEAM}`), 'roster')
   assert.equal(placeFromRoute(`/teams/${TEAM}/clubhouse`), 'clubhouse')
+  assert.equal(placeFromRoute(`/teams/${TEAM}/field`), 'field')
   assert.equal(placeFromRoute(`/games/${TEAM}`), 'matchup')
   assert.equal(placeFromRoute(`/games/${TEAM}/report`), 'report')
   assert.equal(gameIdFromRoute(`/games/${TEAM}`), TEAM)

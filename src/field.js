@@ -66,7 +66,7 @@ export function drawField(root, { onSignOut } = {}) {
     }
     tabs.hidden = false
     for (const item of list) {
-      const button = el('button', item.on ? 'on' : '', item.label)
+      const button = el('button', [item.on ? 'on' : '', item.shrink ? 'shrink' : ''].filter(Boolean).join(' '), item.label)
       button.type = 'button'
       if (item.disabled) button.disabled = true
       if (item.onClick) button.addEventListener('click', item.onClick)
