@@ -16,7 +16,7 @@ import { openChores } from '../chores.js'
 import { filledNine } from '../nine.js'
 import { WHY, deleteReason, scrimmageReason } from '../why.js'
 import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
-import { compareRecruits } from '../recruit-board.js'
+import { coachesWaiting, compareRecruits, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
 import { heldPurse } from '../held-purse.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -211,6 +211,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         if (recruits) box.append(recruits)
         const bids = bidBlock()
         if (bids) box.append(bids)
+        const tryouts = tryoutBlock()
+        if (tryouts) box.append(tryouts)
         if (shown.next) box.append(futureBlock())
         if (shown.play) {
           const play = playCards()
@@ -990,6 +992,33 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return wrap
   }
 
+  function tryoutBlock() {
+    const team = myTeam()
+    if (!team || !state.kids || state.bidsFailed || state.season?.status !== 'active') return null
+    const mine = (state.passes || []).filter((row) => row.team_id === team.id && row.choice === 'tryout')
+    const open = []
+    for (const row of mine) {
+      const kid = state.kids.find((item) => item.id === row.player_id && !item.team_id && item.offer === 'tryout')
+      if (kid) open.push(kid)
+    }
+    if (!open.length) return null
+    open.sort(compareRecruits)
+    const wrap = el('div', 'played-list')
+    wrap.append(el('p', 'section', 'TRYOUTS'))
+    for (const kid of open) {
+      const card = el('div', 'card tryout')
+      const head = el('div', 'card-head')
+      head.append(el('span', 'card-title', kidName(kid)))
+      card.append(head, el('p', 'card-wait', tryoutWaitLine(coachesLeft(kid))))
+      wrap.append(card)
+    }
+    return wrap
+  }
+
+  function coachesLeft(kid) {
+    return coachesWaiting(state.teams.map((team) => team.id), state.passes, kid.id)
+  }
+
   function bidCard(bid, kid) {
     const card = el('div', 'card')
     const head = el('div', 'card-head')
@@ -1107,7 +1136,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     title.append(el('span', 'season-name', kidName(kid)))
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
-    if (kid.offer === 'tryout') title.append(el('span', 'tryout-mark', 'TRYOUT'))
     head.append(title)
     const team = myTeam()
     const bid = openBid(kid)
@@ -1121,21 +1149,24 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         const pass = bidButton('PASS', () => onBid('pass', kid.id))
         pass.disabled = state.bidBusy
         actions.append(button, pass)
-      } else if (kid.offer !== 'tryout' && !joined) {
+      } else if (kid.offer !== 'tryout') {
         const price = coachPrice(kid)
         const standing = bid
           ? { reputation: Number(bid.reputation_bid) || 0, bottlecaps: Number(bid.bottlecap_bid) || 0 }
           : null
         const due = price ? standingDue(price, standing) : null
-        const button = bidButton(due ? bidLabel(due) : 'BID', () => onBid('enter', kid.id))
-        button.disabled = Boolean(reason)
-        const pass = bidButton('PASS', () => onBid('pass', kid.id))
-        pass.disabled = state.bidBusy
-        actions.append(button, pass)
-      } else if (kid.offer !== 'tryout') {
-        const pass = bidButton('PASS', () => onBid('pass', kid.id))
-        pass.disabled = state.bidBusy
-        actions.append(pass)
+        const leading = Boolean(bid && bid.high_team_id === team.id)
+        const leave = leaveLabel({ inBid: Boolean(joined) || leading, leading })
+        if (!joined && !leading) {
+          const button = bidButton(due ? bidLabel(due) : 'BID', () => onBid('enter', kid.id))
+          button.disabled = Boolean(reason)
+          actions.append(button)
+        }
+        if (leave) {
+          const pass = bidButton(leave, () => onBid('pass', kid.id))
+          pass.disabled = state.bidBusy
+          actions.append(pass)
+        }
       }
       if (actions.childNodes.length) head.append(actions)
       card.append(head)
@@ -1146,9 +1177,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       card.append(head)
     }
     if (kid.flavor) card.append(el('span', '', kid.flavor))
-    if (!passed && kid.offer === 'tryout') {
-      card.append(el('p', '', offered ? 'YOU OFFERED A TRYOUT' : 'THE KID PICKS A TEAM ONCE EVERY COACH HAS CHOSEN'))
-    } else if (!passed && kid.offer) {
+    if (!passed && kid.offer === 'tryout' && !offered) {
+      card.append(el('p', '', 'THE KID PICKS A TEAM ONCE EVERY COACH HAS CHOSEN'))
+    } else if (!passed && kid.offer && kid.offer !== 'tryout') {
       if (state.bidsFailed) card.append(el('p', 'alert', 'THE BIDS DID NOT LOAD'))
       else if (state.strengthFailed || !coachPrice(kid)) card.append(el('p', 'alert', 'THE PRICE DID NOT LOAD'))
       else {
@@ -1165,6 +1196,11 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
+    if (!passed && offered) {
+      card.append(state.bidsFailed
+        ? el('p', 'alert', 'THE BIDS DID NOT LOAD')
+        : el('p', 'card-wait', tryoutWaitLine(coachesLeft(kid))))
+    }
     return card
   }
 
