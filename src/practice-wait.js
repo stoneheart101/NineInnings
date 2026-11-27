@@ -4,6 +4,18 @@ export function practiceWaitLabel(when) {
   return `PRACTICE AGAIN ${dayLabel(when)}`
 }
 
+export function practiceRate(days) {
+  const count = Number(days)
+  if (!Number.isInteger(count) || count < 1) return ''
+  return count === 1 ? '1 PER DAY' : `1 PER ${count} DAYS`
+}
+
+export function neighborhoodPlayLabel(days) {
+  const rate = practiceRate(days)
+  const name = 'PLAY A GAME VS THE NEIGHBORHOOD RABBLE'
+  return rate ? `${name} (${rate})` : name
+}
+
 export function practiceGate({ status, everyDays, lastPractice, now }) {
   if (status !== 'active') {
     return { note: 'PRACTICE STARTS WHEN THE SEASON DOES', open: false }

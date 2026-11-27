@@ -25,3 +25,12 @@ export function dashboardShows({ status = '', hasTeam = false } = {}) {
 export function showRecruitingTab({ hasTeam = false, hasRecruits = false } = {}) {
   return Boolean(hasTeam && hasRecruits)
 }
+
+export function seasonSubtabs({ forming = false, drafting = false, pool = false, recruiting = false } = {}) {
+  const tabs = []
+  if (pool) tabs.push(['pool', 'THE POOL'])
+  if (recruiting) tabs.push(['recruiting', 'RECRUITING'])
+  if (!forming) tabs.push(drafting ? ['draft', 'DRAFT'] : ['schedule', 'SCHEDULE'])
+  tabs.push(['details', 'DETAILS'])
+  return tabs
+}

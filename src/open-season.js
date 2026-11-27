@@ -40,7 +40,7 @@ export function openSeasonPopup({ onOpened, onBack } = {}) {
       kind: 'season',
       actions: [
         { label: 'OPEN', submit: true, form: FORM_ID, disabled: state.busy, reason: state.busy ? WHY.seasonOpening : '' },
-        { label: 'BACK', disabled: state.busy, reason: state.busy ? WHY.seasonOpening : '', onClick() { onBack?.() } },
+        { label: 'BACK', disabled: state.busy, reason: state.busy ? WHY.seasonOpening : '', onClick() { closePopup(); onBack?.() } },
       ],
       content: formNode(),
       focus(box) {

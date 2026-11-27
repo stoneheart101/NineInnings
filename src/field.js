@@ -1,5 +1,4 @@
 import { coachMenuBlocks, headerLines } from './header.js'
-import { closePopup, mountPopup, popupKind, replacePopupBody } from './popup.js'
 import { WHY } from './why.js'
 
 function el(tag, className, text) {
@@ -90,6 +89,51 @@ export function drawField(root, { onSignOut } = {}) {
 
   let coachHooks = {}
   let signOutAlert = ''
+  let stopMenu = null
+
+  function coachPanel() {
+    return userMenu.querySelector('.coach-dropdown')
+  }
+
+  function closeCoachMenu() {
+    coachPanel()?.remove()
+    userMenu.querySelector('.coach-toggle')?.setAttribute('aria-expanded', 'false')
+    if (stopMenu) {
+      stopMenu()
+      stopMenu = null
+    }
+  }
+
+  function paintCoachMenu() {
+    const panel = coachPanel()
+    if (!panel) return
+    panel.replaceChildren(menuBody(coachHooks))
+  }
+
+  function openCoachMenu() {
+    const fresh = !coachPanel()
+    if (fresh) {
+      userMenu.append(el('div', 'coach-dropdown card'))
+      const onDoc = (event) => {
+        if (userMenu.contains(event.target)) return
+        closeCoachMenu()
+      }
+      const onKey = (event) => {
+        if (event.key !== 'Escape' || !coachPanel()) return
+        event.preventDefault()
+        closeCoachMenu()
+      }
+      document.addEventListener('click', onDoc)
+      document.addEventListener('keydown', onKey)
+      stopMenu = () => {
+        document.removeEventListener('click', onDoc)
+        document.removeEventListener('keydown', onKey)
+      }
+      coachHooks.onOpen?.()
+    }
+    paintCoachMenu()
+    userMenu.querySelector('.coach-toggle')?.setAttribute('aria-expanded', 'true')
+  }
 
   function menuBody(details) {
     const body = el('div', 'coach-menu')
@@ -110,7 +154,7 @@ export function drawField(root, { onSignOut } = {}) {
             el('span', '', row.season.status || ''),
           )
           button.addEventListener('click', () => {
-            closePopup()
+            closeCoachMenu()
             details.onPickSeason?.(row.season)
           })
           list.append(button)
@@ -121,8 +165,8 @@ export function drawField(root, { onSignOut } = {}) {
         const openSeason = el('button', '', 'OPEN A SEASON')
         openSeason.type = 'button'
         openSeason.addEventListener('click', () => {
-          const reopen = () => showCoach()
-          closePopup()
+          const reopen = () => openCoachMenu()
+          closeCoachMenu()
           details.onOpenSeason?.({ reopen })
         })
         body.append(openSeason)
@@ -138,11 +182,11 @@ export function drawField(root, { onSignOut } = {}) {
           const message = onSignOut ? await onSignOut() : ''
           if (!message) {
             signOutAlert = ''
-            closePopup()
+            closeCoachMenu()
             return
           }
           signOutAlert = message
-          if (popupKind() === 'coach') replacePopupBody(menuBody(coachHooks))
+          paintCoachMenu()
         })
         body.append(signOut, alert)
       }
@@ -150,27 +194,11 @@ export function drawField(root, { onSignOut } = {}) {
     return body
   }
 
-  function showCoach() {
-    const toggle = userMenu.querySelector('.coach-toggle')
-    const name = toggle?.textContent || 'COACH'
-    mountPopup(document.body, {
-      title: name,
-      kind: 'coach',
-      content: menuBody(coachHooks),
-      actions: [{ label: 'CLOSE', onClick() { closePopup() } }],
-      onClose() {
-        toggle?.setAttribute('aria-expanded', 'false')
-      },
-    })
-    toggle?.setAttribute('aria-expanded', 'true')
-    coachHooks.onOpen?.()
-  }
-
   function setCoach(name, details = {}) {
     coachHooks = details
     const cleaned = String(name || '').trim()
     if (!cleaned) {
-      closePopup()
+      closeCoachMenu()
       signOutAlert = ''
       userMenu.replaceChildren()
       userMenu.hidden = true
@@ -179,23 +207,20 @@ export function drawField(root, { onSignOut } = {}) {
     userMenu.hidden = false
     const current = userMenu.querySelector('.coach-toggle')
     if (current && current.textContent === cleaned) {
-      if (popupKind() === 'coach') replacePopupBody(menuBody(details))
+      paintCoachMenu()
       return
     }
-    if (popupKind() === 'coach') closePopup()
+    closeCoachMenu()
     userMenu.replaceChildren()
     const toggle = el('button', 'coach-toggle', cleaned)
     toggle.type = 'button'
     toggle.title = cleaned
-    toggle.setAttribute('aria-haspopup', 'dialog')
+    toggle.setAttribute('aria-haspopup', 'true')
     toggle.setAttribute('aria-expanded', 'false')
     toggle.addEventListener('click', (event) => {
       event.stopPropagation()
-      if (popupKind() === 'coach') {
-        closePopup()
-        return
-      }
-      showCoach()
+      if (coachPanel()) closeCoachMenu()
+      else openCoachMenu()
     })
     userMenu.append(toggle)
   }

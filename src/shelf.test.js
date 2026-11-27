@@ -1,14 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { alreadyPacked, itemCost, shelfBlurb, shelfLine } from './shelf.js'
+import { alreadyPacked, AVAILABLE_NOTE, itemCost, shelfBlurb } from './shelf.js'
 
-test('the shelf says an item lasts one game and can be packed once', () => {
-  const line = shelfLine('series')
-  assert.equal(line.includes('SERIES'), false)
-  assert.equal(line.includes('LASTS THE NEXT GAME'), true)
-  assert.equal(line.includes('THE NEXT GAME SPENDS IT'), true)
-  assert.equal(line.includes('ONE COPY CAN BE PACKED'), true)
-  assert.equal(shelfLine('next_game'), line)
+test('available items are bought for the next game only', () => {
+  assert.equal(AVAILABLE_NOTE, 'BOUGHT FOR AND USED IN THE NEXT GAME ONLY (OFFICIAL OR PRACTICE)')
 })
 
 test('the metal bat card does not talk about a series', () => {

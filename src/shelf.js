@@ -1,8 +1,4 @@
-export const SHELF_LINE = 'LASTS THE NEXT GAME. THE NEXT GAME SPENDS IT. ONE COPY CAN BE PACKED.'
-
-export function shelfLine() {
-  return SHELF_LINE
-}
+export const AVAILABLE_NOTE = 'BOUGHT FOR AND USED IN THE NEXT GAME ONLY (OFFICIAL OR PRACTICE)'
 
 export function shelfBlurb(item) {
   const blurb = typeof item?.blurb === 'string' ? item.blurb.trim() : ''

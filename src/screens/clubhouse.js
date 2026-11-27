@@ -1,7 +1,7 @@
 import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
-import { alreadyPacked, itemCost, shelfBlurb, shelfLine } from '../shelf.js'
+import { alreadyPacked, AVAILABLE_NOTE, itemCost, shelfBlurb } from '../shelf.js'
 import { WHY, buyReason } from '../why.js'
 import { perkChoices } from '../home-perk.js'
 import { teamTabRow } from '../team-tabs.js'
@@ -58,6 +58,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
     buyItem: '',
     buyBusy: false,
     perkBusy: false,
+    perkId: '',
     perkError: '',
     missing: false,
     mine: false,
@@ -122,15 +123,14 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
   function shelfBlock() {
     const block = el('div', 'clubhouse')
     block.append(homeFieldBlock())
-    block.append(el('p', 'section', 'PACKED'))
-    if (!state.packed.length) {
-      block.append(el('p', '', 'NO ITEMS PACKED'))
-    } else {
+    if (state.packed.length) {
+      block.append(el('p', 'section', 'PACKED FOR NEXT GAME'))
       const packed = el('div', 'packed-list')
       for (const row of state.packed) packed.append(el('p', '', packedLine(row)))
       block.append(packed)
     }
     block.append(el('p', 'section', 'AVAILABLE'))
+    block.append(el('p', '', AVAILABLE_NOTE))
     const available = orderedShelf()
     if (!available.length) {
       block.append(el('p', '', 'NONE AVAILABLE'))
@@ -154,7 +154,6 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
       for (const perk of choices) list.append(perkCard(perk))
       wrap.append(list)
     }
-    if (state.perkBusy) wrap.append(el('p', 'why', WHY.perkSaving))
     if (state.perkError) wrap.append(el('p', 'alert', state.perkError))
     return wrap
   }
@@ -177,17 +176,20 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
     card.append(head)
     card.append(el('span', '', perk.blurb))
     card.append(el('span', '', `ON THE ROSTER: ${perk.kids.join(', ')}`))
+    if (state.perkBusy && state.perkId === perk.id) card.append(el('p', 'why', WHY.perkSaving))
     return card
   }
 
   async function onPerk(perk) {
     if (state.perkBusy || !state.team) return
     state.perkBusy = true
+    state.perkId = perk || state.team?.home_perk || ''
     state.perkError = ''
     paint()
     const { error } = await supabase.rpc('set_home_perk', { team_id: state.team.id, perk })
     if (prompt.dataset.paint !== token) return
     state.perkBusy = false
+    state.perkId = ''
     if (error) {
       state.perkError = (error.message || 'THE HOME FIELD DID NOT SAVE.').toUpperCase()
       paint()
@@ -240,9 +242,8 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
     card.append(head)
     const blurb = shelfBlurb(item)
     if (blurb) card.append(el('span', '', blurb))
-    card.append(el('span', '', shelfLine()))
-    if (reason) card.append(el('p', 'why', reason))
     if (state.buyError && state.buyItem === item.id) card.append(el('p', 'alert', state.buyError))
+    if (reason) card.append(el('p', 'why', reason))
     return card
   }
 

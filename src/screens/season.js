@@ -1,7 +1,7 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
 import { clockLabel, clockLabel12, dayKey, dayLabel, forecastShown, forecastWords, weatherReport } from '../forecast.js'
-import { practiceGate } from '../practice-wait.js'
+import { neighborhoodPlayLabel, practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, historyPage, narrativeLead, playedGames, playedScore } from '../played.js'
 import { rankStandings } from '../standings.js'
@@ -10,7 +10,7 @@ import { closePopup, mountPopup } from '../popup.js'
 import { sameSeasonName } from '../season-name.js'
 import { nextOfficial } from '../next-game.js'
 import { draftComplete as draftIsComplete, setupRows, shouldAutoStart } from '../setup.js'
-import { dashboardShows, showRecruitingTab } from '../season-view.js'
+import { dashboardShows, seasonSubtabs, showRecruitingTab } from '../season-view.js'
 import { bindChanges, seasonPendingChanges, seasonReadyChanges } from '../live.js'
 import { openChores } from '../chores.js'
 import { filledNine, filledOrder } from '../nine.js'
@@ -528,7 +528,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (state.lineupFailed) wrap.append(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
     const practice = el('div', 'play-link')
     practice.append(playLink(
-      'PLAY A GAME VS THE NEIGHBORHOOD RABBLE',
+      neighborhoodPlayLabel(season?.practice_every_days),
       () => startScrimmage('start_practice', 'practice', !gate.open || !ready),
       !gate.open || busy || !ready,
     ))
@@ -667,10 +667,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   function subtabs(visible, draftingNow) {
     const row = el('div', 'subtabs')
     const forming = state.season?.status === 'forming'
-    const tabs = [['details', 'DETAILS']]
-    if (!forming) tabs.unshift([draftingNow ? 'draft' : 'schedule', draftingNow ? 'DRAFT' : 'SCHEDULE'])
-    if (recruitShown()) tabs.splice(forming ? 0 : 1, 0, ['recruiting', 'RECRUITING'])
-    if (poolShown()) tabs.splice(forming ? 0 : 1, 0, ['pool', 'THE POOL'])
+    const tabs = seasonSubtabs({
+      forming,
+      drafting: draftingNow,
+      pool: poolShown(),
+      recruiting: recruitShown(),
+    })
     for (const [id, label] of tabs) {
       const button = el('button', visible === id ? 'on' : '', label)
       button.type = 'button'
@@ -1023,13 +1025,15 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     head.append(actions)
     card.append(head, el('p', '', highBidLine(bid)))
     if (!price) card.append(el('p', 'alert', 'THE PRICE DID NOT LOAD'))
-    else if (state.bidBusy) card.append(el('p', 'why', 'THAT BID IS IN PROGRESS'))
-    else if (full) card.append(el('p', 'why', 'RELEASE SOMEONE FIRST'))
-    else {
-      if (repShort && !repShift) card.append(el('p', 'why', 'CANNOT PAY THE REPUTATION'))
-      if ((capShort && !capShift) || (cover && !canPay(team, cover))) card.append(el('p', 'why', 'CANNOT PAY THE BOTTLECAPS'))
-    }
     if (state.bidError && state.bidKid === kid.id) card.append(el('p', 'alert', state.bidError))
+    const reasons = []
+    if (price && state.bidBusy) reasons.push('THAT BID IS IN PROGRESS')
+    else if (price && full) reasons.push('RELEASE SOMEONE FIRST')
+    else if (price) {
+      if (repShort && !repShift) reasons.push('CANNOT PAY THE REPUTATION')
+      if ((capShort && !capShift) || (cover && !canPay(team, cover))) reasons.push('CANNOT PAY THE BOTTLECAPS')
+    }
+    for (const reason of reasons) card.append(el('p', 'why', reason))
     return card
   }
 
@@ -1103,12 +1107,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const team = myTeam()
     const bid = openBid(kid)
     const joined = offerFor(bid, team?.id)
+    let reason = ''
     if (kid.offer && team && !passed) {
       const actions = el('div', 'card-actions')
-      const reason = recruitReason(kid)
+      const closed = recruitReason(kid)
       if (kid.offer === 'tryout' && !offered) {
         const button = bidButton('TRYOUT', () => onBid('tryout', kid.id))
-        button.disabled = Boolean(reason)
+        button.disabled = Boolean(closed)
         const pass = bidButton('PASS', () => onBid('pass', kid.id))
         pass.disabled = state.bidBusy
         actions.append(button, pass)
@@ -1122,7 +1127,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         const leave = leaveLabel({ inBid: Boolean(joined) || leading, leading })
         if (!joined && !leading) {
           const button = bidButton(due ? bidLabel(due) : 'BID', () => onBid('enter', kid.id))
-          button.disabled = Boolean(reason)
+          button.disabled = Boolean(closed)
           actions.append(button)
         }
         if (leave) {
@@ -1132,13 +1137,11 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         }
       }
       if (actions.childNodes.length) head.append(actions)
-      card.append(head)
-      const showReason = kid.offer === 'tryout' ? !offered && reason : !joined && reason
-      if (showReason) card.append(el('p', 'why', reason))
-      else if (joined && state.bidBusy) card.append(el('p', 'why', 'THAT BID IS IN PROGRESS'))
-    } else {
-      card.append(head)
+      const showReason = kid.offer === 'tryout' ? !offered && closed : !joined && closed
+      if (showReason) reason = closed
+      else if (joined && state.bidBusy) reason = 'THAT BID IS IN PROGRESS'
     }
+    card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const brought = perkLine(kid.home_perk)
     if (brought) card.append(el('span', '', brought))
@@ -1156,11 +1159,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
-    if (!passed && offered) {
+    if (reason) card.append(el('p', 'why', reason))
+    if (passed) card.append(el('p', 'card-wait', 'PASSED'))
+    else if (offered) {
       card.append(state.bidsFailed
         ? el('p', 'alert', 'THE BIDS DID NOT LOAD')
         : el('p', 'card-wait', tryoutWaitLine(coachesLeft(kid))))
-    } else if (!passed && bid && kid.offer && kid.offer !== 'tryout') {
+    } else if (bid && kid.offer && kid.offer !== 'tryout') {
       card.append(el('p', 'card-wait', 'BIDDING IS IN PROGRESS'))
     }
     return card

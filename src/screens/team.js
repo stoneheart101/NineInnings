@@ -3,6 +3,7 @@ import { fetchHeld } from '../held-purse.js'
 import { statChip } from '../stat-color.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { WHY } from '../why.js'
+import { hideToast, showToast } from '../toast.js'
 import { teamTabRow } from '../team-tabs.js'
 import { perkLine } from '../home-perk.js'
 
@@ -51,6 +52,7 @@ function seasonOf(team) {
 let room = null
 
 export function closeTeam() {
+  hideToast()
   if (!room) return
   const current = room
   room = null
@@ -81,8 +83,23 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     held: { bottlecaps: 0, reputation: 0 },
   }
 
+  function dropped() {
+    if (prompt.dataset.paint === token) return false
+    hideToast(token)
+    return true
+  }
+
+  function holdPickers() {
+    prompt.querySelectorAll('.card-pickers select, .kid-card button').forEach((control) => {
+      control.disabled = true
+    })
+    showToast(WHY.rosterChange, token)
+  }
+
   function paint() {
     if (prompt.dataset.paint !== token) return
+    if (state.busy || state.lineupBusy) showToast(WHY.rosterChange, token)
+    else hideToast(token)
     if (popupKind() !== 'coach' && popupKind() !== 'season') closePopup()
     prompt.replaceChildren()
     const box = el('div', 'choices')
@@ -124,7 +141,6 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     if (box.childNodes.length) prompt.append(box)
 
     const board = el('div', 'choices')
-    if (state.busy || state.lineupBusy) board.append(el('p', 'why', WHY.rosterChange))
     if (!state.kids.length) {
       board.append(el('p', '', 'NO KIDS YET'))
     } else {
@@ -175,7 +191,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     release.type = 'button'
     release.disabled = state.busy || state.lineupBusy
     release.addEventListener('click', () => {
-      if (state.busy) return
+      if (state.busy || state.lineupBusy) return
       state.confirmKid = kid.id
       state.releaseError = ''
       paint()
@@ -217,7 +233,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
 
   function pickers(kid) {
     const row = el('div', 'card-pickers')
-    row.append(positionPicker(kid), orderPicker(kid))
+    row.append(positionPicker(kid))
+    if (slotFor(kid.id) > 0) row.append(orderPicker(kid))
     return row
   }
 
@@ -324,14 +341,14 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     state.lineupBusy = true
     state.lineupError = ''
     state.lineupKid = playerId
-    paint()
+    holdPickers()
     const { error } = await supabase.rpc('set_lineup', { team_id: state.team.id, slots })
-    if (prompt.dataset.paint !== token) return
+    if (dropped()) return
     state.lineupBusy = false
     if (error) {
       const message = (error.message || 'THE LINEUP STAYED.').toUpperCase()
       await load()
-      if (prompt.dataset.paint !== token) return
+      if (dropped()) return
       state.lineupError = message
       state.lineupKid = playerId
       paint()
@@ -373,14 +390,14 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     state.lineupBusy = true
     state.lineupError = ''
     state.lineupKid = playerId
-    paint()
+    holdPickers()
     const { error } = await supabase.rpc('set_batting_order', { team_id: state.team.id, orders })
-    if (prompt.dataset.paint !== token) return
+    if (dropped()) return
     state.lineupBusy = false
     if (error) {
       const message = (error.message || 'THE ORDER STAYED.').toUpperCase()
       await load()
-      if (prompt.dataset.paint !== token) return
+      if (dropped()) return
       state.lineupError = message
       state.lineupKid = playerId
       paint()
@@ -399,7 +416,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     state.releaseKid = playerId
     paint()
     const { error } = await supabase.rpc('release_player', { player_id: playerId })
-    if (prompt.dataset.paint !== token) return
+    if (dropped()) return
     state.busy = false
     if (error) {
       state.releaseError = (error.message || 'THAT KID STAYED.').toUpperCase()

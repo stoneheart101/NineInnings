@@ -159,6 +159,19 @@ body {
   width: 100%;
 }
 
+.user-menu .coach-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 3;
+  width: min(22rem, 100cqi);
+  max-height: min(24rem, 50dvh);
+  margin-top: 6px;
+  overflow: auto;
+  text-align: left;
+  color: var(--ink);
+}
+
 .coach-rules,
 .coach-viewing,
 .coach-empty {
@@ -340,6 +353,35 @@ select:disabled {
 
 .why {
   margin: 4px 0;
+}
+
+.card > .why,
+.name-team .why {
+  justify-self: stretch;
+  width: 100%;
+  margin: 4px 0 0;
+  text-align: right;
+}
+
+.toast {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(40rem, calc(100% - 24px));
+  margin: 0;
+  padding: 8px 14px;
+  border: 2px solid var(--mark);
+  background: #000;
+  color: var(--ink);
+  text-align: center;
+  pointer-events: none;
+}
+
+.toast[hidden] {
+  display: none;
 }
 
 label {
