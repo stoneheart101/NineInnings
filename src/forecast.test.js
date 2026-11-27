@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { clockLabel, clockLabel12, dayKey, dayLabel } from './forecast.js'
+import { clockLabel, clockLabel12, dayKey, dayLabel, forecastShown, forecastWords, weatherReport } from './forecast.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
@@ -38,4 +38,41 @@ test('a played clock uses the local 12 hour time', () => {
 test('the schedule groups a game by the local calendar day', () => {
   const when = new Date(2026, 10, 24, 18, 5, 0)
   assert.equal(dayKey(when), '2026-11-24')
+})
+
+const sample = {
+  weather: {
+    sentence: 'Light rain and wind in',
+    chances: [
+      { type: 'CLEAR', percent: 40 },
+      { type: 'LIGHT RAIN', percent: 70 },
+      { type: 'FOG', percent: 9 },
+      { type: 'WIND IN', percent: 70 },
+      { type: 'HOT AND HUMID', percent: 15 },
+    ],
+  },
+}
+
+test('an upcoming forecast is words, highest chance first, with no percents', () => {
+  const line = forecastWords(sample)
+  assert.equal(line, 'LIGHT RAIN, WIND IN, CLEAR, AND HOT AND HUMID')
+  assert.equal(line.includes('%'), false)
+  assert.equal(forecastWords({ weather: { chances: [{ type: 'fog', percent: 10 }] } }), 'FOG')
+  assert.equal(forecastWords({ weather: { chances: [{ type: 'FOG', percent: 9 }] } }), '')
+  assert.equal(forecastWords({ weather: { chances: [{ type: 'COLD', percent: 12 }, { type: 'CLEAR', percent: 80 }] } }), 'CLEAR AND COLD')
+  assert.equal(forecastWords({}), '')
+})
+
+test('a finished game reads the stored weather sentence', () => {
+  assert.equal(weatherReport(sample), 'LIGHT RAIN AND WIND IN')
+  assert.equal(weatherReport(sample).includes('%'), false)
+  assert.equal(weatherReport({ weather: { sentence: '  ' } }), '')
+  assert.equal(weatherReport({ weather: { chances: sample.weather.chances } }), '')
+  assert.equal(weatherReport({}), '')
+})
+
+test('a forecast shows through the tenth day and stays off after that', () => {
+  const now = new Date('2026-11-27T15:00:00.000Z')
+  assert.equal(forecastShown(new Date('2026-12-07T15:00:00.000Z'), now), true)
+  assert.equal(forecastShown(new Date('2026-12-08T15:00:00.000Z'), now), false)
 })

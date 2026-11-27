@@ -1,5 +1,5 @@
 import { supabase } from '../supabase.js'
-import { clockLabel } from '../forecast.js'
+import { clockLabel, weatherReport } from '../forecast.js'
 import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
 
 function el(tag, className, text) {
@@ -59,6 +59,10 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     const when = new Date(game.starts_at)
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
+    if (game.status === 'final' || game.result) {
+      const weather = weatherReport(game)
+      if (weather) matchNodes.push(el('p', 'game-forecast', weather))
+    }
     const matchTitle = el('span', 'game-match')
     matchTitle.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
     box.append(headed('matchup-card', matchTitle, matchNodes))
@@ -99,7 +103,7 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
   async function load() {
     const [session, gameRes, usedRes] = await Promise.all([
       supabase.auth.getSession(),
-      supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, is_practice, result, narrative').eq('id', gameId).maybeSingle(),
+      supabase.from('games').select('id, season_id, home_team_id, away_team_id, starts_at, status, is_practice, weather, result, narrative').eq('id', gameId).maybeSingle(),
       supabase.rpc('used_clubhouse_items', { game_id: gameId }),
     ])
     if (prompt.dataset.paint !== token) return

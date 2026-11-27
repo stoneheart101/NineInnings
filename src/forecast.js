@@ -23,16 +23,9 @@ export function clockLabel12(when) {
   return `${dayLabel(when)} · ${hour}:${minutes} ${suffix}`
 }
 
-export function forecastSentence(game) {
-  const sentence = game?.weather?.sentence
-  if (typeof sentence !== 'string') return 'THE FORECAST IS NOT HERE'
-  const line = sentence.trim().toUpperCase()
-  return line || 'THE FORECAST IS NOT HERE'
-}
-
-export function forecastChances(game) {
+function rankedChances(game) {
   const chances = game?.weather?.chances
-  if (!Array.isArray(chances)) return ''
+  if (!Array.isArray(chances)) return []
   const ranked = []
   chances.forEach((row, index) => {
     const type = typeof row?.type === 'string' ? row.type.trim().toUpperCase() : ''
@@ -41,12 +34,24 @@ export function forecastChances(game) {
     ranked.push({ type, percent, index })
   })
   ranked.sort((left, right) => right.percent - left.percent || left.index - right.index)
-  if (!ranked.length) return ''
-  return ranked.map((row) => `${row.type} ${row.percent}%`).join(' · ')
+  return ranked
 }
 
-export function forecastLine(game) {
-  return forecastChances(game) || forecastSentence(game)
+function joinWords(parts) {
+  if (parts.length === 0) return ''
+  if (parts.length === 1) return parts[0]
+  if (parts.length === 2) return `${parts[0]} AND ${parts[1]}`
+  return `${parts.slice(0, -1).join(', ')}, AND ${parts[parts.length - 1]}`
+}
+
+export function forecastWords(game) {
+  return joinWords(rankedChances(game).map((row) => row.type))
+}
+
+export function weatherReport(game) {
+  const sentence = game?.weather?.sentence
+  if (typeof sentence !== 'string') return ''
+  return sentence.trim().toUpperCase()
 }
 
 export function forecastShown(when, now = new Date()) {

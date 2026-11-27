@@ -1,5 +1,5 @@
 import { supabase } from '../supabase.js'
-import { clockLabel, forecastChances, forecastShown } from '../forecast.js'
+import { clockLabel, forecastShown, forecastWords, weatherReport } from '../forecast.js'
 import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
 import { filledNine } from '../nine.js'
@@ -151,9 +151,12 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     const summary = game.status === 'final' || Boolean(game.result)
     const matchNodes = []
     if (!Number.isNaN(when.getTime())) matchNodes.push(el('p', 'game-date', clockLabel(when)))
-    if (!summary && !Number.isNaN(when.getTime()) && forecastShown(when)) {
-      const chances = forecastChances(game)
-      if (chances) matchNodes.push(el('p', 'game-forecast', chances))
+    if (summary) {
+      const weather = weatherReport(game)
+      if (weather) matchNodes.push(el('p', 'game-forecast', weather))
+    } else if (!Number.isNaN(when.getTime()) && forecastShown(when)) {
+      const words = forecastWords(game)
+      if (words) matchNodes.push(el('p', 'game-forecast', words))
     }
     const matchTitle = el('span', 'game-match')
     matchTitle.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))

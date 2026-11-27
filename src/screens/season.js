@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
-import { clockLabel, clockLabel12, dayKey, dayLabel, forecastChances, forecastShown } from '../forecast.js'
+import { clockLabel, clockLabel12, dayKey, dayLabel, forecastShown, forecastWords, weatherReport } from '../forecast.js'
 import { practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, narrativeLead, playedGames, playedScore } from '../played.js'
@@ -479,8 +479,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     head.append(el('span', 'card-title', `NEXT GAME VS ${foe}`), cardAction('OPEN', open))
     card.append(head, el('p', 'game-date', clockLabel(when)))
     if (forecastShown(when)) {
-      const chances = forecastChances(game)
-      if (chances) card.append(el('p', 'game-forecast', chances))
+      const words = forecastWords(game)
+      if (words) card.append(el('p', 'game-forecast', words))
     }
     return card
   }
@@ -830,8 +830,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         const when = new Date(game.starts_at)
         if (!Number.isNaN(when.getTime())) card.append(el('p', 'game-date', clockLabel(when)))
         if (forecastShown(day.when)) {
-          const chances = forecastChances(game)
-          if (chances) card.append(el('p', 'game-forecast', chances))
+          const played = game.status === 'final' || Boolean(game.result)
+          const words = played ? weatherReport(game) : forecastWords(game)
+          if (words) card.append(el('p', 'game-forecast', words))
         }
         block.append(card)
       }
