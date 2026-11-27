@@ -7,11 +7,21 @@ const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', '
 
 test('the day and the clock use the local zone', () => {
   const when = new Date('2026-11-24T23:30:00.000Z')
-  const hours = String(when.getHours()).padStart(2, '0')
-  const minutes = String(when.getMinutes()).padStart(2, '0')
   assert.equal(dayLabel(when), `${DAYS[when.getDay()]} ${MONTHS[when.getMonth()]} ${when.getDate()}`)
-  assert.equal(clockLabel(when), `${dayLabel(when)} · ${hours}:${minutes}`)
   assert.equal(clockLabel(when).includes('UTC'), false)
+})
+
+test('every clock is the local 12 hour time', () => {
+  const afternoon = new Date(2026, 10, 24, 15, 5)
+  const morning = new Date(2026, 10, 24, 9, 7)
+  const midnight = new Date(2026, 10, 24, 0, 0)
+  const noon = new Date(2026, 10, 24, 12, 0)
+  for (const when of [afternoon, morning, midnight, noon]) {
+    assert.equal(clockLabel(when), clockLabel12(when))
+  }
+  assert.equal(clockLabel(afternoon).includes('PM'), true)
+  assert.equal(clockLabel(morning).includes('AM'), true)
+  assert.equal(/ \d{2}:\d{2}$/.test(clockLabel(afternoon)), false)
 })
 
 test('a played clock uses the local 12 hour time', () => {

@@ -1,6 +1,8 @@
 import { supabase } from '../supabase.js'
 import { clockLabel, forecastChances, forecastShown } from '../forecast.js'
 import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
+import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
+import { WHY } from '../why.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
 
@@ -9,10 +11,6 @@ function el(tag, className, text) {
   if (className) node.className = className
   if (text != null) node.textContent = text
   return node
-}
-
-function counted(value, one, many) {
-  return `${value} ${value === 1 ? one : many}`
 }
 
 function linkedItem(row) {
@@ -30,10 +28,16 @@ function slotLine(row) {
 }
 
 function packedLine(item) {
-  const name = typeof item?.name === 'string' && item.name.trim() ? item.name.trim() : 'ITEM'
-  const games = Number(item?.remaining_games)
-  if (!Number.isInteger(games)) return name
-  return `${name} - ${counted(games, 'GAME LEFT', 'GAMES LEFT')}`
+  return typeof item?.name === 'string' && item.name.trim() ? item.name.trim() : 'ITEM'
+}
+
+let matchRoom = null
+
+export function closeMatchup() {
+  if (!matchRoom) return
+  const current = matchRoom
+  matchRoom = null
+  supabase.removeChannel(current)
 }
 
 function liveCard(lineups, kids, items) {
@@ -75,6 +79,7 @@ function cardNodes(card) {
 }
 
 export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
+  closeMatchup()
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -191,6 +196,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
         lock.type = 'button'
         lock.disabled = state.busy
         lock.addEventListener('click', onLock)
+        if (state.busy) mineNodes.push(el('p', 'why', WHY.cardLocking))
       }
       box.append(headed('side-box', 'YOUR CARD', mineNodes, lock))
       box.append(headed('side-box', foe?.name || 'TEAM', [
@@ -382,6 +388,19 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     paint()
     armClock()
   }
+
+  function onRemote() {
+    if (prompt.dataset.paint !== token) {
+      closeMatchup()
+      return
+    }
+    if (gameIsFinal(state.game)) return
+    load()
+  }
+
+  const channel = supabase.channel(`matchup:${gameId}`)
+  bindChanges(channel, matchupChanges(gameId), onRemote)
+  matchRoom = channel.subscribe()
 
   paint()
   load()

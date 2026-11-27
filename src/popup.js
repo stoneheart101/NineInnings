@@ -48,11 +48,13 @@ export function mountPopup(_host, { title, note, actions, content, kind, onClose
   const head = el('div', 'card-head')
   head.append(el('p', 'card-title', title || ''))
   const actionRow = el('div', 'card-actions')
+  const reasons = []
   for (const action of actions || []) {
     const button = el('button', '', action.label)
     button.type = action.submit ? 'submit' : 'button'
     if (action.form) button.setAttribute('form', action.form)
     if (action.disabled) button.disabled = true
+    if (action.disabled && action.reason && !reasons.includes(action.reason)) reasons.push(action.reason)
     if (action.onClick) button.addEventListener('click', () => action.onClick())
     actionRow.append(button)
   }
@@ -60,6 +62,7 @@ export function mountPopup(_host, { title, note, actions, content, kind, onClose
   box.append(head)
 
   const body = el('div', 'popup-body')
+  for (const reason of reasons) body.append(el('p', 'why', reason))
   if (note) body.append(el('p', '', note))
   if (content) body.append(content)
   box.append(body)

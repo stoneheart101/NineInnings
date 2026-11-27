@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { closePopup, mountPopup } from './popup.js'
+import { WHY } from './why.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const FORM_ID = 'open-season-form'
@@ -38,8 +39,8 @@ export function openSeasonPopup({ onOpened, onBack } = {}) {
       title: 'OPEN A SEASON',
       kind: 'season',
       actions: [
-        { label: 'OPEN', submit: true, form: FORM_ID, disabled: state.busy },
-        { label: 'BACK', disabled: state.busy, onClick() { onBack?.() } },
+        { label: 'OPEN', submit: true, form: FORM_ID, disabled: state.busy, reason: state.busy ? WHY.seasonOpening : '' },
+        { label: 'BACK', disabled: state.busy, reason: state.busy ? WHY.seasonOpening : '', onClick() { onBack?.() } },
       ],
       content: formNode(),
       focus(box) {

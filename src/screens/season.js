@@ -9,6 +9,10 @@ import { closeDraft, renderDraft } from './draft.js'
 import { closePopup, mountPopup } from '../popup.js'
 import { sameSeasonName } from '../season-name.js'
 import { nextOfficial } from '../next-game.js'
+import { draftComplete as draftIsComplete, setupRows, shouldAutoStart } from '../setup.js'
+import { dashboardShows, showRecruitingTab } from '../season-view.js'
+import { bindChanges, seasonPendingChanges, seasonReadyChanges } from '../live.js'
+import { WHY, deleteReason } from '../why.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -42,10 +46,20 @@ function coachName(team) {
 }
 
 function draftComplete(season, draft) {
-  if (season?.status !== 'drafting' || !draft) return false
-  const order = Array.isArray(draft.order) ? draft.order : []
-  const pickIndex = Number(draft.pick_index)
-  return order.length > 0 && Number.isInteger(pickIndex) && pickIndex >= order.length
+  return season?.status === 'drafting' && draftIsComplete(draft)
+}
+
+const SEASON_COLUMNS = 'id, name, commissioner_id, status, official_weekdays, practice_every_days, weeks, draft_rounds'
+
+let seasonRoom = null
+let seasonPendingRoom = null
+
+export function closeSeason() {
+  for (const current of [seasonRoom, seasonPendingRoom]) {
+    if (current) supabase.removeChannel(current)
+  }
+  seasonRoom = null
+  seasonPendingRoom = null
 }
 
 function statusLabel(season, draft) {
@@ -87,6 +101,7 @@ function shownSection(section, draftingNow) {
 }
 
 export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, onOpenReport, onLeave, setTeam, onDesk }) {
+  closeSeason()
   const token = String(Math.random())
   host.dataset.paint = token
   const state = {
@@ -112,6 +127,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     boardAsked: false,
     boardError: '',
     playError: '',
+    playAsked: false,
     confirmDelete: false,
     deleteTyped: '',
     deleteError: '',
@@ -157,16 +173,19 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const box = el('div', visible === 'dashboard' ? 'choices dashboard' : 'choices')
     if (visible === 'dashboard') {
       closeDraft()
-      const forming = season.status === 'forming'
-      if (forming && !myTeam) box.append(nameBlock())
-      const recruits = recruitNote()
-      if (recruits) box.append(recruits)
-      if (!forming || comingShown()) box.append(futureBlock())
-      if (!forming) {
-        const play = playCards()
-        if (play) box.append(play)
+      const shown = dashboardShows({ status: season.status, hasTeam: Boolean(myTeam) })
+      if (shown.setup) box.append(setupBlock())
+      else if (shown.outside) box.append(el('p', '', 'YOU ARE NOT IN THIS SEASON'))
+      else {
+        const recruits = recruitNote()
+        if (recruits) box.append(recruits)
+        if (shown.next) box.append(futureBlock())
+        if (shown.play) {
+          const play = playCards()
+          if (play) box.append(play)
+        }
+        if (shown.played) box.append(historyBlock())
       }
-      if (!forming || playedShown()) box.append(historyBlock())
       if (state.boardError && !recruitShown()) box.append(el('p', 'alert', state.boardError))
     } else {
       box.append(subtabs(visible, draftingNow))
@@ -225,6 +244,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       if (draftNote) card.append(el('p', 'alert', draftNote))
     }
     if (canStart && state.playError) card.append(el('p', 'alert', state.playError))
+    if (state.busy) card.append(el('p', 'why', WHY.inProgress))
     return card
   }
 
@@ -234,6 +254,50 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     button.disabled = state.busy
     button.addEventListener('click', onClick)
     return button
+  }
+
+  function setupBlock() {
+    const season = state.season
+    const team = myTeam()
+    const rows = setupRows({
+      status: season.status,
+      commissioner: season.commissioner_id === state.userId,
+      hasTeam: Boolean(team),
+      teamId: team?.id || '',
+      teamCount: state.teams.length,
+      draft: state.draftFailed ? null : state.draft,
+      teams: state.teams,
+      startError: season.start_error || state.playError || '',
+    })
+    const wrap = el('div', 'setup-list')
+    wrap.append(el('p', 'section', 'SET UP'))
+    for (const row of rows) {
+      const card = el('div', 'card')
+      const head = el('div', 'card-head')
+      head.append(el('span', 'card-title', row.title), el('span', 'season-role', row.mark))
+      const actions = el('div', 'card-actions')
+      if (row.action === 'start') actions.append(seasonAction('START THE DRAFT', onStart))
+      if (row.action === 'pick') {
+        const open = el('button', '', 'OPEN THE DRAFT')
+        open.type = 'button'
+        open.addEventListener('click', () => {
+          state.section = 'draft'
+          paint()
+        })
+        actions.append(open)
+      }
+      if (row.action === 'play') actions.append(seasonAction('PLAY BALL', onPlay))
+      if (actions.childNodes.length) head.append(actions)
+      card.append(head)
+      if (row.note) card.append(el('p', '', row.note))
+      if (row.action === 'name') card.append(form())
+      if (row.id === 'draft' && state.draftError) card.append(el('p', 'alert', state.draftError))
+      if (state.busy && (row.action === 'start' || row.action === 'play')) {
+        card.append(el('p', 'why', WHY.inProgress))
+      }
+      wrap.append(card)
+    }
+    return wrap
   }
 
   function detailsBlock() {
@@ -418,6 +482,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     )
     practice.append(practiceHead)
     if (gate.note) practice.append(el('p', state.gamesFailed ? 'alert' : '', gate.note))
+    if (busy && gate.open) practice.append(el('p', 'why', WHY.gameStarting))
     if (state.scrimmageKind === 'practice' && state.scrimmageError) practice.append(el('p', 'alert', state.scrimmageError))
     const dev = el('div', 'card')
     const devHead = el('div', 'card-head')
@@ -428,6 +493,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     )
     dev.append(devHead, el('p', '', 'DOES NOT START THE PRACTICE WAIT'))
     if (season?.status !== 'active') dev.append(el('p', '', 'PRACTICE STARTS WHEN THE SEASON DOES'))
+    if (busy && season?.status === 'active') dev.append(el('p', 'why', WHY.gameStarting))
     if (state.scrimmageKind === 'dev' && state.scrimmageError) dev.append(el('p', 'alert', state.scrimmageError))
     wrap.append(practice, dev)
     return wrap
@@ -509,7 +575,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   }
 
   function recruitShown() {
-    return (state.kids || []).some((kid) => !kid.team_id && kid.offer)
+    return showRecruitingTab({
+      hasTeam: Boolean(myTeam()),
+      hasRecruits: (state.kids || []).some((kid) => !kid.team_id && kid.offer),
+    })
   }
 
   function keptSection(section, draftingNow) {
@@ -670,6 +739,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function scheduleBlock() {
     const season = state.season
+    if (!myTeam()) return el('p', '', 'YOU ARE NOT IN THIS SEASON')
     if (state.gamesFailed && season.status === 'active') {
       return el('p', 'alert', 'THE SCHEDULE DID NOT LOAD')
     }
@@ -698,6 +768,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         title.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
         head.append(title, cardAction('OPEN', open))
         card.append(head)
+        const when = new Date(game.starts_at)
+        if (!Number.isNaN(when.getTime())) card.append(el('p', 'game-date', clockLabel(when)))
         if (forecastShown(day.when)) {
           const chances = forecastChances(game)
           if (chances) card.append(el('p', 'game-forecast', chances))
@@ -709,13 +781,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       }
       wrap.append(block)
     }
-    return wrap
-  }
-
-  function nameBlock() {
-    const wrap = el('div', 'played-list')
-    wrap.append(el('p', 'section', 'YOUR TEAM'))
-    wrap.append(form())
     return wrap
   }
 
@@ -735,6 +800,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     save.type = 'submit'
     save.disabled = state.busy
     node.append(nameLabel, save)
+    if (state.busy) node.append(el('p', 'why', WHY.nameSaving))
     node.addEventListener('submit', onSubmit)
     return node
   }
@@ -791,6 +857,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
           submit: true,
           form: 'delete-season',
           disabled: state.busy || !sameSeasonName(state.deleteTyped, season.name),
+          reason: deleteReason({
+            busy: state.busy,
+            named: sameSeasonName(state.deleteTyped, season.name),
+          }),
         },
         {
           label: 'BACK',
@@ -810,7 +880,14 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         const del = box.querySelector('.card-actions button')
         const sync = () => {
           state.deleteTyped = input.value
-          if (del) del.disabled = state.busy || !sameSeasonName(input.value, season.name)
+          const named = sameSeasonName(input.value, season.name)
+          if (del) del.disabled = state.busy || !named
+          const reason = deleteReason({ busy: state.busy, named })
+          const note = box.querySelector('.why')
+          if (note) {
+            note.hidden = !reason
+            note.textContent = reason
+          }
         }
         input.addEventListener('input', sync)
         sync()
@@ -890,12 +967,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     }
     state.busy = true
     state.error = ''
-    const button = event.currentTarget.querySelector('button')
-    if (button) button.disabled = true
+    paint()
     const { error } = await supabase.rpc('create_team', {
       season_id: seasonId,
       team_name: teamName,
     })
+    if (host.dataset.paint !== token || !host.isConnected) return
     state.busy = false
     if (error) {
       state.error = (error.message || 'THAT TEAM WAS NOT NAMED.').toUpperCase()
@@ -906,14 +983,59 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     await load()
   }
 
+  async function seasonRow() {
+    const withError = await supabase
+      .from('seasons')
+      .select(`${SEASON_COLUMNS}, start_error`)
+      .eq('id', seasonId)
+      .maybeSingle()
+    if (!withError.error) return withError
+    const message = withError.error.message || ''
+    if (/start_error/i.test(message)) {
+      return supabase.from('seasons').select(SEASON_COLUMNS).eq('id', seasonId).maybeSingle()
+    }
+    return withError
+  }
+
+  async function maybeStartSeason() {
+    const season = state.season
+    if (state.playAsked || state.busy || !season) return
+    if (!shouldAutoStart({
+      status: season.status,
+      commissioner: season.commissioner_id === state.userId,
+      draft: state.draftFailed ? null : state.draft,
+      startError: season.start_error || '',
+      playError: state.playError,
+    })) return
+    state.playAsked = true
+    state.busy = true
+    paint()
+    const { error } = await supabase.rpc('play_ball', { season_id: seasonId })
+    if (host.dataset.paint !== token || !host.isConnected) return
+    state.busy = false
+    if (error) {
+      const message = (error.message || 'PLAY BALL DID NOT START.').toUpperCase()
+      if (message.includes('ALREADY STARTED')) {
+        state.playError = ''
+        await load()
+        return
+      }
+      state.playError = message
+      paint()
+      return
+    }
+    state.playError = ''
+    state.section = 'dashboard'
+    await load()
+  }
+
+  let pull = 0
+
   async function load() {
+    const mine = ++pull
     const [session, season, teams, kids, draft, games, standings] = await Promise.all([
       supabase.auth.getSession(),
-      supabase
-        .from('seasons')
-        .select('id, name, commissioner_id, status, official_weekdays, practice_every_days, weeks, draft_rounds')
-        .eq('id', seasonId)
-        .maybeSingle(),
+      seasonRow(),
       supabase
         .from('teams')
         .select('id, name, coach_id, bottlecaps, reputation, profiles!teams_coach_id_fkey(coach_name)')
@@ -941,7 +1063,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .select('team_id, wins, losses')
         .eq('season_id', seasonId),
     ])
-    if (host.dataset.paint !== token || !host.isConnected) return
+    if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return
     state.userId = session.data.session?.user?.id ?? ''
     state.kids = null
     state.draftFailed = Boolean(draft.error)
@@ -983,7 +1105,26 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     }
     state.loaded = true
     await maybeOpenBoard()
+    if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return
+    await maybeStartSeason()
   }
+
+  function onRemote() {
+    if (host.dataset.paint !== token || !host.isConnected) {
+      closeSeason()
+      return
+    }
+    load()
+  }
+
+  // Players and the draft are already published. The other tables stay on a
+  // second channel so a missing publication does not drop those picks.
+  const ready = supabase.channel(`season:${seasonId}`)
+  bindChanges(ready, seasonReadyChanges(seasonId), onRemote)
+  seasonRoom = ready.subscribe()
+  const pending = supabase.channel(`season-pending:${seasonId}`)
+  bindChanges(pending, seasonPendingChanges(seasonId), onRemote)
+  seasonPendingRoom = pending.subscribe()
 
   paint()
   load()

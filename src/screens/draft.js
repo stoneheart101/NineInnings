@@ -1,6 +1,7 @@
 import { supabase } from '../supabase.js'
 import { draftIsActive } from '../menu.js'
 import { statChip } from '../stat-color.js'
+import { draftedKids, draftedLine, poolPick } from '../draft-board.js'
 
 const STATS = [
   ['contact', 'CONTACT'],
@@ -54,6 +55,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     sort: '',
     missing: false,
     loaded: false,
+    openClubs: {},
   }
 
   function teamName(id) {
@@ -160,17 +162,32 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     for (const id of seen) {
       const card = el('div', 'card team-card')
       const head = el('div', 'card-head')
-      head.append(el('span', 'card-title', teamName(id)))
-      card.append(head)
       const drafted = state.kids.filter((kid) => kid.team_id === id)
-      if (!drafted.length) card.append(el('span', '', 'NO KIDS YET'))
-      else for (const kid of drafted) card.append(el('span', '', kidName(kid)))
+      const open = Boolean(state.openClubs[id])
+      head.append(el('span', 'card-title', teamName(id)))
+      const toggle = el('button', '', draftedLine(drafted.length, state.draft?.rounds))
+      toggle.type = 'button'
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+      toggle.addEventListener('click', () => {
+        state.openClubs[id] = !open
+        paint()
+      })
+      const actions = el('div', 'card-actions')
+      actions.append(toggle)
+      head.append(actions)
+      card.append(head)
+      if (open) {
+        const shown = draftedKids(drafted, true)
+        if (!shown.length) card.append(el('p', '', 'NO KIDS YET'))
+        else for (const kid of shown) card.append(draftedKid(kid))
+      }
       roster.append(card)
     }
     node.append(roster)
 
     node.append(el('p', 'section', 'THE POOL'))
     if (myTurn) node.append(el('p', 'season-role', 'YOUR PICK'))
+    if (myTurn && state.busy) node.append(el('p', 'why', poolPick({ myTurn: true, busy: true }).reason))
     const pool = sortedPool(state.kids.filter((kid) => !kid.team_id))
     if (myTurn && pool.length) node.append(sortRow())
     const poolList = el('div', 'draft-pool')
@@ -210,8 +227,18 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     return row
   }
 
+  function draftedKid(kid) {
+    const row = el('div', 'drafted-kid')
+    row.append(el('span', 'season-name', kid.name))
+    const stats = el('span', 'kid-stats')
+    for (const [stat, label] of STATS) stats.append(statChip(label, kid.stats?.[stat]))
+    row.append(stats)
+    return row
+  }
+
   function kidCard(kid, myTurn) {
-    const card = el('div', 'card kid-card')
+    const pick = poolPick({ myTurn, busy: state.busy })
+    const card = el('div', pick.enabled ? 'card kid-card pickable' : 'card kid-card')
     const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
     const nick = kid.nickname ? ` "${kid.nickname}"` : ''
@@ -219,21 +246,22 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
     head.append(title)
-    if (myTurn) {
-      const pick = el('button', '', 'PICK')
-      pick.type = 'button'
-      pick.disabled = state.busy
-      pick.addEventListener('click', () => onPick(kid.id))
-      const actions = el('div', 'card-actions')
-      actions.append(pick)
-      head.append(actions)
-    }
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
     if (state.pickError && state.pickKid === kid.id) card.append(el('p', 'alert', state.pickError))
+    if (!pick.enabled) return card
+    card.tabIndex = 0
+    card.setAttribute('role', 'button')
+    const choose = () => onPick(kid.id)
+    card.addEventListener('click', choose)
+    card.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+      event.preventDefault()
+      choose()
+    })
     return card
   }
 

@@ -2,11 +2,12 @@ import '@fontsource/vt323'
 import './styles.css'
 import { drawField } from './field.js'
 import { createDesk } from './auth.js'
-import { renderSeasons } from './screens/seasons.js'
+import { closeSeasonList, renderSeasons } from './screens/seasons.js'
 import { closeDraft } from './screens/draft.js'
+import { closeSeason } from './screens/season.js'
 import { closeTeam, renderTeam } from './screens/team.js'
 import { renderClubhouse } from './screens/clubhouse.js'
-import { renderMatchup } from './screens/matchup.js'
+import { closeMatchup, renderMatchup } from './screens/matchup.js'
 import { renderReport } from './screens/report.js'
 import { closePopup } from './popup.js'
 import { openSeasonPopup } from './open-season.js'
@@ -231,7 +232,10 @@ function renderDesk() {
   closePopup()
   closeDraft()
   closeTeam()
+  closeMatchup()
   if (!coachName) {
+    closeSeason()
+    closeSeasonList()
     setCoach('')
     setTeam(null)
     return
@@ -241,7 +245,7 @@ function renderDesk() {
   setCoach(coachName, coachDetails())
   applyTabs()
   const place = placeFromRoute(route)
-  if (place === 'list' || place === 'seasons' || place === 'draft') {
+  if (place === 'list' || place === 'seasons' || place === 'draft' || place === 'recruiting') {
     const section = place === 'draft' ? 'draft' : place === 'recruiting' ? 'recruiting' : nextSection
     nextSection = ''
     if (section) menuSection = section
@@ -262,6 +266,8 @@ function renderDesk() {
     })
     return
   }
+  closeSeason()
+  closeSeasonList()
   if (place === 'report') {
     renderReport(prompt, { gameId: gameIdFromRoute(route), setTeam, onDesk })
     return
@@ -345,6 +351,9 @@ supabase.auth.onAuthStateChange((event, session) => {
       openingActive = false
       closeDraft()
       closeTeam()
+      closeSeason()
+      closeSeasonList()
+      closeMatchup()
       closePopup()
       setTeam(null)
       setCoach('')

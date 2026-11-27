@@ -12,9 +12,7 @@ export function dayKey(when) {
 }
 
 export function clockLabel(when) {
-  const hours = String(when.getHours()).padStart(2, '0')
-  const minutes = String(when.getMinutes()).padStart(2, '0')
-  return `${dayLabel(when)} · ${hours}:${minutes}`
+  return clockLabel12(when)
 }
 
 export function clockLabel12(when) {

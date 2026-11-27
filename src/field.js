@@ -1,5 +1,6 @@
 import { coachMenuBlocks, headerLines } from './header.js'
 import { closePopup, mountPopup, popupKind, replacePopupBody } from './popup.js'
+import { WHY } from './why.js'
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -71,6 +72,7 @@ export function drawField(root, { onSignOut } = {}) {
       if (item.disabled) button.disabled = true
       if (item.onClick) button.addEventListener('click', item.onClick)
       tabs.append(button)
+      if (item.disabled && item.reason) tabs.append(el('p', 'why', item.reason))
     }
   }
 
@@ -130,6 +132,7 @@ export function drawField(root, { onSignOut } = {}) {
         signOut.type = 'button'
         signOut.addEventListener('click', async () => {
           signOut.disabled = true
+          signOut.after(el('p', 'why', WHY.signingOut))
           signOutAlert = ''
           alert.hidden = true
           const message = onSignOut ? await onSignOut() : ''

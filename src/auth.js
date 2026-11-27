@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { signDiamond } from './field.js'
+import { WHY } from './why.js'
 
 const COACH_NAME = /^[A-Z0-9][A-Z0-9 .'-]{0,23}$/
 
@@ -125,13 +126,13 @@ export function createDesk(prompt, hooks) {
     node.addEventListener('submit', async (event) => {
       event.preventDefault()
       if (state.busy) return
+      const data = new FormData(node)
       state.busy = true
       state.error = ''
       state.notice = ''
-      const submit = node.querySelector('button[type="submit"]')
-      if (submit) submit.disabled = true
+      paint()
       try {
-        await onSubmit(new FormData(node))
+        await onSubmit(data)
       } catch (error) {
         state.error = explain(error)
         state.notice = ''
@@ -150,7 +151,12 @@ export function createDesk(prompt, hooks) {
       const button = el('button', '', label)
       button.type = handler ? 'button' : 'submit'
       if (handler) button.addEventListener('click', handler)
-      if (!handler) button.disabled = state.busy
+      if (!handler) {
+        button.disabled = state.busy
+        row.append(button)
+        if (state.busy) row.append(el('p', 'why', WHY.coachName))
+        continue
+      }
       row.append(button)
     }
     return row
@@ -165,6 +171,7 @@ export function createDesk(prompt, hooks) {
       useTabs([{
         label: 'SIGN IN WITH GOOGLE',
         disabled: state.busy,
+        reason: state.busy ? WHY.signingIn : '',
         onClick() {
           signInWithGoogle()
         },

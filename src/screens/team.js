@@ -1,6 +1,7 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
+import { WHY } from '../why.js'
 const STATS = [
   ['contact', 'CONTACT'],
   ['power', 'POWER'],
@@ -114,6 +115,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     if (box.childNodes.length) prompt.append(box)
 
     const board = el('div', 'choices')
+    if (state.busy || state.lineupBusy) board.append(el('p', 'why', WHY.rosterChange))
     if (!state.kids.length) {
       board.append(el('p', '', 'NO KIDS YET'))
     } else {

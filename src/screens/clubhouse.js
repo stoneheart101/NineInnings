@@ -1,5 +1,7 @@
 import { supabase } from '../supabase.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
+import { alreadyPacked, shelfBlurb, shelfLine } from '../shelf.js'
+import { buyReason } from '../why.js'
 
 const SLOTS = [
   [1, 'MOUND'],
@@ -38,10 +40,6 @@ function linkedItem(row) {
 
 function needsSlot(item) {
   return item?.effect?.needs_slot === true
-}
-
-function durationLabel(duration) {
-  return duration === 'series' ? 'LASTS A THREE GAME SERIES' : 'LASTS THE NEXT GAME'
 }
 
 function costLine(item) {
@@ -148,9 +146,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
   function packedLine(row) {
     const item = linkedItem(row) || state.shelf.find((entry) => entry.id === row.item_id)
     const name = item?.name || 'ITEM'
-    const games = Number(row.remaining_games)
-    if (!Number.isInteger(games)) return name
-    return `${name} - ${counted(games, 'GAME LEFT', 'GAMES LEFT')}`
+    return `${name} - THE NEXT GAME SPENDS IT`
   }
 
   function buyLabel(item) {
@@ -165,12 +161,17 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
     const title = el('span', 'kid-title')
     title.append(el('span', 'season-name', item.name))
     head.append(title)
+    const reason = buyReason({
+      busy: state.buyBusy,
+      packed: alreadyPacked(state.packed, item.id),
+      afford: canAfford(item),
+    })
     const buy = el('button', '', buyLabel(item))
     buy.type = 'button'
-    buy.disabled = state.buyBusy || !canAfford(item)
+    buy.disabled = Boolean(reason)
     buy.addEventListener('click', () => {
+      if (reason) return
       if (needsSlot(item)) {
-        if (state.buyBusy || !canAfford(item)) return
         state.picking = item.id
         state.buyError = ''
         paint()
@@ -182,8 +183,10 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
     actions.append(buy)
     head.append(actions)
     card.append(head)
-    if (item.blurb) card.append(el('span', '', item.blurb))
-    card.append(el('span', '', durationLabel(item.duration)))
+    const blurb = shelfBlurb(item)
+    if (blurb) card.append(el('span', '', blurb))
+    card.append(el('span', '', shelfLine()))
+    if (reason) card.append(el('p', 'why', reason))
     if (state.buyError && state.buyItem === item.id) card.append(el('p', 'alert', state.buyError))
     return card
   }
@@ -240,7 +243,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
   }
 
   async function onBuy(item, chosenSlot) {
-    if (state.buyBusy || !state.team || !canAfford(item)) return
+    if (state.buyBusy || !state.team || !canAfford(item) || alreadyPacked(state.packed, item.id)) return
     const slot = needsSlot(item) ? Number(chosenSlot) : null
     if (needsSlot(item) && (!Number.isInteger(slot) || slot < 1 || slot > 9)) return
     state.picking = ''

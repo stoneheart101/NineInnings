@@ -325,9 +325,14 @@ select:focus-visible {
   }
 }
 
-button:disabled {
-  cursor: wait;
+button:disabled,
+select:disabled {
+  cursor: default;
   opacity: 0.7;
+}
+
+.why {
+  margin: 4px 0;
 }
 
 label {
@@ -851,14 +856,41 @@ button.action {
 
 .lineup-slot select:disabled,
 .shelf-buy select:disabled {
-  cursor: wait;
+  cursor: default;
   opacity: 0.7;
+}
+
+.kid-card.pickable {
+  cursor: pointer;
+}
+
+.drafted-kid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  min-width: 0;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .kid-card .lineup-slot select:not(:disabled):hover,
   .kid-card .lineup-slot select:not(:disabled):focus-visible {
     background: var(--mark);
+    color: #000;
+  }
+
+  .kid-card.pickable:hover,
+  .kid-card.pickable:focus-visible {
+    background: var(--mark);
+    color: #000;
+  }
+
+  .kid-card.pickable:hover .season-name,
+  .kid-card.pickable:hover .season-role,
+  .kid-card.pickable:hover .sex-m,
+  .kid-card.pickable:focus-visible .season-name,
+  .kid-card.pickable:focus-visible .season-role,
+  .kid-card.pickable:focus-visible .sex-m {
     color: #000;
   }
 }

@@ -1,6 +1,18 @@
 import { supabase } from '../supabase.js'
-import { renderSeason } from './season.js'
+import { closeSeason, renderSeason } from './season.js'
 import { draftIsActive } from '../menu.js'
+import { bindChanges, listPendingChanges, listReadyChanges } from '../live.js'
+
+let listRoom = null
+let listPendingRoom = null
+
+export function closeSeasonList() {
+  for (const current of [listRoom, listPendingRoom]) {
+    if (current) supabase.removeChannel(current)
+  }
+  listRoom = null
+  listPendingRoom = null
+}
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
@@ -41,6 +53,7 @@ function openOnKey(event, onOpen) {
 }
 
 export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, onOpenReport, onLeave, setTeam, onDesk, onDrafting }) {
+  closeSeasonList()
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -69,7 +82,10 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     }
     if (state.error) box.append(el('p', 'alert', state.error))
     if (box.childNodes.length) prompt.append(box)
-    if (!seasonId) return
+    if (!seasonId) {
+      closeSeason()
+      return
+    }
     if (keep) {
       prompt.append(keep)
       return
@@ -153,6 +169,21 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     state.loaded = true
     paint()
   }
+
+  function onRemote() {
+    if (prompt.dataset.paint !== token) {
+      closeSeasonList()
+      return
+    }
+    load()
+  }
+
+  const ready = supabase.channel('seasons-list')
+  bindChanges(ready, listReadyChanges(), onRemote)
+  listRoom = ready.subscribe()
+  const pending = supabase.channel('seasons-list-pending')
+  bindChanges(pending, listPendingChanges(), onRemote)
+  listPendingRoom = pending.subscribe()
 
   paint()
   load()
