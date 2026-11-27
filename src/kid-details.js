@@ -53,6 +53,31 @@ export function kidDetailBars(stats) {
   return bars
 }
 
+export function sexWord(sex) {
+  if (sex === 'M') return 'MALE'
+  if (sex === 'F') return 'FEMALE'
+  return ''
+}
+
+export function kidDetailBody({ stats, sex, perk, position }) {
+  const body = document.createElement('div')
+  body.className = 'kid-detail'
+  const word = sexWord(sex)
+  if (word) {
+    const line = document.createElement('p')
+    line.textContent = word
+    body.append(line)
+  }
+  if (perk) {
+    const line = document.createElement('p')
+    line.textContent = perk
+    body.append(line)
+  }
+  body.append(kidDetailBars(stats))
+  if (position) body.append(position)
+  return body
+}
+
 export function detailsButton(onOpen) {
   const button = document.createElement('button')
   button.type = 'button'
@@ -68,14 +93,23 @@ export function detailsButton(onOpen) {
   return button
 }
 
-export function showKidPopup({ id, name, stats, onClose }) {
+function markKidTitle(homeHelp) {
+  const heading = document.querySelector('.popup.card .card-title')
+  if (!heading) return
+  heading.classList.toggle('home-help', Boolean(homeHelp))
+}
+
+export function showKidPopup({ id, name, stats, sex, perk, homeHelp, position, onClose }) {
   const title = name || 'KID'
+  const helped = Boolean(homeHelp)
+  const body = () => kidDetailBody({ stats, sex, perk, position })
   const open = document.querySelector('.popup')
   if (popupKind() === 'kid' && open?.dataset.kidId === id) {
     const heading = open.querySelector('.card-title')
     if (heading) heading.textContent = title
     open.setAttribute('aria-label', title)
-    replacePopupBody(kidDetailBars(stats))
+    markKidTitle(helped)
+    replacePopupBody(body())
     return
   }
   quietClose = true
@@ -83,7 +117,7 @@ export function showKidPopup({ id, name, stats, onClose }) {
     mountPopup(document.body, {
       title,
       kind: 'kid',
-      content: kidDetailBars(stats),
+      content: body(),
       actions: [{ label: 'CLOSE', onClick() { closePopup() } }],
       onClose() {
         if (quietClose) return
@@ -92,6 +126,7 @@ export function showKidPopup({ id, name, stats, onClose }) {
     })
     const opened = document.querySelector('.popup')
     if (opened && id) opened.dataset.kidId = id
+    markKidTitle(helped)
   } finally {
     quietClose = false
   }

@@ -780,6 +780,10 @@ button.edge {
   color: #9ec9ff;
 }
 
+.home-help {
+  color: #ffe14a;
+}
+
 .choices form.name-team,
 .popup form.open-season {
   width: 100%;
@@ -938,15 +942,28 @@ button.edge {
   margin: 8px 0 0;
 }
 
-.kid-card .lineup-slot select {
+.kid-card .lineup-slot select,
+.kid-detail .lineup-slot select {
   width: auto;
   max-width: 100%;
   flex: 0 0 auto;
   color: var(--mark);
 }
 
-.kid-card .lineup-slot select.bench {
+.kid-card .lineup-slot select.bench,
+.kid-detail .lineup-slot select.bench {
   color: #8a8a8a;
+}
+
+.kid-detail {
+  display: grid;
+  gap: 0.35em;
+  width: 100%;
+  justify-items: stretch;
+}
+
+.kid-detail .lineup-slot {
+  margin-top: 8px;
 }
 
 .lineup-slot select,
@@ -991,7 +1008,9 @@ button.edge {
 
 @media (hover: hover) and (pointer: fine) {
   .kid-card .lineup-slot select:not(:disabled):hover,
-  .kid-card .lineup-slot select:not(:disabled):focus-visible {
+  .kid-card .lineup-slot select:not(:disabled):focus-visible,
+  .kid-detail .lineup-slot select:not(:disabled):hover,
+  .kid-detail .lineup-slot select:not(:disabled):focus-visible {
     background: var(--mark);
     color: #000;
   }
@@ -1005,9 +1024,11 @@ button.edge {
   .kid-card.pickable:hover .season-name,
   .kid-card.pickable:hover .season-role,
   .kid-card.pickable:hover .sex-m,
+  .kid-card.pickable:hover .home-help,
   .kid-card.pickable:focus-visible .season-name,
   .kid-card.pickable:focus-visible .season-role,
-  .kid-card.pickable:focus-visible .sex-m {
+  .kid-card.pickable:focus-visible .sex-m,
+  .kid-card.pickable:focus-visible .home-help {
     color: #000;
   }
 }

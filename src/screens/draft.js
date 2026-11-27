@@ -3,7 +3,7 @@ import { fetchHeld } from '../held-purse.js'
 import { draftIsActive } from '../menu.js'
 import { statChip } from '../stat-color.js'
 import { draftedKids, draftedLine, poolPick } from '../draft-board.js'
-import { perkLine } from '../home-perk.js'
+import { nameClass, perkLine } from '../home-perk.js'
 import { closePopup, popupKind } from '../popup.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 
@@ -126,6 +126,9 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
       id: kid.id,
       name: kidLabel(kid),
       stats: kid.base_stats,
+      sex: kid.sex,
+      perk: perkLine(kid.home_perk),
+      homeHelp: Boolean(perkLine(kid.home_perk)),
       onClose() { state.detailId = '' },
     })
   }
@@ -250,7 +253,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
 
   function draftedKid(kid) {
     const row = el('div', 'drafted-kid')
-    row.append(el('span', 'season-name', kid.name))
+    row.append(el('span', nameClass(kid.home_perk), kid.name))
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of KID_STATS) stats.append(statChip(label, kid.stats?.[stat]))
     row.append(stats)
@@ -263,7 +266,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
     const nick = kid.nickname ? ` "${kid.nickname}"` : ''
-    title.append(el('span', 'season-name', `${kidName(kid)}${nick}`))
+    title.append(el('span', nameClass(kid.home_perk), `${kidName(kid)}${nick}`))
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
     head.append(title)

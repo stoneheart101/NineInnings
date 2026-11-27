@@ -18,7 +18,7 @@ import { WHY, deleteReason, scrimmageReason } from '../why.js'
 import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
 import { coachesWaiting, compareRecruits, highBidNote, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
 import { heldPurse } from '../held-purse.js'
-import { perkLine } from '../home-perk.js'
+import { nameClass, perkLine } from '../home-perk.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -245,6 +245,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       id: kid.id,
       name: kidName(kid),
       stats: kid.base_stats,
+      sex: kid.sex,
+      perk: perkLine(kid.home_perk),
+      homeHelp: Boolean(perkLine(kid.home_perk)),
       onClose() { state.detailId = '' },
     })
   }
@@ -986,7 +989,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     for (const kid of open) {
       const card = el('div', 'card tryout')
       const head = el('div', 'card-head')
-      head.append(el('span', 'card-title', kidName(kid)))
+      head.append(el('span', nameClass(kid.home_perk, 'card-title'), kidName(kid)))
       const actions = el('div', 'card-actions')
       actions.append(detailsButton(() => openDetails(kid)))
       head.append(actions)
@@ -1003,7 +1006,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   function bidCard(bid, kid) {
     const card = el('div', 'card')
     const head = el('div', 'card-head')
-    head.append(el('span', 'card-title', kidName(kid)))
+    head.append(el('span', nameClass(kid.home_perk, 'card-title'), kidName(kid)))
     const actions = el('div', 'card-actions')
     const team = myTeam()
     const leader = bid.high_team_id === team?.id
@@ -1126,7 +1129,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const card = el('div', tone)
     const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
-    title.append(el('span', 'season-name', kidName(kid)))
+    title.append(el('span', nameClass(kid.home_perk), kidName(kid)))
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
     head.append(title)

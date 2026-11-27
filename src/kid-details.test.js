@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { KID_STATS, statBars } from './kid-details.js'
+import { KID_STATS, sexWord, statBars } from './kid-details.js'
+
+test('details name a kid male or female', () => {
+  assert.equal(sexWord('M'), 'MALE')
+  assert.equal(sexWord('F'), 'FEMALE')
+  assert.equal(sexWord(null), '')
+  assert.equal(sexWord('X'), '')
+})
 
 test('the seven bars use the card order and the same integers', () => {
   const bars = statBars({

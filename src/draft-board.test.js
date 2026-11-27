@@ -29,6 +29,7 @@ test('an open drafted list is the name and the seven stats', () => {
   assert.equal(kids[0].name, 'ADA LOVELACE')
   assert.deepEqual(Object.keys(kids[0].stats), ['contact', 'power', 'eye', 'speed', 'glove', 'arm', 'stamina'])
   assert.equal(JSON.stringify(kids).includes('THROWS HEAT'), false)
+  assert.equal(draftedKids([{ ...KID, home_perk: 'moms_muffins' }], true)[0].home_perk, 'moms_muffins')
   assert.equal(JSON.stringify(kids).includes('flavor'), false)
 })
 

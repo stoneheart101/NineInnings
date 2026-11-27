@@ -12,7 +12,7 @@ export function draftedKids(kids, open) {
     const stats = {}
     for (const key of STAT_KEYS) stats[key] = kid?.base_stats?.[key]
     const name = [kid?.given_name, kid?.family_name].filter(Boolean).join(' ') || 'KID'
-    return { id: kid?.id, name, stats }
+    return { id: kid?.id, name, stats, home_perk: kid?.home_perk || null }
   })
 }
 

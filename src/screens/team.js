@@ -5,7 +5,7 @@ import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { WHY } from '../why.js'
 import { hideToast, showToast } from '../toast.js'
 import { teamTabRow } from '../team-tabs.js'
-import { perkLine } from '../home-perk.js'
+import { nameClass, perkLine } from '../home-perk.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 
 const SLOTS = [
@@ -85,6 +85,9 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     prompt.querySelectorAll('.card-pickers select, .kid-card button').forEach((control) => {
       control.disabled = true
     })
+    document.querySelectorAll('.popup .lineup-slot select').forEach((control) => {
+      control.disabled = true
+    })
     showToast(WHY.rosterChange, token)
   }
 
@@ -150,7 +153,9 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     if (pending) {
       mountPopup(prompt, {
         title: `RELEASE ${kidLabel(pending)}?`,
-        note: 'THIS KID WILL BE REMOVED FROM THE TEAM AND PLACED BACK IN THE POOL',
+        note: pending.tryout_status === 'playing' && pending.offer === 'tryout'
+          ? 'THIS KID WILL LEAVE THE TEAM AND GO BACK ON THE BOARD FOR A BID'
+          : 'THIS KID WILL BE REMOVED FROM THE TEAM AND PLACED BACK IN THE POOL',
         actions: [
           { label: 'RELEASE', onClick: () => onRelease(pending.id) },
           {
@@ -182,8 +187,21 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       id: kid.id,
       name: kidLabel(kid),
       stats: kid.base_stats,
+      sex: kid.sex,
+      perk: perkLine(kid.home_perk),
+      homeHelp: Boolean(perkLine(kid.home_perk)),
+      position: detailPosition(kid),
       onClose() { state.detailId = '' },
     })
+  }
+
+  function detailPosition(kid) {
+    const spot = el('div')
+    spot.append(positionPicker(kid))
+    if (state.lineupError && state.lineupKid === kid.id) {
+      spot.append(el('p', 'alert', state.lineupError))
+    }
+    return spot
   }
 
   function kidLabel(kid) {
@@ -195,7 +213,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     const card = el('div', 'card kid-card')
     const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
-    title.append(el('span', 'season-name', kidLabel(kid)))
+    title.append(el('span', nameClass(kid.home_perk), kidLabel(kid)))
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
     if (kid.tryout_status === 'playing') title.append(el('span', 'tryout-mark', 'TRYOUT'))
@@ -505,7 +523,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     const [kids, lineup, held] = await Promise.all([
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, tryout_status, penalty_until_game_id, home_perk, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, tryout_status, offer, penalty_until_game_id, home_perk, created_at')
         .eq('team_id', teamId)
         .order('family_name', { ascending: true })
         .order('given_name', { ascending: true })

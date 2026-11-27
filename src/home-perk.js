@@ -63,6 +63,10 @@ export function perkLine(id) {
   return perk ? `BRINGS ${perk.label}` : ''
 }
 
+export function nameClass(id, base = 'season-name') {
+  return perkLine(id) ? `${base} home-help` : base
+}
+
 export function homeFieldNames(ids) {
   const wanted = new Set()
   for (const id of ids || []) {

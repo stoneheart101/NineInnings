@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { homeFieldLine, homePerkForGame, perkChoices, perkLine } from './home-perk.js'
+import { homeFieldLine, homePerkForGame, nameClass, perkChoices, perkLine } from './home-perk.js'
 
 test('a perk names itself on the kid and on the home game', () => {
   assert.equal(perkLine('moms_muffins'), "BRINGS MOM'S MUFFINS")
   assert.equal(perkLine('short_fence'), '')
   assert.equal(perkLine(null), '')
   assert.equal(perkLine('not_a_perk'), '')
+  assert.equal(nameClass('moms_muffins'), 'season-name home-help')
+  assert.equal(nameClass(null), 'season-name')
+  assert.equal(nameClass('short_fence', 'card-title'), 'card-title')
+  assert.equal(nameClass('moms_muffins', 'card-title'), 'card-title home-help')
   assert.equal(homeFieldLine('familiar_mound'), 'HOME FIELD: FAMILIAR MOUND')
   assert.equal(homeFieldLine('mowed_grass'), 'HOME FIELD: MOWED GRASS')
   assert.equal(homeFieldLine(''), '')
