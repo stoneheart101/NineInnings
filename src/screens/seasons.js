@@ -52,7 +52,7 @@ function openOnKey(event, onOpen) {
   onOpen()
 }
 
-export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, onOpenReport, onLeave, setTeam, onDesk, onDrafting }) {
+export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, onOpenGame, onOpenReport, onOpenTeam, onLeave, setTeam, onDesk, onDrafting }) {
   closeSeasonList()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -100,6 +100,7 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
       onOpenDraft,
       onOpenGame,
       onOpenReport,
+      onOpenTeam,
       onLeave,
       setTeam,
       onDesk,

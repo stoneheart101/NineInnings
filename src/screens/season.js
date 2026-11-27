@@ -12,6 +12,7 @@ import { nextOfficial } from '../next-game.js'
 import { draftComplete as draftIsComplete, setupRows, shouldAutoStart } from '../setup.js'
 import { dashboardShows, showRecruitingTab } from '../season-view.js'
 import { bindChanges, seasonPendingChanges, seasonReadyChanges } from '../live.js'
+import { openChores } from '../chores.js'
 import { filledNine } from '../nine.js'
 import { WHY, deleteReason, scrimmageReason } from '../why.js'
 
@@ -101,7 +102,7 @@ function shownSection(section, draftingNow) {
   return section || 'dashboard'
 }
 
-export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, onOpenReport, onLeave, setTeam, onDesk }) {
+export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame, onOpenReport, onOpenTeam, onLeave, setTeam, onDesk }) {
   closeSeason()
   const token = String(Math.random())
   host.dataset.paint = token
@@ -127,6 +128,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     scrimmageKind: '',
     lineup: [],
     lineupFailed: false,
+    locks: [],
+    locksFailed: false,
     boardAsked: false,
     boardError: '',
     playError: '',
@@ -186,6 +189,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       if (shown.setup) box.append(setupBlock())
       else if (shown.outside) box.append(el('p', '', 'YOU ARE NOT IN THIS SEASON'))
       else {
+        const chores = choreBlock()
+        if (chores) box.append(chores)
         const recruits = recruitNote()
         if (recruits) box.append(recruits)
         if (shown.next) box.append(futureBlock())
@@ -403,6 +408,43 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     }
     const game = nextOfficial(state.games, team.id, state.teams)
     wrap.append(game ? nextGameNode(game) : el('p', '', 'NO GAME COMING'))
+    return wrap
+  }
+
+  function choreBlock() {
+    const season = state.season
+    const team = myTeam()
+    if (!team || season?.status !== 'active') return null
+    const known = state.kids != null && !state.lineupFailed
+    const full = known && filledNine(
+      state.lineup,
+      state.kids.filter((kid) => kid.team_id === team.id),
+    )
+    const game = state.gamesFailed ? null : nextOfficial(state.games, team.id, state.teams)
+    const locked = Boolean(game && state.locks.some((row) => row.game_id === game.id && row.team_id === team.id))
+    const chores = openChores({
+      active: true,
+      nineKnown: known,
+      nineFull: full,
+      nextGameId: game?.id || '',
+      locksKnown: !state.locksFailed && !state.gamesFailed,
+      locked,
+    })
+    const locksMissed = Boolean(game && state.locksFailed)
+    if (!chores.length && !locksMissed) return null
+    const wrap = el('div', 'played-list')
+    if (chores.length) wrap.append(el('p', 'section', 'TODOS'))
+    for (const chore of chores) {
+      const open = chore.id === 'assign'
+        ? () => onOpenTeam?.(team.id)
+        : () => onOpenGame?.(chore.gameId)
+      const card = linkCard('', open)
+      const head = el('div', 'card-head')
+      head.append(el('span', 'card-title', chore.title), cardAction(chore.action, open))
+      card.append(head, el('p', '', chore.note))
+      wrap.append(card)
+    }
+    if (locksMissed) wrap.append(el('p', 'alert', 'THE LOCKS DID NOT LOAD'))
     return wrap
   }
 
@@ -1050,7 +1092,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   async function load() {
     const mine = ++pull
-    const [session, season, teams, kids, draft, games, standings, lineup] = await Promise.all([
+    const [session, season, teams, kids, draft, games, standings, lineup, locks] = await Promise.all([
       supabase.auth.getSession(),
       seasonRow(),
       supabase
@@ -1080,12 +1122,15 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .select('team_id, wins, losses')
         .eq('season_id', seasonId),
       supabase.from('lineups').select('team_id, player_id, slot'),
+      supabase.from('lineup_locks').select('game_id, team_id'),
     ])
     if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return
     state.userId = session.data.session?.user?.id ?? ''
     state.kids = null
     state.lineupFailed = false
     state.lineup = []
+    state.locksFailed = false
+    state.locks = []
     state.draftFailed = Boolean(draft.error)
     state.draft = draft.error ? null : draft.data
     state.gamesFailed = Boolean(games.error)
@@ -1120,6 +1165,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       const mineId = state.teams.find((team) => team.coach_id === state.userId)?.id || ''
       state.lineupFailed = Boolean(lineup.error)
       state.lineup = lineup.error ? [] : (lineup.data || []).filter((row) => row.team_id === mineId)
+      state.locksFailed = Boolean(locks.error)
+      state.locks = locks.error ? [] : (locks.data || [])
       if (kids.error) {
         state.error = (kids.error.message || 'THE KIDS DID NOT LOAD.').toUpperCase()
       } else {

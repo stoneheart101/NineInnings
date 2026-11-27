@@ -256,6 +256,7 @@ function renderDesk() {
       onOpenDraft: () => go(`/seasons/${seasonIdFromRoute(route)}/draft`),
       onOpenGame: (id) => go(`/games/${id}`),
       onOpenReport: (id) => go(`/games/${id}/report`),
+      onOpenTeam: (id) => go(`/teams/${id}`),
       onLeave: () => {
         setTeam(null)
         go('/seasons')
