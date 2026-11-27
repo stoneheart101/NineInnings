@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { coachesWaiting, compareRecruits, leaveLabel, tryoutWaitLine } from './recruit-board.js'
+import { coachesWaiting, compareRecruits, highBidNote, leaveLabel, tryoutWaitLine } from './recruit-board.js'
 
 test('open bids sit above available kids, then tryouts, then a pass', () => {
   const kids = [
@@ -23,6 +23,11 @@ test('a coach who has not bid can pass, and a leader has no leave button', () =>
   assert.equal(leaveLabel({ inBid: false, leading: false }), 'PASS')
   assert.equal(leaveLabel({ inBid: true, leading: true }), '')
   assert.equal(leaveLabel({ inBid: true, leading: false }), 'STOP BIDDING')
+})
+
+test('a high bid on the dashboard has no raise', () => {
+  assert.equal(highBidNote(true), 'YOU HAVE THE HIGH BID')
+  assert.equal(highBidNote(false), '')
 })
 
 test('a tryout waits on the coaches who have not chosen', () => {

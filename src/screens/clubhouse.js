@@ -1,7 +1,7 @@
 import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
-import { alreadyPacked, shelfBlurb, shelfLine } from '../shelf.js'
+import { alreadyPacked, itemCost, shelfBlurb, shelfLine } from '../shelf.js'
 import { buyReason } from '../why.js'
 
 const SLOTS = [
@@ -25,10 +25,6 @@ function el(tag, className, text) {
   return node
 }
 
-function counted(value, one, many) {
-  return `${value} ${value === 1 ? one : many}`
-}
-
 function seasonOf(team) {
   const season = Array.isArray(team?.seasons) ? team.seasons[0] : team?.seasons
   return season || null
@@ -41,13 +37,6 @@ function linkedItem(row) {
 
 function needsSlot(item) {
   return item?.effect?.needs_slot === true
-}
-
-function costLine(item) {
-  const parts = []
-  if (item.bottlecap_cost) parts.push(counted(item.bottlecap_cost, 'BOTTLECAP', 'BOTTLECAPS'))
-  if (item.reputation_cost) parts.push(counted(item.reputation_cost, 'REPUTATION', 'REPUTATION'))
-  return parts.join(' AND ')
 }
 
 export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
@@ -154,7 +143,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
   }
 
   function buyLabel(item) {
-    const price = costLine(item)
+    const price = itemCost(item)
     return price ? `BUY FOR ${price}` : 'BUY'
   }
 

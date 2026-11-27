@@ -6,7 +6,6 @@ test('setup hides the game cards through the draft and a finished draft', () => 
   for (const status of ['forming', 'drafting']) {
     assert.deepEqual(dashboardShows({ status, hasTeam: true }), {
       setup: true,
-      recruits: false,
       next: false,
       play: false,
       played: false,
@@ -18,7 +17,6 @@ test('setup hides the game cards through the draft and a finished draft', () => 
 test('a joined active season shows games and the board', () => {
   assert.deepEqual(dashboardShows({ status: 'active', hasTeam: true }), {
     setup: false,
-    recruits: true,
     next: true,
     play: true,
     played: true,
@@ -31,7 +29,6 @@ test('a joined active season shows games and the board', () => {
 test('a season you have not joined hides recruits and games', () => {
   assert.deepEqual(dashboardShows({ status: 'active', hasTeam: false }), {
     setup: false,
-    recruits: false,
     next: false,
     play: false,
     played: false,

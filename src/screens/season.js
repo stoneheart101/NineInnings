@@ -3,7 +3,7 @@ import { statChip } from '../stat-color.js'
 import { clockLabel, clockLabel12, dayKey, dayLabel, forecastShown, forecastWords, weatherReport } from '../forecast.js'
 import { practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
-import { gameKind, narrativeLead, playedGames, playedScore } from '../played.js'
+import { gameKind, historyPage, narrativeLead, playedGames, playedScore } from '../played.js'
 import { rankStandings } from '../standings.js'
 import { closeDraft, renderDraft } from './draft.js'
 import { closePopup, mountPopup } from '../popup.js'
@@ -16,7 +16,7 @@ import { openChores } from '../chores.js'
 import { filledNine } from '../nine.js'
 import { WHY, deleteReason, scrimmageReason } from '../why.js'
 import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
-import { coachesWaiting, compareRecruits, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
+import { coachesWaiting, compareRecruits, highBidNote, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
 import { heldPurse } from '../held-purse.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -145,6 +145,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     bidError: '',
     bidKid: '',
     coverKid: '',
+    historyOpen: false,
     playError: '',
     playAsked: false,
     confirmDelete: false,
@@ -207,8 +208,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       else {
         const chores = choreBlock()
         if (chores) box.append(chores)
-        const recruits = recruitNote()
-        if (recruits) box.append(recruits)
         const bids = bidBlock()
         if (bids) box.append(bids)
         const tryouts = tryoutBlock()
@@ -418,7 +417,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function futureBlock() {
     const wrap = el('div', 'played-list')
-    wrap.append(el('p', 'section', 'CURRENT'))
+    wrap.append(el('p', 'section', 'GAMES'))
     const team = myTeam()
     if (!team) {
       wrap.append(el('p', '', 'NO GAME COMING'))
@@ -467,27 +466,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       wrap.append(card)
     }
     if (locksMissed) wrap.append(el('p', 'alert', 'THE LOCKS DID NOT LOAD'))
-    return wrap
-  }
-
-  function recruitNote() {
-    if (!state.kids) return null
-    const waiting = state.kids.filter((kid) => !kid.team_id && kid.offer)
-    if (!waiting.length) return null
-    const wrap = el('div', 'played-list')
-    wrap.append(el('p', 'section', 'RECRUITS!'))
-    const row = el('div', 'recruit-note')
-    row.append(el('p', '', counted(waiting.length, 'KID IS ON THE RECRUITING BOARD', 'KIDS ARE ON THE RECRUITING BOARD')))
-    const open = el('button', '', 'OPEN')
-    open.type = 'button'
-    open.addEventListener('click', () => {
-      if (state.section === 'recruiting') return
-      state.section = 'recruiting'
-      paint()
-      maybeOpenBoard()
-    })
-    row.append(open)
-    wrap.append(row)
     return wrap
   }
 
@@ -617,7 +595,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function historyBlock() {
     const wrap = el('div', 'played-list')
-    wrap.append(el('p', 'section', 'PLAYED'))
+    wrap.append(el('p', 'section', 'HISTORY'))
     if (state.gamesFailed) {
       wrap.append(el('p', 'alert', 'THE GAMES DID NOT LOAD'))
       return wrap
@@ -627,7 +605,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       wrap.append(el('p', '', 'NO GAMES PLAYED YET'))
       return wrap
     }
-    for (const game of games) wrap.append(playedCard(game))
+    const page = historyPage(games, state.historyOpen)
+    for (const game of page.shown) wrap.append(playedCard(game))
+    if (page.more) {
+      const more = el('button', '', 'MORE...')
+      more.type = 'button'
+      more.addEventListener('click', () => {
+        state.historyOpen = true
+        paint()
+      })
+      wrap.append(more)
+    }
     return wrap
   }
 
@@ -744,7 +732,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         head.append(el('span', 'card-title', team.name))
         card.append(head, el('span', '', coachName(team)))
         if (team.coach_id === state.userId) {
-          card.append(el('span', 'season-role', `YOUR TEAM · ${counted(team.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')} · ${counted(team.reputation, 'REPUTATION', 'REPUTATION')}`))
+          card.append(el('span', 'season-role', 'YOUR TEAM'))
         }
         list.append(card)
       }
@@ -1024,12 +1012,18 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const head = el('div', 'card-head')
     head.append(el('span', 'card-title', kidName(kid)))
     const team = myTeam()
+    const leader = bid.high_team_id === team?.id
+    const note = highBidNote(leader)
+    if (note) {
+      card.append(head, el('p', '', highBidLine(bid)), el('p', '', note))
+      if (state.bidError && state.bidKid === kid.id) card.append(el('p', 'alert', state.bidError))
+      return card
+    }
     const price = coachPrice(kid)
     const standing = {
       reputation: Number(bid.reputation_bid) || 0,
       bottlecaps: Number(bid.bottlecap_bid) || 0,
     }
-    const leader = bid.high_team_id === team?.id
     const repDue = price ? raiseDue(price, standing, 'reputation') : null
     const capDue = price ? raiseDue(price, standing, 'bottlecaps') : null
     const repPay = raiseCost(repDue, standing, leader)

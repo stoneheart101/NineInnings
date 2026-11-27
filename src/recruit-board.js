@@ -19,6 +19,10 @@ export function leaveLabel({ inBid, leading }) {
   return 'STOP BIDDING'
 }
 
+export function highBidNote(leading) {
+  return leading ? 'YOU HAVE THE HIGH BID' : ''
+}
+
 export function coachesWaiting(teamIds, passes, playerId) {
   const answered = new Set()
   for (const row of passes || []) {

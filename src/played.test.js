@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { gameKind, narrativeLead, playedGames, playedScore } from './played.js'
+import { gameKind, historyPage, narrativeLead, playedGames, playedScore } from './played.js'
 
 test('a played game is named by kind', () => {
   assert.equal(gameKind({ dev: true, is_practice: true }), 'DEV')
@@ -29,4 +29,14 @@ test('history keeps finals and puts the newest first', () => {
     { id: 'd', status: 'final', starts_at: '2026-11-22T23:00:00Z' },
   ])
   assert.deepEqual(games.map((game) => game.id), ['d', 'c', 'b'])
+})
+
+test('history shows three games until the rest are opened', () => {
+  const games = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
+  assert.deepEqual(historyPage(games, false).shown.map((game) => game.id), ['a', 'b', 'c'])
+  assert.equal(historyPage(games, false).more, true)
+  assert.deepEqual(historyPage(games, true).shown.map((game) => game.id), ['a', 'b', 'c', 'd'])
+  assert.equal(historyPage(games, true).more, false)
+  assert.equal(historyPage(games.slice(0, 3), false).more, false)
+  assert.equal(historyPage(null, false).more, false)
 })

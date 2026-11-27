@@ -13,3 +13,12 @@ export function shelfBlurb(item) {
 export function alreadyPacked(packed, itemId) {
   return (packed || []).some((row) => row.item_id === itemId)
 }
+
+export function itemCost(item) {
+  const parts = []
+  const caps = Number(item?.bottlecap_cost)
+  const rep = Number(item?.reputation_cost)
+  if (Number.isFinite(caps) && caps > 0) parts.push(`${caps} BC`)
+  if (Number.isFinite(rep) && rep > 0) parts.push(`${rep} REP`)
+  return parts.join(' AND ')
+}

@@ -629,27 +629,6 @@ button.action {
   gap: clamp(14px, 2.4vw, 24px);
 }
 
-.recruit-note {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  width: 100%;
-  color: var(--mark);
-}
-
-.recruit-note p {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-}
-
-.recruit-note button {
-  flex: 0 0 auto;
-  color: var(--mark);
-}
-
 .card.tryout {
   background: #0e2748;
 }
