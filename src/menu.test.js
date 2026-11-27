@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { deskMenu, draftIsActive, gameIdFromRoute, placeFromRoute, seasonIdFromRoute } from './menu.js'
+import { deskMenu, draftIsActive, gameIdFromRoute, placeFromRoute, seasonIdFromRoute, teamTabs } from './menu.js'
 
 const SEASON = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const TEAM = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
 test('the seasons list sends every tab to the list, with SEASON showing', () => {
   const menu = deskMenu({ place: 'list' })
-  assert.deepEqual(menu.map((item) => item.label), ['DASHBOARD', 'SEASON', 'ROSTER', 'CLUBHOUSE'])
-  assert.deepEqual(menu.map((item) => item.path), ['/seasons', '/seasons', '/seasons', '/seasons'])
-  assert.deepEqual(menu.map((item) => item.on), [false, true, false, false])
+  assert.deepEqual(menu.map((item) => item.label), ['DASHBOARD', 'SEASON', 'TEAM'])
+  assert.deepEqual(menu.map((item) => item.path), ['/seasons', '/seasons', '/seasons'])
+  assert.deepEqual(menu.map((item) => item.on), [false, true, false])
   assert.equal(menu[0].section, 'dashboard')
   assert.equal(menu[2].section, '')
 })
@@ -25,26 +25,30 @@ test('the open season lands on DASHBOARD', () => {
   assert.equal(fresh[1].on, false)
 })
 
-test('an open season with no team lands ROSTER and CLUBHOUSE on DETAILS', () => {
+test('an open season with no team lands TEAM on DETAILS', () => {
   const menu = deskMenu({ openSeasonId: SEASON, place: 'seasons', section: 'schedule' })
   assert.equal(menu[0].on, false)
   assert.equal(menu[1].on, true)
   assert.equal(menu[1].section, 'schedule')
   assert.equal(menu[2].path, `/seasons/${SEASON}`)
   assert.equal(menu[2].section, 'details')
-  assert.equal(menu[3].path, `/seasons/${SEASON}`)
-  assert.equal(menu[3].section, 'details')
+  assert.equal(menu[2].on, false)
 })
 
-test('your team in the open season is where ROSTER and CLUBHOUSE go', () => {
+test('TEAM opens the roster, and the clubhouse is a subtab', () => {
   const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'roster' })
+  assert.equal(menu[2].label, 'TEAM')
   assert.equal(menu[2].path, `/teams/${TEAM}`)
   assert.equal(menu[2].section, '')
   assert.equal(menu[2].on, true)
-  assert.equal(menu[3].path, `/teams/${TEAM}/clubhouse`)
-  assert.equal(menu[3].on, false)
   assert.equal(menu[0].on, false)
   assert.equal(menu[1].on, false)
+  const club = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'clubhouse' })
+  assert.equal(club[2].on, true)
+  assert.equal(club[2].path, `/teams/${TEAM}`)
+  assert.deepEqual(teamTabs(TEAM).map((tab) => tab.label), ['ROSTER', 'CLUBHOUSE'])
+  assert.equal(teamTabs(TEAM)[0].path, `/teams/${TEAM}`)
+  assert.equal(teamTabs(TEAM)[1].path, `/teams/${TEAM}/clubhouse`)
 })
 
 test('a forming season opens DETAILS from the SEASON tab', () => {
@@ -84,13 +88,14 @@ test('the recruiting route keeps SEASON on and names that season', () => {
   assert.equal(menu[1].section, 'schedule')
 })
 
-test('a game leaves the four tabs up and DASHBOARD returns to that season', () => {
+test('a game leaves the three tabs up and DASHBOARD returns to that season', () => {
   for (const place of ['matchup', 'report']) {
     const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place })
-    assert.deepEqual(menu.map((item) => item.on), [false, false, false, false])
+    assert.deepEqual(menu.map((item) => item.on), [false, false, false])
     assert.equal(menu[0].path, `/seasons/${SEASON}`)
     assert.equal(menu[0].section, 'dashboard')
     assert.equal(menu[2].path, `/teams/${TEAM}`)
+    assert.equal(menu[2].label, 'TEAM')
   }
 })
 

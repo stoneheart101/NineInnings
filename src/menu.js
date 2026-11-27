@@ -1,4 +1,4 @@
-// The signed-in menu is the same four tabs on every screen.
+// The signed-in menu is DASHBOARD, SEASON, and TEAM on every screen.
 export function draftIsActive(season, draft) {
   if (season?.status !== 'drafting') return false
   if (!draft) return true
@@ -32,17 +32,19 @@ export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', draft
       on: onSeason,
     },
     {
-      id: 'roster',
-      label: 'ROSTER',
+      id: 'team',
+      label: 'TEAM',
       ...(teamId ? { path: `/teams/${teamId}`, section: '' } : joined),
-      on: place === 'roster',
+      on: place === 'roster' || place === 'clubhouse',
     },
-    {
-      id: 'clubhouse',
-      label: 'CLUBHOUSE',
-      ...(teamId ? { path: `/teams/${teamId}/clubhouse`, section: '' } : joined),
-      on: place === 'clubhouse',
-    },
+  ]
+}
+
+export function teamTabs(teamId = '') {
+  const id = teamId || ''
+  return [
+    { id: 'roster', label: 'ROSTER', path: id ? `/teams/${id}` : '' },
+    { id: 'clubhouse', label: 'CLUBHOUSE', path: id ? `/teams/${id}/clubhouse` : '' },
   ]
 }
 

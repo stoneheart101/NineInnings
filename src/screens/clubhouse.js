@@ -3,6 +3,7 @@ import { fetchHeld } from '../held-purse.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { alreadyPacked, itemCost, shelfBlurb, shelfLine } from '../shelf.js'
 import { buyReason } from '../why.js'
+import { teamTabRow } from '../team-tabs.js'
 
 const SLOTS = [
   [1, 'MOUND'],
@@ -39,7 +40,7 @@ function needsSlot(item) {
   return item?.effect?.needs_slot === true
 }
 
-export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
+export function renderClubhouse(prompt, { teamId, setTeam, onDesk, onOpen }) {
   const token = String(Math.random())
   prompt.dataset.paint = token
   const state = {
@@ -94,6 +95,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
       heldBottlecaps: state.held?.bottlecaps || 0,
       heldReputation: state.held?.reputation || 0,
     })
+    prompt.append(teamTabRow('clubhouse', onOpen))
     if (state.error) box.append(el('p', 'alert', state.error))
     if (box.childNodes.length) prompt.append(box)
     prompt.append(shelfBlock())

@@ -690,6 +690,8 @@ button.edge {
 .subtabs + .season-panel,
 .subtabs + .schedule,
 .subtabs + .draft-host,
+.subtabs + .choices,
+.subtabs + .clubhouse,
 .subtabs + p {
   margin-top: 1em;
 }

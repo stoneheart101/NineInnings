@@ -279,7 +279,14 @@ function renderDesk() {
   }
   if (place === 'clubhouse') {
     const teamId = route.slice('/teams/'.length, -'/clubhouse'.length)
-    renderClubhouse(prompt, { teamId, setTeam, onDesk })
+    renderClubhouse(prompt, {
+      teamId,
+      setTeam,
+      onDesk,
+      onOpen(tab) {
+        if (tab === 'roster') go(`/teams/${teamId}`)
+      },
+    })
     return
   }
   if (place === 'roster') {
@@ -288,6 +295,9 @@ function renderDesk() {
       teamId,
       setTeam,
       onDesk,
+      onOpen(tab) {
+        if (tab === 'clubhouse') go(`/teams/${teamId}/clubhouse`)
+      },
     })
   }
 }

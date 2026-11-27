@@ -3,6 +3,8 @@ import { fetchHeld } from '../held-purse.js'
 import { statChip } from '../stat-color.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { WHY } from '../why.js'
+import { teamTabRow } from '../team-tabs.js'
+
 const STATS = [
   ['contact', 'CONTACT'],
   ['power', 'POWER'],
@@ -54,7 +56,7 @@ export function closeTeam() {
   supabase.removeChannel(current)
 }
 
-export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
+export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
   closeTeam()
   const token = String(Math.random())
   prompt.dataset.paint = token
@@ -110,6 +112,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
       heldBottlecaps: state.held?.bottlecaps || 0,
       heldReputation: state.held?.reputation || 0,
     })
+    prompt.append(teamTabRow('roster', onOpen))
     const cap = Number(season?.roster_cap)
     if (Number.isInteger(cap) && state.kids.length >= cap) {
       box.append(el('p', 'season-role', 'THE BENCH IS FULL'))
