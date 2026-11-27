@@ -4,6 +4,8 @@ export function openChores({
   active = false,
   nineKnown = false,
   nineFull = false,
+  orderKnown = false,
+  orderFull = false,
   nextGameId = '',
   locksKnown = false,
   locked = false,
@@ -16,6 +18,13 @@ export function openChores({
       title: 'ASSIGN POSITIONS',
       action: 'ROSTER',
       note: 'THE NINE IS SHORT',
+    })
+  } else if (nineKnown && nineFull && orderKnown && !orderFull) {
+    chores.push({
+      id: 'order',
+      title: 'ASSIGN BATTING ORDER',
+      action: 'ROSTER',
+      note: 'THE ORDER IS SHORT',
     })
   }
   if (nextGameId && locksKnown && !locked) {

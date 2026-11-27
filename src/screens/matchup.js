@@ -3,7 +3,7 @@ import { fetchHeld } from '../held-purse.js'
 import { clockLabel, forecastShown, forecastWords } from '../forecast.js'
 import { headed, reviewNotes, scoreNodes, usedNodes } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
-import { filledNine } from '../nine.js'
+import { filledNine, filledOrder } from '../nine.js'
 import { WHY, lockReason } from '../why.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
@@ -44,12 +44,14 @@ export function closeMatchup() {
 
 function liveCard(lineups, kids, items) {
   const byId = new Map(kids.map((kid) => [kid.id, kid]))
-  const bySlot = new Map(lineups.map((row) => [Number(row.slot), row.player_id]))
+  const bySlot = new Map(lineups.map((row) => [Number(row.slot), row]))
   const slots = []
   for (let slot = 1; slot <= 9; slot += 1) {
-    const kid = byId.get(bySlot.get(slot)) || null
+    const lined = bySlot.get(slot)
+    const kid = byId.get(lined?.player_id) || null
     slots.push({
       slot,
+      batting_order: lined?.batting_order ?? null,
       player_id: kid?.id ?? null,
       given_name: kid?.given_name ?? null,
       family_name: kid?.family_name ?? null,
@@ -196,11 +198,12 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
         mineNodes.push(...cardNodes(state.live))
         mineNodes.push(el('p', '', 'LOCK COPIES THIS CARD FOR THE GAME'))
         const full = filledNine(state.live?.slots)
+        const order = filledOrder(state.live?.slots)
         lock = el('button', 'action', 'LOCK')
         lock.type = 'button'
-        lock.disabled = state.busy || !full
+        lock.disabled = state.busy || !full || !order
         lock.addEventListener('click', onLock)
-        const reason = lockReason({ busy: state.busy, full })
+        const reason = lockReason({ busy: state.busy, full, order })
         if (reason) mineNodes.push(el('p', 'why', reason))
       }
       box.append(headed('side-box', 'YOUR CARD', mineNodes, lock))
@@ -315,6 +318,11 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       paint()
       return
     }
+    if (!filledOrder(state.live?.slots)) {
+      state.error = WHY.assignOrder
+      paint()
+      return
+    }
     state.busy = true
     state.error = ''
     paint()
@@ -385,7 +393,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     const showLive = playing() && !state.card && !mineLocked() && state.game.status === 'scheduled'
     if (showLive) {
       const [lineupRes, itemRes, kidRes, next] = await Promise.all([
-        supabase.from('lineups').select('team_id, player_id, slot').eq('team_id', state.myTeam.id),
+        supabase.from('lineups').select('team_id, player_id, slot, batting_order').eq('team_id', state.myTeam.id),
         supabase.from('team_items').select('id, item_id, remaining_games, bought_at, effect, clubhouse_items(name)').eq('team_id', state.myTeam.id).order('bought_at', { ascending: true }).order('id', { ascending: true }),
         supabase.from('players').select('id, given_name, family_name, nickname, sex, team_id').eq('team_id', state.myTeam.id),
         nextScheduled(state.myTeam.id),

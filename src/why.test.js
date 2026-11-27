@@ -16,15 +16,17 @@ test('deleting a season says why the button is closed', () => {
 })
 
 test('a short card says why lock is closed', () => {
-  assert.equal(lockReason({ busy: true, full: false }), WHY.cardLocking)
-  assert.equal(lockReason({ busy: false, full: false }), WHY.assignNine)
-  assert.equal(lockReason({ busy: false, full: true }), '')
+  assert.equal(lockReason({ busy: true, full: false, order: false }), WHY.cardLocking)
+  assert.equal(lockReason({ busy: false, full: false, order: false }), WHY.assignNine)
+  assert.equal(lockReason({ busy: false, full: true, order: false }), WHY.assignOrder)
+  assert.equal(lockReason({ busy: false, full: true, order: true }), '')
 })
 
 test('a short nine says why a neighborhood game is closed', () => {
-  assert.equal(scrimmageReason({ busy: true, open: true, full: true, known: true }), WHY.gameStarting)
-  assert.equal(scrimmageReason({ busy: false, open: true, full: false, known: true }), WHY.assignNine)
-  assert.equal(scrimmageReason({ busy: false, open: false, full: false, known: true }), WHY.assignNine)
-  assert.equal(scrimmageReason({ busy: false, open: true, full: false, known: false }), '')
-  assert.equal(scrimmageReason({ busy: false, open: true, full: true, known: true }), '')
+  assert.equal(scrimmageReason({ busy: true, open: true, full: true, order: true, known: true }), WHY.gameStarting)
+  assert.equal(scrimmageReason({ busy: false, open: true, full: false, order: false, known: true }), WHY.assignNine)
+  assert.equal(scrimmageReason({ busy: false, open: false, full: false, order: true, known: true }), WHY.assignNine)
+  assert.equal(scrimmageReason({ busy: false, open: true, full: true, order: false, known: true }), WHY.assignOrder)
+  assert.equal(scrimmageReason({ busy: false, open: true, full: false, order: false, known: false }), '')
+  assert.equal(scrimmageReason({ busy: false, open: true, full: true, order: true, known: true }), '')
 })

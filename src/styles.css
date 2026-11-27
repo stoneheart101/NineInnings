@@ -811,6 +811,14 @@ button.edge {
   justify-self: start;
 }
 
+.card-pickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  justify-content: flex-start;
+  width: 100%;
+}
+
 .sort-row {
   display: flex;
   flex-wrap: wrap;

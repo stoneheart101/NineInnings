@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { filledNine } from './nine.js'
+import { filledNine, filledOrder } from './nine.js'
 
 function nine(ids = [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
   return ids.map((id, index) => ({ slot: index + 1, player_id: `kid-${id}` }))
@@ -26,6 +26,15 @@ test('the same kid does not fill two spots', () => {
   const rows = nine()
   rows[8] = { slot: 9, player_id: 'kid-1' }
   assert.equal(filledNine(rows), false)
+})
+
+test('the batting order is nine spots on the same card', () => {
+  const rows = nine().map((row) => ({ ...row, batting_order: 10 - row.slot }))
+  assert.equal(filledOrder(rows), true)
+  rows[0].batting_order = null
+  assert.equal(filledOrder(rows), false)
+  rows[0].batting_order = rows[1].batting_order
+  assert.equal(filledOrder(rows), false)
 })
 
 test('a kid who is not on the team does not count', () => {

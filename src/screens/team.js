@@ -69,6 +69,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     releaseKid: '',
     confirmKid: '',
     lineup: {},
+    order: {},
     lineupError: '',
     lineupKid: '',
     lineupBusy: false,
@@ -187,7 +188,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
-    card.append(positionPicker(kid))
+    card.append(pickers(kid))
     if (state.lineupError && state.lineupKid === kid.id) {
       card.append(el('p', 'alert', state.lineupError))
     }
@@ -202,6 +203,19 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       if (id === playerId) return Number(slot)
     }
     return 0
+  }
+
+  function orderFor(playerId) {
+    for (const [spot, id] of Object.entries(state.order)) {
+      if (id === playerId) return Number(spot)
+    }
+    return 0
+  }
+
+  function pickers(kid) {
+    const row = el('div', 'card-pickers')
+    row.append(positionPicker(kid), orderPicker(kid))
+    return row
   }
 
   function positionPicker(kid) {
@@ -237,6 +251,40 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     return row
   }
 
+  function orderPicker(kid) {
+    const row = el('label', 'lineup-slot card-foot')
+    const select = document.createElement('select')
+    select.dataset.player = kid.id
+    select.dataset.order = 'batting'
+    const playing = slotFor(kid.id) > 0
+    select.disabled = state.busy || state.lineupBusy || !playing
+    const open = document.createElement('option')
+    open.value = ''
+    open.textContent = 'ORDER'
+    select.append(open)
+    for (let spot = 1; spot <= 9; spot += 1) {
+      const option = document.createElement('option')
+      option.value = String(spot)
+      option.textContent = String(spot)
+      const holder = state.order[spot]
+      if (holder && holder !== kid.id) option.className = 'taken'
+      select.append(option)
+    }
+    const current = playing ? orderFor(kid.id) : 0
+    select.value = current ? String(current) : ''
+    select.classList.toggle('bench', current === 0)
+    select.addEventListener('change', () => {
+      if (state.lineupBusy || state.busy || !playing) return
+      const chosen = select.value
+      setTimeout(() => {
+        if (prompt.dataset.paint !== token || state.lineupBusy || state.busy) return
+        onOrder(kid.id, chosen)
+      }, 0)
+    })
+    row.append(select)
+    return row
+  }
+
   function slotsFromLineup(lineup) {
     const slots = {}
     for (const [slot] of SLOTS) slots[String(slot)] = null
@@ -264,6 +312,12 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     for (const [key, id] of Object.entries(slots)) {
       if (id) state.lineup[Number(key)] = id
     }
+    const still = new Set(Object.values(state.lineup))
+    const kept = {}
+    for (const [spot, id] of Object.entries(state.order)) {
+      if (still.has(id)) kept[Number(spot)] = id
+    }
+    state.order = kept
     state.lineupBusy = true
     state.lineupError = ''
     state.lineupKid = playerId
@@ -273,6 +327,55 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     state.lineupBusy = false
     if (error) {
       const message = (error.message || 'THE LINEUP STAYED.').toUpperCase()
+      await load()
+      if (prompt.dataset.paint !== token) return
+      state.lineupError = message
+      state.lineupKid = playerId
+      paint()
+      return
+    }
+    state.lineupError = ''
+    state.lineupKid = ''
+    await load()
+  }
+
+  function ordersFrom(order) {
+    const orders = {}
+    for (let spot = 1; spot <= 9; spot += 1) orders[String(spot)] = null
+    for (const [spot, playerId] of Object.entries(order)) {
+      const number = Number(spot)
+      if (number >= 1 && number <= 9 && playerId) orders[String(number)] = playerId
+    }
+    return orders
+  }
+
+  async function onOrder(playerId, raw) {
+    if (state.lineupBusy || state.busy || !state.team) return
+    if (!slotFor(playerId)) return
+    const spot = raw === '' ? 0 : Number(raw)
+    if (raw !== '' && (!Number.isInteger(spot) || spot < 1 || spot > 9)) return
+    const previous = orderFor(playerId)
+    if (previous === spot) return
+    const orders = ordersFrom(state.order)
+    const occupant = spot ? orders[String(spot)] : null
+    for (const key of Object.keys(orders)) {
+      if (orders[key] === playerId) orders[key] = null
+    }
+    if (spot) orders[String(spot)] = playerId
+    if (occupant && occupant !== playerId && previous) orders[String(previous)] = occupant
+    state.order = {}
+    for (const [key, id] of Object.entries(orders)) {
+      if (id) state.order[Number(key)] = id
+    }
+    state.lineupBusy = true
+    state.lineupError = ''
+    state.lineupKid = playerId
+    paint()
+    const { error } = await supabase.rpc('set_batting_order', { team_id: state.team.id, orders })
+    if (prompt.dataset.paint !== token) return
+    state.lineupBusy = false
+    if (error) {
+      const message = (error.message || 'THE ORDER STAYED.').toUpperCase()
       await load()
       if (prompt.dataset.paint !== token) return
       state.lineupError = message
@@ -373,7 +476,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
         .order('id', { ascending: true }),
       supabase
         .from('lineups')
-        .select('slot, player_id')
+        .select('slot, player_id, batting_order')
         .eq('team_id', teamId)
         .order('slot', { ascending: true }),
       fetchHeld(supabase, teamId),
@@ -388,12 +491,16 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     }
     const onTeam = new Set(state.kids.map((kid) => kid.id))
     state.lineup = {}
+    state.order = {}
     if (lineup.error) {
       state.lineupError = (lineup.error.message || 'THE LINEUP DID NOT LOAD.').toUpperCase()
     } else {
       state.lineupError = ''
       for (const row of lineup.data || []) {
-        if (onTeam.has(row.player_id)) state.lineup[row.slot] = row.player_id
+        if (!onTeam.has(row.player_id)) continue
+        state.lineup[row.slot] = row.player_id
+        const spot = Number(row.batting_order)
+        if (Number.isInteger(spot) && spot >= 1 && spot <= 9) state.order[spot] = row.player_id
       }
     }
     state.loaded = true

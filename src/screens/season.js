@@ -13,7 +13,7 @@ import { draftComplete as draftIsComplete, setupRows, shouldAutoStart } from '..
 import { dashboardShows, showRecruitingTab } from '../season-view.js'
 import { bindChanges, seasonPendingChanges, seasonReadyChanges } from '../live.js'
 import { openChores } from '../chores.js'
-import { filledNine } from '../nine.js'
+import { filledNine, filledOrder } from '../nine.js'
 import { WHY, deleteReason, scrimmageReason } from '../why.js'
 import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
 import { coachesWaiting, compareRecruits, highBidNote, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
@@ -429,16 +429,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const team = myTeam()
     if (!team || season?.status !== 'active') return null
     const known = state.kids != null && !state.lineupFailed
-    const full = known && filledNine(
-      state.lineup,
-      state.kids.filter((kid) => kid.team_id === team.id),
-    )
+    const mineKids = known ? state.kids.filter((kid) => kid.team_id === team.id) : []
+    const full = known && filledNine(state.lineup, mineKids)
+    const orderFull = known && filledOrder(state.lineup, mineKids)
     const game = state.gamesFailed ? null : nextOfficial(state.games, team.id, state.teams)
     const locked = Boolean(game && state.locks.some((row) => row.game_id === game.id && row.team_id === team.id))
     const chores = openChores({
       active: true,
       nineKnown: known,
       nineFull: full,
+      orderKnown: known,
+      orderFull,
       nextGameId: game?.id || '',
       locksKnown: !state.locksFailed && !state.gamesFailed,
       locked,
@@ -448,7 +449,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const wrap = el('div', 'played-list')
     if (chores.length) wrap.append(el('p', 'section', 'TODOS'))
     for (const chore of chores) {
-      const open = chore.id === 'assign'
+      const open = chore.id === 'assign' || chore.id === 'order'
         ? () => onOpenTeam?.(team.id)
         : () => onOpenGame?.(chore.gameId)
       const card = linkCard('', open)
@@ -518,31 +519,31 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       })
     const busy = state.scrimmageBusy
     const known = state.kids != null && !state.lineupFailed
-    const full = known && filledNine(
-      state.lineup,
-      state.kids.filter((kid) => kid.team_id === team.id),
-    )
+    const mineKids = known ? state.kids.filter((kid) => kid.team_id === team.id) : []
+    const full = known && filledNine(state.lineup, mineKids)
+    const orderFull = known && filledOrder(state.lineup, mineKids)
+    const ready = full && orderFull
     const wrap = el('div', 'play-cards')
     if (state.lineupFailed) wrap.append(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
     const practice = el('div', 'play-link')
     practice.append(playLink(
       'PLAY A GAME VS THE NEIGHBORHOOD RABBLE',
-      () => startScrimmage('start_practice', 'practice', !gate.open || !full),
-      !gate.open || busy || !full,
+      () => startScrimmage('start_practice', 'practice', !gate.open || !ready),
+      !gate.open || busy || !ready,
     ))
     if (gate.note) practice.append(el('p', state.gamesFailed ? 'alert' : '', gate.note))
-    const practiceWhy = scrimmageReason({ busy, open: gate.open, full, known })
+    const practiceWhy = scrimmageReason({ busy, open: gate.open, full, order: orderFull, known })
     if (practiceWhy) practice.append(el('p', 'why', practiceWhy))
     if (state.scrimmageKind === 'practice' && state.scrimmageError) practice.append(el('p', 'alert', state.scrimmageError))
     const dev = el('div', 'play-link')
     const devActive = season?.status === 'active'
     dev.append(playLink(
       'PLAY A DEV GAME',
-      () => startScrimmage('start_dev_game', 'dev', !devActive || !full),
-      !devActive || busy || !full,
+      () => startScrimmage('start_dev_game', 'dev', !devActive || !ready),
+      !devActive || busy || !ready,
     ))
     if (!devActive) dev.append(el('p', '', 'PRACTICE STARTS WHEN THE SEASON DOES'))
-    const devWhy = scrimmageReason({ busy, open: devActive, full, known })
+    const devWhy = scrimmageReason({ busy, open: devActive, full, order: orderFull, known })
     if (devWhy) dev.append(el('p', 'why', devWhy))
     if (state.scrimmageKind === 'dev' && state.scrimmageError) dev.append(el('p', 'alert', state.scrimmageError))
     wrap.append(practice, dev)
@@ -1419,7 +1420,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .from('standings')
         .select('team_id, wins, losses')
         .eq('season_id', seasonId),
-      supabase.from('lineups').select('team_id, player_id, slot'),
+      supabase.from('lineups').select('team_id, player_id, slot, batting_order'),
       supabase.from('lineup_locks').select('game_id, team_id'),
       supabase
         .from('recruit_bids')
