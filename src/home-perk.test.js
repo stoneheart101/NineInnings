@@ -3,24 +3,27 @@ import test from 'node:test'
 import { homeFieldLine, homePerkForGame, perkChoices, perkLine } from './home-perk.js'
 
 test('a perk names itself on the kid and on the home game', () => {
-  assert.equal(perkLine('short_fence'), 'BRINGS SHORT FENCE')
+  assert.equal(perkLine('moms_muffins'), "BRINGS MOM'S MUFFINS")
+  assert.equal(perkLine('short_fence'), '')
   assert.equal(perkLine(null), '')
   assert.equal(perkLine('not_a_perk'), '')
   assert.equal(homeFieldLine('familiar_mound'), 'HOME FIELD: FAMILIAR MOUND')
+  assert.equal(homeFieldLine('mowed_grass'), 'HOME FIELD: MOWED GRASS')
   assert.equal(homeFieldLine(''), '')
 })
 
-test('the roster lists the perks kids bring', () => {
+test('the roster lists the help kids bring', () => {
   const choices = perkChoices([
-    { given_name: 'OTIS', family_name: 'PARK', home_perk: 'fast_grass' },
-    { given_name: 'MAYA', family_name: 'CHEN', home_perk: 'short_fence' },
+    { given_name: 'OTIS', family_name: 'PARK', home_perk: 'brothers_van' },
+    { given_name: 'MAYA', family_name: 'CHEN', home_perk: 'moms_muffins' },
     { given_name: 'BEN', family_name: 'COSTA', home_perk: null },
-    { given_name: 'NIA', family_name: 'DIAZ', home_perk: 'short_fence' },
+    { given_name: 'NIA', family_name: 'DIAZ', home_perk: 'moms_muffins' },
+    { home_perk: 'short_fence' },
     { home_perk: 'nope' },
   ])
-  assert.deepEqual(choices.map((perk) => perk.id), ['short_fence', 'fast_grass'])
+  assert.deepEqual(choices.map((perk) => perk.id), ['moms_muffins', 'brothers_van'])
   assert.deepEqual(choices[0].kids, ['MAYA CHEN', 'NIA DIAZ'])
-  assert.equal(choices[0].label, 'SHORT FENCE')
+  assert.equal(choices[0].label, "MOM'S MUFFINS")
   assert.deepEqual(perkChoices([]), [])
 })
 
@@ -30,11 +33,11 @@ test('a locked home game keeps the perk it was given', () => {
   assert.equal(homePerkForGame({ homeLocked: false, livePerk: 'loud_block' }), 'HOME FIELD: LOUD BLOCK')
   assert.equal(homePerkForGame({ locksKnown: false, livePerk: 'loud_block', lockPerk: 'high_sun' }), '')
   assert.equal(
-    homePerkForGame({ homeLocked: true, lockPerk: 'short_fence', lockKidPerks: ['fast_grass', 'short_fence', 'nope'] }),
-    'HOME FIELD: SHORT FENCE, FAST GRASS',
+    homePerkForGame({ homeLocked: true, lockPerk: 'short_fence', lockKidPerks: ['moms_muffins', 'short_fence', 'nope'] }),
+    "HOME FIELD: SHORT FENCE, MOM'S MUFFINS",
   )
   assert.equal(
-    homePerkForGame({ homeLocked: false, livePerk: null, liveKidPerks: ['loud_block'] }),
-    'HOME FIELD: LOUD BLOCK',
+    homePerkForGame({ homeLocked: false, livePerk: null, liveKidPerks: ['sisters_sewing'] }),
+    "HOME FIELD: SISTER'S SEWING",
   )
 })

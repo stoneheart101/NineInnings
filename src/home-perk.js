@@ -26,12 +26,40 @@ export const HOME_PERKS = [
   },
 ]
 
+export const KID_PERKS = [
+  {
+    id: 'moms_muffins',
+    label: "MOM'S MUFFINS",
+    blurb: 'MOM BAKES FOR THE GAME. THE CLUB HOLDS UP A LITTLE LONGER.',
+  },
+  {
+    id: 'brothers_van',
+    label: "BROTHER'S VAN",
+    blurb: 'AN OLDER BROTHER DRIVES THEM OVER. HOME RUNNERS KEEP A LITTLE SPEED.',
+  },
+  {
+    id: 'sisters_sewing',
+    label: "SISTER'S SEWING",
+    blurb: 'A SISTER MENDS THE MITTS. HOME FIELDERS GAIN A LITTLE GLOVE.',
+  },
+  {
+    id: 'careful_raking',
+    label: 'CAREFUL RAKING',
+    blurb: 'THE KID RAKES THE MOUND THE SAME WAY. HOME PITCHING KEEPS A LITTLE COMMAND.',
+  },
+  {
+    id: 'mowed_grass',
+    label: 'MOWED GRASS',
+    blurb: 'THE KID MOWS THE GRASS SHORT. THE BALL RUNS A LITTLE FARTHER.',
+  },
+]
+
 export function perkById(id) {
-  return HOME_PERKS.find((perk) => perk.id === id) || null
+  return HOME_PERKS.find((perk) => perk.id === id) || KID_PERKS.find((perk) => perk.id === id) || null
 }
 
 export function perkLine(id) {
-  const perk = perkById(id)
+  const perk = KID_PERKS.find((row) => row.id === id)
   return perk ? `BRINGS ${perk.label}` : ''
 }
 
@@ -40,7 +68,9 @@ export function homeFieldNames(ids) {
   for (const id of ids || []) {
     if (perkById(id)) wanted.add(id)
   }
-  return HOME_PERKS.filter((perk) => wanted.has(perk.id)).map((perk) => perk.label)
+  const coach = HOME_PERKS.filter((perk) => wanted.has(perk.id)).map((perk) => perk.label)
+  const brought = KID_PERKS.filter((perk) => wanted.has(perk.id)).map((perk) => perk.label)
+  return [...coach, ...brought]
 }
 
 export function homeFieldLine(id) {
@@ -63,7 +93,7 @@ export function perkChoices(kids) {
     names.push(name)
     held.set(perk.id, names)
   }
-  return HOME_PERKS.filter((perk) => held.has(perk.id)).map((perk) => ({
+  return KID_PERKS.filter((perk) => held.has(perk.id)).map((perk) => ({
     id: perk.id,
     label: perk.label,
     blurb: perk.blurb,

@@ -33,7 +33,7 @@ test('a high bid stays in the header after the purse', () => {
   assert.equal(idle[1].text, '2 REP · 3 BC')
 })
 
-test('the coach menu lists each season with its status on the same line', () => {
+test('the coach menu lists a season, and leaves the status off when it is active', () => {
   const blocks = coachMenuBlocks({
     rulesVersion: 3,
     seasonId: 'open',
@@ -45,7 +45,7 @@ test('the coach menu lists each season with its status on the same line', () => 
   assert.deepEqual(blocks.map((block) => block.kind), ['seasons', 'open', 'sign-out'])
   assert.equal(blocks[0].seasons[0].open, true)
   assert.equal(blocks[0].seasons[1].open, false)
-  assert.equal(blocks[0].seasons[0].label, 'SUMMER (active)')
+  assert.equal(blocks[0].seasons[0].label, 'SUMMER')
   assert.equal(blocks[0].seasons[1].label, 'FALL (forming)')
   assert.equal(seasonMenuLabel({ name: 'WINTER' }), 'WINTER')
   const packed = JSON.stringify(blocks)

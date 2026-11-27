@@ -355,7 +355,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const table = standingsBlock()
     if (!table) return null
     const wrap = el('div', 'standings-list')
-    wrap.append(el('p', 'section', state.season.name))
     wrap.append(table)
     return wrap
   }

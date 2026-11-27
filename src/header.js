@@ -24,7 +24,8 @@ export function headerLines(info) {
 export function seasonMenuLabel(season) {
   const name = season?.name || ''
   const status = String(season?.status || '').trim().toLowerCase()
-  return status ? `${name} (${status})` : name
+  if (!status || status === 'active') return name
+  return `${name} (${status})`
 }
 
 export function coachMenuBlocks(details) {

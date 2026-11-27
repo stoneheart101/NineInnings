@@ -125,8 +125,7 @@ export function renderHomeField(prompt, { teamId, setTeam, onDesk, onOpen }) {
     card.append(head)
     card.append(el('span', '', perk.blurb))
     card.append(el('span', '', `ON THE ROSTER: ${perk.kids.join(', ')}`))
-    const same = perk.id === chosenId
-    card.append(el('span', '', same
+    card.append(el('span', '', chosenId && perk.id === chosenId
       ? 'THIS ONE IS ALREADY THE HOME FIELD.'
       : 'THIS ADDS ON AT HOME WHILE THAT KID IS ON THE TEAM.'))
     return card
