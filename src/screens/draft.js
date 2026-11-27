@@ -342,7 +342,8 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
 
   function onRemote() {
     if (prompt.dataset.paint !== token) {
-      closeDraft()
+      supabase.removeChannel(channel)
+      if (room === channel) room = null
       return
     }
     load()

@@ -391,7 +391,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
 
   function onRemote() {
     if (prompt.dataset.paint !== token) {
-      closeMatchup()
+      supabase.removeChannel(channel)
+      if (matchRoom === channel) matchRoom = null
       return
     }
     if (gameIsFinal(state.game)) return

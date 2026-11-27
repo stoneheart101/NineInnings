@@ -170,9 +170,16 @@ export function renderSeasons(prompt, { seasonId, section, onOpen, onOpenDraft, 
     paint()
   }
 
+  function retire(channel) {
+    supabase.removeChannel(channel)
+    if (listRoom === channel) listRoom = null
+    if (listPendingRoom === channel) listPendingRoom = null
+  }
+
   function onRemote() {
     if (prompt.dataset.paint !== token) {
-      closeSeasonList()
+      retire(ready)
+      retire(pending)
       return
     }
     load()

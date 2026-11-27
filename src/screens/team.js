@@ -303,7 +303,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
       { event: '*', schema: 'public', table: 'players', filter: `season_id=eq.${seasonId}` },
       () => {
         if (prompt.dataset.paint !== token) {
-          closeTeam()
+          supabase.removeChannel(channel)
+          if (room === channel) room = null
           return
         }
         load()

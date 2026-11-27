@@ -137,8 +137,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function paint() {
     if (host.dataset.paint !== token || !host.isConnected) return
+    const keptDraft = host.querySelector('.draft-host')
+    if (keptDraft) keptDraft.remove()
     host.replaceChildren()
-    if (!state.loaded) return
+    if (!state.loaded) {
+      if (keptDraft) closeDraft()
+      return
+    }
     const season = !state.missing ? state.season : null
     const myTeam = season ? state.teams.find((team) => team.coach_id === state.userId) : null
     if (myTeam && season) {
@@ -163,6 +168,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       section: visible,
     })
     if (state.missing || !state.season) {
+      if (keptDraft) closeDraft()
       const box = el('div', 'choices')
       box.append(el('p', '', 'THAT SEASON IS NOT HERE'))
       if (state.error) box.append(el('p', 'alert', state.error))
@@ -191,7 +197,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       box.append(subtabs(visible, draftingNow))
       if (visible === 'details') box.append(detailsBlock())
       else if (visible === 'pool') box.append(poolBlock())
-      else if (visible === 'draft') box.append(draftBlock())
+      else if (visible === 'draft') box.append(keptDraft || draftBlock())
       else if (visible === 'recruiting') box.append(recruitingBlock())
       else box.append(scheduleBlock())
       if (visible !== 'draft') closeDraft()
@@ -1109,9 +1115,16 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     await maybeStartSeason()
   }
 
+  function retire(channel) {
+    supabase.removeChannel(channel)
+    if (seasonRoom === channel) seasonRoom = null
+    if (seasonPendingRoom === channel) seasonPendingRoom = null
+  }
+
   function onRemote() {
     if (host.dataset.paint !== token || !host.isConnected) {
-      closeSeason()
+      retire(ready)
+      retire(pending)
       return
     }
     load()
