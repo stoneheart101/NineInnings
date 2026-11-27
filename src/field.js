@@ -1,3 +1,4 @@
+import { coachMenuBlocks, headerLines } from './header.js'
 import { closePopup, mountPopup, popupKind, replacePopupBody } from './popup.js'
 
 function el(tag, className, text) {
@@ -5,12 +6,6 @@ function el(tag, className, text) {
   if (className) node.className = className
   if (text != null) node.textContent = text
   return node
-}
-
-function headerPurse(info) {
-  const caps = Number(info?.bottlecaps)
-  const rep = Number(info?.reputation)
-  return `${Number.isFinite(caps) ? caps : 0} BC · ${Number.isFinite(rep) ? rep : 0} REP`
 }
 
 const DIAMOND = `
@@ -81,16 +76,14 @@ export function drawField(root, { onSignOut } = {}) {
 
   function setTeam(info) {
     teamInfo.replaceChildren()
-    if (!info?.name) {
+    const lines = headerLines(info)
+    if (!lines) {
       teamInfo.hidden = true
       return
     }
     teamInfo.hidden = false
-    teamInfo.append(
-      el('p', 'team-name', info.name),
-      el('p', 'team-season', info.season || 'SEASON'),
-      el('p', 'team-purse', headerPurse(info)),
-    )
+    const classes = { name: 'team-name', purse: 'team-purse' }
+    for (const line of lines) teamInfo.append(el('p', classes[line.role], line.text))
   }
 
   let coachHooks = {}
@@ -98,57 +91,59 @@ export function drawField(root, { onSignOut } = {}) {
 
   function menuBody(details) {
     const body = el('div', 'coach-menu')
-    if (details.rulesVersion != null) {
-      body.append(el('p', 'coach-rules', `RULES v${details.rulesVersion}`))
-    }
-    const seasons = details.seasons
-    if (Array.isArray(seasons) && seasons.length) {
-      const list = el('div', 'coach-seasons')
-      for (const season of seasons) {
-        const open = season.id === details.seasonId
-        const button = el('button', open ? 'coach-season on' : 'coach-season', '')
-        button.type = 'button'
-        if (open) button.setAttribute('aria-current', 'true')
-        button.append(
-          el('span', 'coach-season-name', season.name),
-          el('span', '', season.status || ''),
-        )
-        button.addEventListener('click', () => {
-          closePopup()
-          details.onPickSeason?.(season)
-        })
-        list.append(button)
-      }
-      body.append(list)
-    } else if (Array.isArray(seasons)) {
-      body.append(el('p', 'coach-empty', 'NO SEASONS YET'))
-    }
-    const openSeason = el('button', '', 'OPEN A SEASON')
-    openSeason.type = 'button'
-    openSeason.addEventListener('click', () => {
-      const reopen = () => showCoach()
-      closePopup()
-      details.onOpenSeason?.({ reopen })
-    })
-    body.append(openSeason)
-    const signOut = el('button', 'coach-sign-out', 'SIGN OUT')
-    signOut.type = 'button'
     const alert = el('p', 'alert', signOutAlert)
     alert.hidden = !signOutAlert
-    signOut.addEventListener('click', async () => {
-      signOut.disabled = true
-      signOutAlert = ''
-      alert.hidden = true
-      const message = onSignOut ? await onSignOut() : ''
-      if (!message) {
-        signOutAlert = ''
-        closePopup()
-        return
+    for (const block of coachMenuBlocks(details)) {
+      if (block.kind === 'rules') body.append(el('p', 'coach-rules', block.text))
+      if (block.kind === 'note') body.append(el('p', 'coach-viewing', block.text))
+      if (block.kind === 'empty') body.append(el('p', 'coach-empty', block.text))
+      if (block.kind === 'seasons') {
+        const list = el('div', 'coach-seasons')
+        for (const row of block.seasons) {
+          const button = el('button', row.open ? 'coach-season on' : 'coach-season', '')
+          button.type = 'button'
+          if (row.open) button.setAttribute('aria-current', 'true')
+          button.append(
+            el('span', 'coach-season-name', row.season.name),
+            el('span', '', row.season.status || ''),
+          )
+          button.addEventListener('click', () => {
+            closePopup()
+            details.onPickSeason?.(row.season)
+          })
+          list.append(button)
+        }
+        body.append(list)
       }
-      signOutAlert = message
-      if (popupKind() === 'coach') replacePopupBody(menuBody(coachHooks))
-    })
-    body.append(signOut, alert)
+      if (block.kind === 'open') {
+        const openSeason = el('button', '', 'OPEN A SEASON')
+        openSeason.type = 'button'
+        openSeason.addEventListener('click', () => {
+          const reopen = () => showCoach()
+          closePopup()
+          details.onOpenSeason?.({ reopen })
+        })
+        body.append(openSeason)
+      }
+      if (block.kind === 'sign-out') {
+        const signOut = el('button', 'coach-sign-out', 'SIGN OUT')
+        signOut.type = 'button'
+        signOut.addEventListener('click', async () => {
+          signOut.disabled = true
+          signOutAlert = ''
+          alert.hidden = true
+          const message = onSignOut ? await onSignOut() : ''
+          if (!message) {
+            signOutAlert = ''
+            closePopup()
+            return
+          }
+          signOutAlert = message
+          if (popupKind() === 'coach') replacePopupBody(menuBody(coachHooks))
+        })
+        body.append(signOut, alert)
+      }
+    }
     return body
   }
 

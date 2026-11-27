@@ -90,10 +90,6 @@ body {
   white-space: nowrap;
 }
 
-.team-season {
-  color: var(--mark);
-}
-
 .corner {
   margin-left: auto;
   display: flex;
@@ -157,8 +153,13 @@ body {
 }
 
 .coach-rules,
+.coach-viewing,
 .coach-empty {
   margin: 0;
+}
+
+.coach-viewing {
+  overflow-wrap: anywhere;
 }
 
 .coach-seasons {
