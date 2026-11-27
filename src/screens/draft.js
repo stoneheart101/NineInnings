@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { fetchHeld } from '../held-purse.js'
 import { draftIsActive } from '../menu.js'
 import { statChip } from '../stat-color.js'
 import { draftedKids, draftedLine, poolPick } from '../draft-board.js'
@@ -56,6 +57,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     missing: false,
     loaded: false,
     openClubs: {},
+    held: { bottlecaps: 0, reputation: 0 },
   }
 
   function teamName(id) {
@@ -75,6 +77,8 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
         season: state.season.name,
         bottlecaps: mine.bottlecaps,
         reputation: mine.reputation,
+        heldBottlecaps: state.held?.bottlecaps || 0,
+        heldReputation: state.held?.reputation || 0,
       })
     } else {
       setTeam?.(null)
@@ -335,6 +339,9 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
       state.kids = kids.data || []
       state.draft = draft.data
       state.error = ''
+      const mineTeam = state.teams.find((team) => team.coach_id === state.userId)
+      state.held = await fetchHeld(supabase, mineTeam?.id)
+      if (prompt.dataset.paint !== token) return
     }
     state.loaded = true
     paint()

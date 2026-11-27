@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { fetchHeld } from '../held-purse.js'
 import { statChip } from '../stat-color.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { WHY } from '../why.js'
@@ -73,6 +74,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     missing: false,
     mine: false,
     loaded: false,
+    held: { bottlecaps: 0, reputation: 0 },
   }
 
   function paint() {
@@ -105,6 +107,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
       season: season?.name || 'SEASON',
       bottlecaps: state.team.bottlecaps,
       reputation: state.team.reputation,
+      heldBottlecaps: state.held?.bottlecaps || 0,
+      heldReputation: state.held?.reputation || 0,
     })
     const cap = Number(season?.roster_cap)
     if (Number.isInteger(cap) && state.kids.length >= cap) {
@@ -356,7 +360,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
       paint()
       return
     }
-    const [kids, lineup] = await Promise.all([
+    const [kids, lineup, held] = await Promise.all([
       supabase
         .from('players')
         .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, tryout_status, penalty_until_game_id, created_at')
@@ -369,8 +373,10 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
         .select('slot, player_id')
         .eq('team_id', teamId)
         .order('slot', { ascending: true }),
+      fetchHeld(supabase, teamId),
     ])
     if (prompt.dataset.paint !== token) return
+    state.held = held
     if (kids.error) {
       state.error = (kids.error.message || 'THE KIDS DID NOT LOAD.').toUpperCase()
       state.kids = []

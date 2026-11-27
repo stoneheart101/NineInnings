@@ -22,6 +22,19 @@ test('a missing purse reads as zero', () => {
   assert.equal(lines[1].text, '0 BC · 0 REP')
 })
 
+test('a high bid stays in the header after the purse', () => {
+  const lines = headerLines({
+    name: 'WEST SIDE',
+    bottlecaps: 3,
+    reputation: 2,
+    heldBottlecaps: 5,
+    heldReputation: 4,
+  })
+  assert.equal(lines[1].text, '3 BC 2 REP (5 BC 4 REP held in high bid)')
+  const idle = headerLines({ name: 'WEST SIDE', bottlecaps: 3, reputation: 2, heldBottlecaps: 0, heldReputation: 0 })
+  assert.equal(idle[1].text, '3 BC · 2 REP')
+})
+
 test('the coach menu says this list is the season you are viewing and that picking one switches it', () => {
   const blocks = coachMenuBlocks({
     rulesVersion: 3,

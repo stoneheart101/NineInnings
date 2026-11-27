@@ -15,7 +15,9 @@ import { bindChanges, seasonPendingChanges, seasonReadyChanges } from '../live.j
 import { openChores } from '../chores.js'
 import { filledNine } from '../nine.js'
 import { WHY, deleteReason, scrimmageReason } from '../why.js'
-import { coverDue, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
+import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
+import { compareRecruits } from '../recruit-board.js'
+import { heldPurse } from '../held-purse.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -135,6 +137,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     boardError: '',
     bids: [],
     offers: [],
+    passes: [],
     bidsFailed: false,
     strengths: {},
     strengthFailed: false,
@@ -163,11 +166,14 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const season = !state.missing ? state.season : null
     const myTeam = season ? state.teams.find((team) => team.coach_id === state.userId) : null
     if (myTeam && season) {
+      const held = heldPurse(state.bids, myTeam.id)
       setTeam?.({
         name: myTeam.name,
         season: season.name,
         bottlecaps: myTeam.bottlecaps,
         reputation: myTeam.reputation,
+        heldBottlecaps: held.bottlecaps,
+        heldReputation: held.reputation,
       })
     } else {
       setTeam?.(null)
@@ -778,11 +784,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       return wrap
     }
     const list = el('div', 'recruiting-list')
-    const ordered = board.slice().sort((left, right) => {
-      const at = Date.parse(right?.created_at) - Date.parse(left?.created_at)
-      if (at) return at
-      return String(right?.id || '').localeCompare(String(left?.id || ''))
-    })
+    const ordered = board.slice().sort((left, right) => compareRecruits(
+      { ...left, bidOpen: Boolean(openBid(left)), passed: myPass(left)?.choice === 'pass' },
+      { ...right, bidOpen: Boolean(openBid(right)), passed: myPass(right)?.choice === 'pass' },
+    ))
     for (const kid of ordered) list.append(kidCard(kid))
     wrap.append(list)
     return wrap
@@ -907,6 +912,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return (state.offers || []).find((row) => row.bid_id === bid.id && row.team_id === teamId) || null
   }
 
+  function myPass(kid) {
+    const team = myTeam()
+    if (!team || !kid) return null
+    return (state.passes || []).find((row) => row.player_id === kid.id && row.team_id === team.id) || null
+  }
+
   function rosterFull() {
     const team = myTeam()
     const cap = Number(state.season?.roster_cap)
@@ -958,12 +969,15 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   function bidBlock() {
     const team = myTeam()
     if (!team || !state.kids || state.season?.status !== 'active') return null
+    const passed = new Set(
+      (state.passes || []).filter((row) => row.team_id === team.id && row.choice === 'pass').map((row) => row.player_id),
+    )
     const mine = (state.offers || []).filter((row) => row.team_id === team.id)
     const open = []
     for (const row of mine) {
       const bid = (state.bids || []).find((item) => item.id === row.bid_id && item.status === 'open')
       const kid = bid && state.kids.find((item) => item.id === bid.player_id)
-      if (bid && kid) open.push({ bid, kid })
+      if (bid && kid && !passed.has(kid.id)) open.push({ bid, kid })
     }
     if (!open.length && !state.bidsFailed) return null
     const wrap = el('div', 'played-list')
@@ -989,13 +1003,19 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const leader = bid.high_team_id === team?.id
     const repDue = price ? raiseDue(price, standing, 'reputation') : null
     const capDue = price ? raiseDue(price, standing, 'bottlecaps') : null
+    const repPay = raiseCost(repDue, standing, leader)
+    const capPay = raiseCost(capDue, standing, leader)
     const cover = !leader ? coverDue(standing, Number(team?.reputation) || 0) : null
     const full = rosterFull()
+    const repShift = Boolean(leader && repDue && repDue.bottlecaps !== standing.bottlecaps)
+    const capShift = Boolean(leader && capDue && capDue.reputation !== standing.reputation)
+    const repShort = Boolean(repPay && !canPay(team, repPay))
+    const capShort = Boolean(capPay && !canPay(team, capPay))
     const actions = el('div', 'card-actions')
     const repButton = bidButton('RAISE REPUTATION', () => onBid('raise', kid.id, 'reputation'))
     const capButton = bidButton('RAISE BOTTLECAPS', () => onBid('raise', kid.id, 'bottlecaps'))
-    const repClosed = state.bidBusy || full || !repDue || !canPay(team, repDue) || (leader && repDue.bottlecaps !== standing.bottlecaps)
-    const capClosed = state.bidBusy || full || !capDue || !canPay(team, capDue) || (leader && capDue.reputation !== standing.reputation)
+    const repClosed = state.bidBusy || full || !repDue || repShort || repShift
+    const capClosed = state.bidBusy || full || !capDue || capShort || capShift
     repButton.disabled = repClosed
     capButton.disabled = capClosed
     actions.append(repButton, capButton)
@@ -1014,8 +1034,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     else if (state.bidBusy) card.append(el('p', 'why', 'THAT BID IS IN PROGRESS'))
     else if (full) card.append(el('p', 'why', 'RELEASE SOMEONE FIRST'))
     else {
-      if (repClosed) card.append(el('p', 'why', 'CANNOT PAY THE REPUTATION'))
-      if (capClosed || (cover && coverClosed)) card.append(el('p', 'why', 'CANNOT PAY THE BOTTLECAPS'))
+      if (repShort && !repShift) card.append(el('p', 'why', 'CANNOT PAY THE REPUTATION'))
+      if ((capShort && !capShift) || (cover && !canPay(team, cover))) card.append(el('p', 'why', 'CANNOT PAY THE BOTTLECAPS'))
     }
     if (state.bidError && state.bidKid === kid.id) card.append(el('p', 'alert', state.bidError))
     return card
@@ -1031,11 +1051,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const args = { player_id: playerId }
     const call = kind === 'enter'
       ? supabase.rpc('enter_recruit_bid', args)
-      : kind === 'join'
+      : kind === 'tryout'
         ? supabase.rpc('join_tryout', args)
-        : kind === 'cover'
-          ? supabase.rpc('cover_recruit_bid', args)
-          : supabase.rpc('raise_recruit_bid', { ...args, purse })
+        : kind === 'pass'
+          ? supabase.rpc('pass_recruit', args)
+          : kind === 'cover'
+            ? supabase.rpc('cover_recruit_bid', args)
+            : supabase.rpc('raise_recruit_bid', { ...args, purse })
     const { error } = await call
     if (host.dataset.paint !== token || !host.isConnected) return
     state.bidBusy = false
@@ -1076,7 +1098,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   }
 
   function kidCard(kid) {
-    const card = el('div', kid.offer === 'tryout' ? 'card kid-card tryout' : 'card kid-card')
+    const passed = myPass(kid)?.choice === 'pass'
+    const offered = myPass(kid)?.choice === 'tryout'
+    const tone = passed ? 'card kid-card passed' : kid.offer === 'tryout' ? 'card kid-card tryout' : 'card kid-card'
+    const card = el('div', tone)
     const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
     title.append(el('span', 'season-name', kidName(kid)))
@@ -1084,49 +1109,56 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
     if (kid.offer === 'tryout') title.append(el('span', 'tryout-mark', 'TRYOUT'))
     head.append(title)
-    if (kid.offer && myTeam()) {
+    const team = myTeam()
+    const bid = openBid(kid)
+    const joined = offerFor(bid, team?.id)
+    if (kid.offer && team && !passed) {
       const actions = el('div', 'card-actions')
-      const bid = openBid(kid)
-      const joined = offerFor(bid, myTeam().id)
-      if (kid.offer === 'tryout') {
-        const button = bidButton('JOIN', () => onBid('join', kid.id))
-        const reason = recruitReason(kid)
+      const reason = recruitReason(kid)
+      if (kid.offer === 'tryout' && !offered) {
+        const button = bidButton('TRYOUT', () => onBid('tryout', kid.id))
         button.disabled = Boolean(reason)
-        actions.append(button)
-        head.append(actions)
-        card.append(head)
-        if (reason) card.append(el('p', 'why', reason))
-      } else if (!joined) {
-        const button = bidButton('ENTER', () => onBid('enter', kid.id))
-        const reason = recruitReason(kid)
+        const pass = bidButton('PASS', () => onBid('pass', kid.id))
+        pass.disabled = state.bidBusy
+        actions.append(button, pass)
+      } else if (kid.offer !== 'tryout' && !joined) {
+        const price = coachPrice(kid)
+        const standing = bid
+          ? { reputation: Number(bid.reputation_bid) || 0, bottlecaps: Number(bid.bottlecap_bid) || 0 }
+          : null
+        const due = price ? standingDue(price, standing) : null
+        const button = bidButton(due ? bidLabel(due) : 'BID', () => onBid('enter', kid.id))
         button.disabled = Boolean(reason)
-        actions.append(button)
-        head.append(actions)
-        card.append(head)
-        if (reason) card.append(el('p', 'why', reason))
-      } else {
-        card.append(head)
+        const pass = bidButton('PASS', () => onBid('pass', kid.id))
+        pass.disabled = state.bidBusy
+        actions.append(button, pass)
+      } else if (kid.offer !== 'tryout') {
+        const pass = bidButton('PASS', () => onBid('pass', kid.id))
+        pass.disabled = state.bidBusy
+        actions.append(pass)
       }
+      if (actions.childNodes.length) head.append(actions)
+      card.append(head)
+      const showReason = kid.offer === 'tryout' ? !offered && reason : !joined && reason
+      if (showReason) card.append(el('p', 'why', reason))
+      else if (joined && state.bidBusy) card.append(el('p', 'why', 'THAT BID IS IN PROGRESS'))
     } else {
       card.append(head)
     }
     if (kid.flavor) card.append(el('span', '', kid.flavor))
-    if (kid.offer === 'tryout') {
-      card.append(el('p', '', 'A TRYOUT JOINS NOW'))
-    } else if (kid.offer) {
+    if (!passed && kid.offer === 'tryout') {
+      card.append(el('p', '', offered ? 'YOU OFFERED A TRYOUT' : 'THE KID PICKS A TEAM ONCE EVERY COACH HAS CHOSEN'))
+    } else if (!passed && kid.offer) {
       if (state.bidsFailed) card.append(el('p', 'alert', 'THE BIDS DID NOT LOAD'))
       else if (state.strengthFailed || !coachPrice(kid)) card.append(el('p', 'alert', 'THE PRICE DID NOT LOAD'))
       else {
         const price = coachPrice(kid)
-        card.append(fact('REPUTATION', counted(price.reputation, 'REPUTATION', 'REPUTATION')))
-        card.append(fact('BOTTLECAPS', counted(price.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')))
         if (price.climbing) card.append(el('p', '', 'THIS BREAK IS FOR CLUBS THAT ARE STILL CLIMBING'))
         if (price.likesBench) card.append(el('p', '', 'LIKES A CLUB THAT IS NOT IN FIRST'))
-        const bid = openBid(kid)
         if (bid) {
           card.append(el('p', '', 'BIDDING'))
           card.append(el('p', '', highBidLine(bid)))
-          if (offerFor(bid, myTeam()?.id)) card.append(el('p', '', 'YOU ARE IN THIS BID'))
+          if (joined) card.append(el('p', '', 'YOU ARE IN THIS BID'))
         }
       }
     }
@@ -1364,7 +1396,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   async function load() {
     const mine = ++pull
-    const [session, season, teams, kids, draft, games, standings, lineup, locks, bids, offers] = await Promise.all([
+    const [session, season, teams, kids, draft, games, standings, lineup, locks, bids, offers, passes] = await Promise.all([
       supabase.auth.getSession(),
       seasonRow(),
       supabase
@@ -1404,6 +1436,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .from('recruit_offers')
         .select('id, bid_id, season_id, team_id')
         .eq('season_id', seasonId),
+      supabase
+        .from('recruit_passes')
+        .select('id, player_id, season_id, team_id, choice')
+        .eq('season_id', seasonId),
     ])
     if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return
     state.userId = session.data.session?.user?.id ?? ''
@@ -1412,9 +1448,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     state.lineup = []
     state.locksFailed = false
     state.locks = []
-    state.bidsFailed = Boolean(bids.error || offers.error)
+    state.bidsFailed = Boolean(bids.error || offers.error || passes.error)
     state.bids = bids.error ? [] : (bids.data || [])
     state.offers = offers.error ? [] : (offers.data || [])
+    state.passes = passes.error ? [] : (passes.data || [])
     state.draftFailed = Boolean(draft.error)
     state.draft = draft.error ? null : draft.data
     state.gamesFailed = Boolean(games.error)
@@ -1434,6 +1471,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       state.draftFailed = false
       state.bids = []
       state.offers = []
+      state.passes = []
       state.bidsFailed = false
     } else if (!season.data) {
       state.missing = true
@@ -1447,6 +1485,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       state.draftFailed = false
       state.bids = []
       state.offers = []
+      state.passes = []
       state.bidsFailed = false
     } else {
       state.missing = false

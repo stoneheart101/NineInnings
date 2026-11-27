@@ -11,6 +11,7 @@ export function seasonChanges(seasonId) {
     { table: 'standings', filter: season },
     { table: 'recruit_bids', filter: season },
     { table: 'recruit_offers', filter: season },
+    { table: 'recruit_passes', filter: season },
   ]
 }
 

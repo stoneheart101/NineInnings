@@ -68,6 +68,25 @@ export function raiseDue(personal, standing, purse) {
   return null
 }
 
+export function bidLabel(due) {
+  const caps = Number(due?.bottlecaps)
+  const rep = Number(due?.reputation)
+  if (!Number.isInteger(caps) || caps < 0 || !Number.isInteger(rep) || rep < 0) return ''
+  return `BID ${caps} BC AND ${rep} REP`
+}
+
+export function raiseCost(due, standing, leader) {
+  if (!due) return null
+  const rep = Number(due.reputation)
+  const caps = Number(due.bottlecaps)
+  if (!Number.isFinite(rep) || !Number.isFinite(caps)) return null
+  if (!leader) return { reputation: rep, bottlecaps: caps }
+  return {
+    reputation: Math.max(0, rep - (Number(standing?.reputation) || 0)),
+    bottlecaps: Math.max(0, caps - (Number(standing?.bottlecaps) || 0)),
+  }
+}
+
 export function coverDue(standing, availableReputation) {
   if (!standing) return null
   const unpaid = standing.reputation - availableReputation

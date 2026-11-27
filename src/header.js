@@ -1,7 +1,16 @@
 function headerPurse(info) {
   const caps = Number(info?.bottlecaps)
   const rep = Number(info?.reputation)
-  return `${Number.isFinite(caps) ? caps : 0} BC · ${Number.isFinite(rep) ? rep : 0} REP`
+  const shownCaps = Number.isFinite(caps) ? caps : 0
+  const shownRep = Number.isFinite(rep) ? rep : 0
+  const heldCaps = Number(info?.heldBottlecaps)
+  const heldRep = Number(info?.heldReputation)
+  const shownHeldCaps = Number.isFinite(heldCaps) ? heldCaps : 0
+  const shownHeldRep = Number.isFinite(heldRep) ? heldRep : 0
+  if (shownHeldCaps > 0 || shownHeldRep > 0) {
+    return `${shownCaps} BC ${shownRep} REP (${shownHeldCaps} BC ${shownHeldRep} REP held in high bid)`
+  }
+  return `${shownCaps} BC · ${shownRep} REP`
 }
 
 export function headerLines(info) {

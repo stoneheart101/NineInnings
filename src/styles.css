@@ -654,6 +654,10 @@ button.action {
   background: #0e2748;
 }
 
+.card.passed {
+  background: #2c2c2c;
+}
+
 .tryout-mark {
   flex: 0 0 auto;
   margin-left: auto;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { coverDue, raiseDue, recruitPrice, reputationMedian, standingDue } from './recruit-price.js'
+import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, reputationMedian, standingDue } from './recruit-price.js'
 
 const field = [20, 10, 12, 10]
 
@@ -117,4 +117,16 @@ test('covering short reputation spends two bottlecaps a point and no extra reput
   const due = coverDue({ reputation: 10, bottlecaps: 5 }, 7)
   assert.deepEqual(due, { reputation: 7, bottlecaps: 11, unpaid: 3 })
   assert.equal(coverDue({ reputation: 10, bottlecaps: 5 }, 10), null)
+})
+
+test('the bid button names the bottlecaps and then the reputation', () => {
+  assert.equal(bidLabel({ bottlecaps: 5, reputation: 4 }), 'BID 5 BC AND 4 REP')
+  assert.equal(bidLabel(null), '')
+})
+
+test('a leader pays the raise above the amount already held', () => {
+  const standing = { reputation: 6, bottlecaps: 5 }
+  const due = raiseDue({ reputation: 6, bottlecaps: 5 }, standing, 'reputation')
+  assert.deepEqual(raiseCost(due, standing, true), { reputation: 1, bottlecaps: 0 })
+  assert.deepEqual(raiseCost(due, standing, false), due)
 })

@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { fetchHeld } from '../held-purse.js'
 import { clockLabel, forecastShown, forecastWords, weatherReport } from '../forecast.js'
 import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
@@ -104,6 +105,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     lockFailed: false,
     nextGameId: null,
     nextFailed: false,
+    held: { bottlecaps: 0, reputation: 0 },
   }
 
   function playing() {
@@ -127,6 +129,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
         season: state.season.name,
         bottlecaps: mine.bottlecaps,
         reputation: mine.reputation,
+        heldBottlecaps: state.held?.bottlecaps || 0,
+        heldReputation: state.held?.reputation || 0,
       })
     } else if (state.loaded) {
       setTeam?.(null)
@@ -259,7 +263,11 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
         if (state.myTeam) {
           const purse = await supabase.from('teams').select('bottlecaps, reputation').eq('id', state.myTeam.id).maybeSingle()
           if (prompt.dataset.paint !== token) return
-          if (!purse.error && purse.data) state.myTeam = { ...state.myTeam, ...purse.data }
+          if (!purse.error && purse.data) {
+            state.myTeam = { ...state.myTeam, ...purse.data }
+            state.held = await fetchHeld(supabase, state.myTeam.id)
+            if (prompt.dataset.paint !== token) return
+          }
         }
         state.game = {
           ...state.game,
@@ -377,6 +385,8 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     state.season = seasonRes.data
     state.teams = teamsRes.data || []
     state.myTeam = state.teams.find((team) => team.coach_id === state.userId) || null
+    state.held = await fetchHeld(supabase, state.myTeam?.id)
+    if (prompt.dataset.paint !== token) return
     const showLive = playing() && !state.card && !mineLocked() && state.game.status === 'scheduled'
     if (showLive) {
       const [lineupRes, itemRes, kidRes, next] = await Promise.all([

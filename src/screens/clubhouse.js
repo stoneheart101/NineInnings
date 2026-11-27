@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { fetchHeld } from '../held-purse.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { alreadyPacked, shelfBlurb, shelfLine } from '../shelf.js'
 import { buyReason } from '../why.js'
@@ -68,6 +69,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
     missing: false,
     mine: false,
     loaded: false,
+    held: { bottlecaps: 0, reputation: 0 },
   }
 
   function paint() {
@@ -100,6 +102,8 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
       season: season?.name || 'SEASON',
       bottlecaps: state.team.bottlecaps,
       reputation: state.team.reputation,
+      heldBottlecaps: state.held?.bottlecaps || 0,
+      heldReputation: state.held?.reputation || 0,
     })
     if (state.error) box.append(el('p', 'alert', state.error))
     if (box.childNodes.length) prompt.append(box)
@@ -307,7 +311,7 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
       paint()
       return
     }
-    const [shelf, packed, kids, lineup] = await Promise.all([
+    const [shelf, packed, kids, lineup, held] = await Promise.all([
       supabase
         .from('clubhouse_items')
         .select('id, name, blurb, bottlecap_cost, reputation_cost, duration, effect'),
@@ -324,8 +328,10 @@ export function renderClubhouse(prompt, { teamId, setTeam, onDesk }) {
         .from('lineups')
         .select('slot, player_id')
         .eq('team_id', teamId),
+      fetchHeld(supabase, teamId),
     ])
     if (prompt.dataset.paint !== token) return
+    state.held = held
     if (shelf.error) {
       state.buyError = (shelf.error.message || 'THE AVAILABLE ITEMS DID NOT LOAD.').toUpperCase()
       state.shelf = []

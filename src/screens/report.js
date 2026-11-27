@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.js'
+import { fetchHeld } from '../held-purse.js'
 import { clockLabel, weatherReport } from '../forecast.js'
 import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
 
@@ -23,6 +24,7 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     loaded: false,
     used: [],
     usedFailed: false,
+    held: { bottlecaps: 0, reputation: 0 },
   }
 
   function paint() {
@@ -36,6 +38,8 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
         season: state.season.name,
         bottlecaps: mine.bottlecaps,
         reputation: mine.reputation,
+        heldBottlecaps: state.held?.bottlecaps || 0,
+        heldReputation: state.held?.reputation || 0,
       })
     } else if (state.loaded) {
       setTeam?.(null)
@@ -141,6 +145,8 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     state.season = seasonRes.data
     state.teams = teamsRes.data || []
     state.myTeam = state.teams.find((team) => team.coach_id === state.userId) || null
+    state.held = await fetchHeld(supabase, state.myTeam?.id)
+    if (prompt.dataset.paint !== token) return
     state.loaded = true
     paint()
   }
