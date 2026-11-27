@@ -5,6 +5,7 @@ export const WHY = {
   typeSeasonName: 'TYPE THE SEASON NAME',
   seasonDeleting: 'THE SEASON IS DELETING',
   cardLocking: 'THE CARD IS LOCKING',
+  assignNine: 'ASSIGN THE NINE FIRST',
   rosterChange: 'A ROSTER CHANGE IS IN PROGRESS',
   purchase: 'THAT PURCHASE IS IN PROGRESS',
   cannotAfford: 'YOU CANNOT AFFORD THAT',
@@ -26,5 +27,17 @@ export function buyReason({ busy = false, packed = false, afford = false } = {})
 export function deleteReason({ busy = false, named = false } = {}) {
   if (busy) return WHY.seasonDeleting
   if (!named) return WHY.typeSeasonName
+  return ''
+}
+
+export function lockReason({ busy = false, full = false } = {}) {
+  if (busy) return WHY.cardLocking
+  if (!full) return WHY.assignNine
+  return ''
+}
+
+export function scrimmageReason({ busy = false, open = false, full = false, known = false } = {}) {
+  if (busy && open) return WHY.gameStarting
+  if (known && !full) return WHY.assignNine
   return ''
 }

@@ -2,7 +2,8 @@ import { supabase } from '../supabase.js'
 import { clockLabel, forecastChances, forecastShown } from '../forecast.js'
 import { headed, scoreNodes, usedNodes, writeupNode } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
-import { WHY } from '../why.js'
+import { filledNine } from '../nine.js'
+import { WHY, lockReason } from '../why.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
 
@@ -192,11 +193,13 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       } else {
         mineNodes.push(...cardNodes(state.live))
         mineNodes.push(el('p', '', 'LOCK COPIES THIS CARD FOR THE GAME'))
+        const full = filledNine(state.live?.slots)
         lock = el('button', 'action', 'LOCK')
         lock.type = 'button'
-        lock.disabled = state.busy
+        lock.disabled = state.busy || !full
         lock.addEventListener('click', onLock)
-        if (state.busy) mineNodes.push(el('p', 'why', WHY.cardLocking))
+        const reason = lockReason({ busy: state.busy, full })
+        if (reason) mineNodes.push(el('p', 'why', reason))
       }
       box.append(headed('side-box', 'YOUR CARD', mineNodes, lock))
       box.append(headed('side-box', foe?.name || 'TEAM', [
@@ -296,15 +299,19 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
 
   async function onLock() {
     if (state.busy) return
-    state.busy = true
-    state.error = ''
-    paint()
     if (state.nextFailed || state.nextGameId !== state.game?.id) {
-      state.busy = false
       state.error = state.nextFailed ? 'THE NEXT GAME DID NOT LOAD' : 'LOCK THE NEXT GAME FIRST'
       paint()
       return
     }
+    if (!filledNine(state.live?.slots)) {
+      state.error = WHY.assignNine
+      paint()
+      return
+    }
+    state.busy = true
+    state.error = ''
+    paint()
     const { data, error } = await supabase.rpc('lock_lineup', { game_id: gameId })
     if (prompt.dataset.paint !== token) return
     state.busy = false

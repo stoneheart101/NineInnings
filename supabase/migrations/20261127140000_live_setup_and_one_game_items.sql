@@ -857,6 +857,17 @@ begin
    and player.team_id = target_team
   where seat.team_id = target_team;
 
+  -- Empty spots stay empty. A short card does not start, and no kid is
+  -- invented to fill it. The neighborhood nine is built only after this.
+  if (
+    select count(distinct slot ->> 'player_id')
+    from jsonb_array_elements(coach_card -> 'slots') as slot
+    where slot ->> 'slot' ~ '^[1-9]$'
+      and nullif(slot ->> 'player_id', '') is not null
+  ) is distinct from 9 then
+    raise exception 'ASSIGN THE NINE FIRST';
+  end if;
+
   select
     coalesce(jsonb_agg(
       jsonb_build_object(
@@ -906,6 +917,8 @@ begin
       )
   ) as lined;
 
+  -- The coach's empty spots never reach this loop. These kids are the
+  -- other side, after the bench, and they exist only for this game.
   while slot_no < 9 loop
     slot_no := slot_no + 1;
     gen_id := gen_random_uuid();

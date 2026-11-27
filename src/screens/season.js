@@ -12,7 +12,8 @@ import { nextOfficial } from '../next-game.js'
 import { draftComplete as draftIsComplete, setupRows, shouldAutoStart } from '../setup.js'
 import { dashboardShows, showRecruitingTab } from '../season-view.js'
 import { bindChanges, seasonPendingChanges, seasonReadyChanges } from '../live.js'
-import { WHY, deleteReason } from '../why.js'
+import { filledNine } from '../nine.js'
+import { WHY, deleteReason, scrimmageReason } from '../why.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -124,6 +125,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     scrimmageBusy: false,
     scrimmageError: '',
     scrimmageKind: '',
+    lineup: [],
+    lineupFailed: false,
     boardAsked: false,
     boardError: '',
     playError: '',
@@ -479,27 +482,35 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         now: Date.now(),
       })
     const busy = state.scrimmageBusy
+    const known = state.kids != null && !state.lineupFailed
+    const full = known && filledNine(
+      state.lineup,
+      state.kids.filter((kid) => kid.team_id === team.id),
+    )
     const wrap = el('div', 'play-cards')
+    if (state.lineupFailed) wrap.append(el('p', 'alert', 'THE LINEUP DID NOT LOAD'))
     const practice = el('div', 'card')
     const practiceHead = el('div', 'card-head')
     practiceHead.append(
       el('span', 'card-title', 'PLAY A GAME VS THE NEIGHBORHOOD RABBLE'),
-      playButton('PLAY', () => startScrimmage('start_practice', 'practice', !gate.open), !gate.open || busy),
+      playButton('PLAY', () => startScrimmage('start_practice', 'practice', !gate.open || !full), !gate.open || busy || !full),
     )
     practice.append(practiceHead)
     if (gate.note) practice.append(el('p', state.gamesFailed ? 'alert' : '', gate.note))
-    if (busy && gate.open) practice.append(el('p', 'why', WHY.gameStarting))
+    const practiceWhy = scrimmageReason({ busy, open: gate.open, full, known })
+    if (practiceWhy) practice.append(el('p', 'why', practiceWhy))
     if (state.scrimmageKind === 'practice' && state.scrimmageError) practice.append(el('p', 'alert', state.scrimmageError))
     const dev = el('div', 'card')
     const devHead = el('div', 'card-head')
-    const devOpen = season?.status === 'active' && !busy
+    const devActive = season?.status === 'active'
     devHead.append(
       el('span', 'card-title', 'PLAY A DEV GAME'),
-      playButton('PLAY', () => startScrimmage('start_dev_game', 'dev', season?.status !== 'active'), !devOpen),
+      playButton('PLAY', () => startScrimmage('start_dev_game', 'dev', !devActive || !full), !devActive || busy || !full),
     )
     dev.append(devHead, el('p', '', 'DOES NOT START THE PRACTICE WAIT'))
-    if (season?.status !== 'active') dev.append(el('p', '', 'PRACTICE STARTS WHEN THE SEASON DOES'))
-    if (busy && season?.status === 'active') dev.append(el('p', 'why', WHY.gameStarting))
+    if (!devActive) dev.append(el('p', '', 'PRACTICE STARTS WHEN THE SEASON DOES'))
+    const devWhy = scrimmageReason({ busy, open: devActive, full, known })
+    if (devWhy) dev.append(el('p', 'why', devWhy))
     if (state.scrimmageKind === 'dev' && state.scrimmageError) dev.append(el('p', 'alert', state.scrimmageError))
     wrap.append(practice, dev)
     return wrap
@@ -1039,7 +1050,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   async function load() {
     const mine = ++pull
-    const [session, season, teams, kids, draft, games, standings] = await Promise.all([
+    const [session, season, teams, kids, draft, games, standings, lineup] = await Promise.all([
       supabase.auth.getSession(),
       seasonRow(),
       supabase
@@ -1068,10 +1079,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .from('standings')
         .select('team_id, wins, losses')
         .eq('season_id', seasonId),
+      supabase.from('lineups').select('team_id, player_id, slot'),
     ])
     if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return
     state.userId = session.data.session?.user?.id ?? ''
     state.kids = null
+    state.lineupFailed = false
+    state.lineup = []
     state.draftFailed = Boolean(draft.error)
     state.draft = draft.error ? null : draft.data
     state.gamesFailed = Boolean(games.error)
@@ -1103,6 +1117,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       state.missing = false
       state.season = season.data
       state.teams = teams.data || []
+      const mineId = state.teams.find((team) => team.coach_id === state.userId)?.id || ''
+      state.lineupFailed = Boolean(lineup.error)
+      state.lineup = lineup.error ? [] : (lineup.data || []).filter((row) => row.team_id === mineId)
       if (kids.error) {
         state.error = (kids.error.message || 'THE KIDS DID NOT LOAD.').toUpperCase()
       } else {

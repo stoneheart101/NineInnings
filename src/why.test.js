@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { WHY, buyReason, deleteReason } from './why.js'
+import { WHY, buyReason, deleteReason, lockReason, scrimmageReason } from './why.js'
 
 test('a purchase says why it is closed', () => {
   assert.equal(buyReason({ busy: true, packed: true, afford: false }), WHY.purchase)
@@ -13,4 +13,18 @@ test('deleting a season says why the button is closed', () => {
   assert.equal(deleteReason({ busy: true, named: false }), WHY.seasonDeleting)
   assert.equal(deleteReason({ busy: false, named: false }), WHY.typeSeasonName)
   assert.equal(deleteReason({ busy: false, named: true }), '')
+})
+
+test('a short card says why lock is closed', () => {
+  assert.equal(lockReason({ busy: true, full: false }), WHY.cardLocking)
+  assert.equal(lockReason({ busy: false, full: false }), WHY.assignNine)
+  assert.equal(lockReason({ busy: false, full: true }), '')
+})
+
+test('a short nine says why a neighborhood game is closed', () => {
+  assert.equal(scrimmageReason({ busy: true, open: true, full: true, known: true }), WHY.gameStarting)
+  assert.equal(scrimmageReason({ busy: false, open: true, full: false, known: true }), WHY.assignNine)
+  assert.equal(scrimmageReason({ busy: false, open: false, full: false, known: true }), WHY.assignNine)
+  assert.equal(scrimmageReason({ busy: false, open: true, full: false, known: false }), '')
+  assert.equal(scrimmageReason({ busy: false, open: true, full: true, known: true }), '')
 })
