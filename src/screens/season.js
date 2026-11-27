@@ -15,6 +15,7 @@ import { bindChanges, seasonPendingChanges, seasonReadyChanges } from '../live.j
 import { openChores } from '../chores.js'
 import { filledNine } from '../nine.js'
 import { WHY, deleteReason, scrimmageReason } from '../why.js'
+import { coverDue, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const STATS = [
@@ -51,7 +52,7 @@ function draftComplete(season, draft) {
   return season?.status === 'drafting' && draftIsComplete(draft)
 }
 
-const SEASON_COLUMNS = 'id, name, commissioner_id, status, official_weekdays, practice_every_days, weeks, draft_rounds'
+const SEASON_COLUMNS = 'id, name, commissioner_id, status, official_weekdays, practice_every_days, weeks, draft_rounds, roster_cap'
 
 let seasonRoom = null
 let seasonPendingRoom = null
@@ -132,6 +133,15 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     locksFailed: false,
     boardAsked: false,
     boardError: '',
+    bids: [],
+    offers: [],
+    bidsFailed: false,
+    strengths: {},
+    strengthFailed: false,
+    bidBusy: false,
+    bidError: '',
+    bidKid: '',
+    coverKid: '',
     playError: '',
     playAsked: false,
     confirmDelete: false,
@@ -193,6 +203,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         if (chores) box.append(chores)
         const recruits = recruitNote()
         if (recruits) box.append(recruits)
+        const bids = bidBlock()
+        if (bids) box.append(bids)
         if (shown.next) box.append(futureBlock())
         if (shown.play) {
           const play = playCards()
@@ -214,6 +226,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     if (state.error) box.append(el('p', 'alert', state.error))
     host.append(box)
     if (state.confirmDelete && season && season.commissioner_id === state.userId) deletePopup(season)
+    const covering = state.coverKid && (state.kids || []).find((kid) => kid.id === state.coverKid)
+    if (covering) coverPopup(covering)
   }
 
   function seasonBlock() {
@@ -865,23 +879,256 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     return node
   }
 
+  function reputations() {
+    return state.teams.map((team) => Number(team.reputation) || 0)
+  }
+
+  function coachPrice(kid) {
+    const team = myTeam()
+    if (!team || kid?.offer !== 'price') return null
+    const strength = Number(state.strengths[kid.settings_version])
+    if (!Number.isFinite(strength)) return null
+    return recruitPrice({
+      reputationCost: kid.reputation_cost,
+      bottlecapCost: kid.bottlecap_cost,
+      preference: kid.preference,
+      strength,
+      reputation: Number(team.reputation) || 0,
+      reputations: reputations(),
+    })
+  }
+
+  function openBid(kid) {
+    return (state.bids || []).find((bid) => bid.player_id === kid.id && bid.status === 'open') || null
+  }
+
+  function offerFor(bid, teamId) {
+    if (!bid || !teamId) return null
+    return (state.offers || []).find((row) => row.bid_id === bid.id && row.team_id === teamId) || null
+  }
+
+  function rosterFull() {
+    const team = myTeam()
+    const cap = Number(state.season?.roster_cap)
+    if (!team || !Number.isInteger(cap) || !state.kids) return false
+    return state.kids.filter((kid) => kid.team_id === team.id).length >= cap
+  }
+
+  function canPay(team, due) {
+    if (!team || !due) return false
+    return Number(team.reputation) >= due.reputation && Number(team.bottlecaps) >= due.bottlecaps
+  }
+
+  function bidButton(label, onOpen) {
+    const button = el('button', '', label)
+    button.type = 'button'
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
+      onOpen()
+    })
+    return button
+  }
+
+  function kidName(kid) {
+    const nick = kid.nickname ? ` "${kid.nickname}"` : ''
+    const name = [kid.given_name, kid.family_name].filter(Boolean).join(' ')
+    return `${name || 'KID'}${nick}`
+  }
+
+  function highBidLine(bid) {
+    return `HIGH BID ${counted(Number(bid.reputation_bid) || 0, 'REPUTATION', 'REPUTATION')} · ${counted(Number(bid.bottlecap_bid) || 0, 'BOTTLECAP', 'BOTTLECAPS')}`
+  }
+
+  function recruitReason(kid) {
+    if (state.bidBusy) return 'THAT BID IS IN PROGRESS'
+    if (rosterFull()) return 'RELEASE SOMEONE FIRST'
+    if (kid.offer === 'tryout') return ''
+    const team = myTeam()
+    const price = coachPrice(kid)
+    if (!price || !team) return 'THE PRICE DID NOT LOAD'
+    const bid = openBid(kid)
+    if (offerFor(bid, team.id)) return ''
+    const standing = bid
+      ? { reputation: Number(bid.reputation_bid) || 0, bottlecaps: Number(bid.bottlecap_bid) || 0 }
+      : null
+    if (!canPay(team, standingDue(price, standing))) return 'CANNOT AFFORD THIS KID'
+    return ''
+  }
+
+  function bidBlock() {
+    const team = myTeam()
+    if (!team || !state.kids || state.season?.status !== 'active') return null
+    const mine = (state.offers || []).filter((row) => row.team_id === team.id)
+    const open = []
+    for (const row of mine) {
+      const bid = (state.bids || []).find((item) => item.id === row.bid_id && item.status === 'open')
+      const kid = bid && state.kids.find((item) => item.id === bid.player_id)
+      if (bid && kid) open.push({ bid, kid })
+    }
+    if (!open.length && !state.bidsFailed) return null
+    const wrap = el('div', 'played-list')
+    wrap.append(el('p', 'section', 'BIDS'))
+    if (state.bidsFailed) {
+      wrap.append(el('p', 'alert', 'THE BIDS DID NOT LOAD'))
+      return wrap
+    }
+    for (const item of open) wrap.append(bidCard(item.bid, item.kid))
+    return wrap
+  }
+
+  function bidCard(bid, kid) {
+    const card = el('div', 'card')
+    const head = el('div', 'card-head')
+    head.append(el('span', 'card-title', kidName(kid)))
+    const team = myTeam()
+    const price = coachPrice(kid)
+    const standing = {
+      reputation: Number(bid.reputation_bid) || 0,
+      bottlecaps: Number(bid.bottlecap_bid) || 0,
+    }
+    const leader = bid.high_team_id === team?.id
+    const repDue = price ? raiseDue(price, standing, 'reputation') : null
+    const capDue = price ? raiseDue(price, standing, 'bottlecaps') : null
+    const cover = !leader ? coverDue(standing, Number(team?.reputation) || 0) : null
+    const full = rosterFull()
+    const actions = el('div', 'card-actions')
+    const repButton = bidButton('RAISE REPUTATION', () => onBid('raise', kid.id, 'reputation'))
+    const capButton = bidButton('RAISE BOTTLECAPS', () => onBid('raise', kid.id, 'bottlecaps'))
+    const repClosed = state.bidBusy || full || !repDue || !canPay(team, repDue) || (leader && repDue.bottlecaps !== standing.bottlecaps)
+    const capClosed = state.bidBusy || full || !capDue || !canPay(team, capDue) || (leader && capDue.reputation !== standing.reputation)
+    repButton.disabled = repClosed
+    capButton.disabled = capClosed
+    actions.append(repButton, capButton)
+    const coverClosed = !cover || full || state.bidBusy || !canPay(team, cover)
+    if (!coverClosed) {
+      actions.append(bidButton('COVER WITH BOTTLECAPS', () => {
+        state.coverKid = kid.id
+        state.bidError = ''
+        state.bidKid = ''
+        paint()
+      }))
+    }
+    head.append(actions)
+    card.append(head, el('p', '', highBidLine(bid)))
+    if (!price) card.append(el('p', 'alert', 'THE PRICE DID NOT LOAD'))
+    else if (state.bidBusy) card.append(el('p', 'why', 'THAT BID IS IN PROGRESS'))
+    else if (full) card.append(el('p', 'why', 'RELEASE SOMEONE FIRST'))
+    else {
+      if (repClosed) card.append(el('p', 'why', 'CANNOT PAY THE REPUTATION'))
+      if (capClosed || (cover && coverClosed)) card.append(el('p', 'why', 'CANNOT PAY THE BOTTLECAPS'))
+    }
+    if (state.bidError && state.bidKid === kid.id) card.append(el('p', 'alert', state.bidError))
+    return card
+  }
+
+  async function onBid(kind, playerId, purse) {
+    if (state.bidBusy) return
+    state.bidBusy = true
+    state.bidError = ''
+    state.bidKid = playerId
+    state.coverKid = ''
+    paint()
+    const args = { player_id: playerId }
+    const call = kind === 'enter'
+      ? supabase.rpc('enter_recruit_bid', args)
+      : kind === 'join'
+        ? supabase.rpc('join_tryout', args)
+        : kind === 'cover'
+          ? supabase.rpc('cover_recruit_bid', args)
+          : supabase.rpc('raise_recruit_bid', { ...args, purse })
+    const { error } = await call
+    if (host.dataset.paint !== token || !host.isConnected) return
+    state.bidBusy = false
+    if (error) {
+      state.bidError = (error.message || 'THAT BID DID NOT LAND.').toUpperCase()
+      state.coverKid = ''
+      paint()
+      return
+    }
+    state.bidError = ''
+    state.bidKid = ''
+    await load()
+  }
+
+  function coverPopup(kid) {
+    mountPopup(host, {
+      title: 'COVER WITH BOTTLECAPS',
+      note: `${kidName(kid)} MAY PLAY FLAT UNTIL THE TEAM WINS, REPUTATION RISES, OR THIS KID HAS A STRONG GAME.`,
+      actions: [
+        {
+          label: 'COVER',
+          disabled: state.bidBusy,
+          reason: state.bidBusy ? 'THAT BID IS IN PROGRESS' : '',
+          onClick: () => onBid('cover', kid.id),
+        },
+        {
+          label: 'BACK',
+          onClick() {
+            state.coverKid = ''
+            closePopup()
+          },
+        },
+      ],
+      onClose() {
+        state.coverKid = ''
+      },
+    })
+  }
+
   function kidCard(kid) {
     const card = el('div', kid.offer === 'tryout' ? 'card kid-card tryout' : 'card kid-card')
     const head = el('div', 'card-head')
     const title = el('span', 'kid-title')
-    const nick = kid.nickname ? ` "${kid.nickname}"` : ''
-    const name = [kid.given_name, kid.family_name].filter(Boolean).join(' ')
-    title.append(el('span', 'season-name', `${name || 'KID'}${nick}`))
+    title.append(el('span', 'season-name', kidName(kid)))
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
+    if (kid.offer === 'tryout') title.append(el('span', 'tryout-mark', 'TRYOUT'))
     head.append(title)
-    if (kid.offer === 'tryout') head.append(el('span', 'tryout-mark', 'TRYOUT'))
-    card.append(head)
+    if (kid.offer && myTeam()) {
+      const actions = el('div', 'card-actions')
+      const bid = openBid(kid)
+      const joined = offerFor(bid, myTeam().id)
+      if (kid.offer === 'tryout') {
+        const button = bidButton('JOIN', () => onBid('join', kid.id))
+        const reason = recruitReason(kid)
+        button.disabled = Boolean(reason)
+        actions.append(button)
+        head.append(actions)
+        card.append(head)
+        if (reason) card.append(el('p', 'why', reason))
+      } else if (!joined) {
+        const button = bidButton('ENTER', () => onBid('enter', kid.id))
+        const reason = recruitReason(kid)
+        button.disabled = Boolean(reason)
+        actions.append(button)
+        head.append(actions)
+        card.append(head)
+        if (reason) card.append(el('p', 'why', reason))
+      } else {
+        card.append(head)
+      }
+    } else {
+      card.append(head)
+    }
     if (kid.flavor) card.append(el('span', '', kid.flavor))
-    if (kid.offer) {
-      card.append(fact('REPUTATION', counted(Number(kid.reputation_cost) || 0, 'REPUTATION', 'REPUTATION')))
-      card.append(fact('BOTTLECAPS', counted(Number(kid.bottlecap_cost) || 0, 'BOTTLECAP', 'BOTTLECAPS')))
-      if (kid.preference === 'underdog') card.append(el('p', '', 'LIKES A CLUB THAT IS NOT IN FIRST'))
+    if (kid.offer === 'tryout') {
+      card.append(el('p', '', 'A TRYOUT JOINS NOW'))
+    } else if (kid.offer) {
+      if (state.bidsFailed) card.append(el('p', 'alert', 'THE BIDS DID NOT LOAD'))
+      else if (state.strengthFailed || !coachPrice(kid)) card.append(el('p', 'alert', 'THE PRICE DID NOT LOAD'))
+      else {
+        const price = coachPrice(kid)
+        card.append(fact('REPUTATION', counted(price.reputation, 'REPUTATION', 'REPUTATION')))
+        card.append(fact('BOTTLECAPS', counted(price.bottlecaps, 'BOTTLECAP', 'BOTTLECAPS')))
+        if (price.climbing) card.append(el('p', '', 'THIS BREAK IS FOR CLUBS THAT ARE STILL CLIMBING'))
+        if (price.likesBench) card.append(el('p', '', 'LIKES A CLUB THAT IS NOT IN FIRST'))
+        const bid = openBid(kid)
+        if (bid) {
+          card.append(el('p', '', 'BIDDING'))
+          card.append(el('p', '', highBidLine(bid)))
+          if (offerFor(bid, myTeam()?.id)) card.append(el('p', '', 'YOU ARE IN THIS BID'))
+        }
+      }
     }
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
@@ -1091,9 +1338,33 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   let pull = 0
 
+  async function loadStrengths(kids, ticket) {
+    const versions = [...new Set(
+      (kids || []).filter((kid) => kid.offer === 'price').map((kid) => kid.settings_version),
+    )]
+    if (!versions.length) {
+      if (ticket !== pull) return
+      state.strengths = {}
+      state.strengthFailed = false
+      return
+    }
+    const rows = await Promise.all(versions.map(async (version) => {
+      const { data, error } = await supabase.rpc('recruiting_strength', { settings_version: version })
+      return { version, data, error }
+    }))
+    if (ticket !== pull) return
+    if (rows.some((row) => row.error || !Number.isFinite(Number(row.data)))) {
+      state.strengthFailed = true
+      state.strengths = {}
+      return
+    }
+    state.strengthFailed = false
+    state.strengths = Object.fromEntries(rows.map((row) => [row.version, Number(row.data)]))
+  }
+
   async function load() {
     const mine = ++pull
-    const [session, season, teams, kids, draft, games, standings, lineup, locks] = await Promise.all([
+    const [session, season, teams, kids, draft, games, standings, lineup, locks, bids, offers] = await Promise.all([
       supabase.auth.getSession(),
       seasonRow(),
       supabase
@@ -1103,7 +1374,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .order('created_at', { ascending: true }),
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, offer, reputation_cost, bottlecap_cost, preference, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, offer, reputation_cost, bottlecap_cost, preference, settings_version, created_at')
         .eq('season_id', seasonId)
         .order('created_at', { ascending: true })
         .order('id', { ascending: true }),
@@ -1124,6 +1395,15 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .eq('season_id', seasonId),
       supabase.from('lineups').select('team_id, player_id, slot'),
       supabase.from('lineup_locks').select('game_id, team_id'),
+      supabase
+        .from('recruit_bids')
+        .select('id, player_id, status, reputation_bid, bottlecap_bid, high_team_id, closes_at')
+        .eq('season_id', seasonId)
+        .eq('status', 'open'),
+      supabase
+        .from('recruit_offers')
+        .select('id, bid_id, season_id, team_id')
+        .eq('season_id', seasonId),
     ])
     if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return
     state.userId = session.data.session?.user?.id ?? ''
@@ -1132,6 +1412,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     state.lineup = []
     state.locksFailed = false
     state.locks = []
+    state.bidsFailed = Boolean(bids.error || offers.error)
+    state.bids = bids.error ? [] : (bids.data || [])
+    state.offers = offers.error ? [] : (offers.data || [])
     state.draftFailed = Boolean(draft.error)
     state.draft = draft.error ? null : draft.data
     state.gamesFailed = Boolean(games.error)
@@ -1149,6 +1432,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       state.missing = false
       state.draft = null
       state.draftFailed = false
+      state.bids = []
+      state.offers = []
+      state.bidsFailed = false
     } else if (!season.data) {
       state.missing = true
       state.season = null
@@ -1159,6 +1445,9 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       state.standingsFailed = false
       state.draft = null
       state.draftFailed = false
+      state.bids = []
+      state.offers = []
+      state.bidsFailed = false
     } else {
       state.missing = false
       state.season = season.data
@@ -1170,10 +1459,14 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       state.locks = locks.error ? [] : (locks.data || [])
       if (kids.error) {
         state.error = (kids.error.message || 'THE KIDS DID NOT LOAD.').toUpperCase()
+        state.strengths = {}
+        state.strengthFailed = false
       } else {
         state.kids = kids.data || []
+        await loadStrengths(state.kids, mine)
       }
     }
+    if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return
     state.loaded = true
     await maybeOpenBoard()
     if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return

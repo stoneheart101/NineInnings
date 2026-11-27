@@ -160,6 +160,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     title.append(el('span', 'season-name', kidLabel(kid)))
     if (kid.sex === 'M') title.append(el('span', 'sex-m', 'M'))
     else if (kid.sex === 'F') title.append(el('span', 'season-role', 'F'))
+    if (kid.tryout_status === 'playing') title.append(el('span', 'tryout-mark', 'TRYOUT'))
     head.append(title)
     const release = el('button', '', 'RELEASE')
     release.type = 'button'
@@ -175,6 +176,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     head.append(actions)
     card.append(head)
     if (kid.flavor) card.append(el('span', '', kid.flavor))
+    if (kid.penalty_until_game_id) card.append(el('p', '', 'PLAYING FLAT'))
     const stats = el('span', 'kid-stats')
     for (const [stat, label] of STATS) stats.append(statChip(label, kid.base_stats?.[stat]))
     card.append(stats)
@@ -357,7 +359,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk }) {
     const [kids, lineup] = await Promise.all([
       supabase
         .from('players')
-        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, created_at')
+        .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, tryout_status, penalty_until_game_id, created_at')
         .eq('team_id', teamId)
         .order('family_name', { ascending: true })
         .order('given_name', { ascending: true })

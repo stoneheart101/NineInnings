@@ -20,10 +20,12 @@ test('an open season listens for the tables another coach can change', () => {
     'draft_state:season_id=eq.season-1',
     'games:season_id=eq.season-1',
     'standings:season_id=eq.season-1',
+    'recruit_bids:season_id=eq.season-1',
+    'recruit_offers:season_id=eq.season-1',
   ])
   assert.deepEqual(seasonReadyChanges('season-1').map((row) => row.table), ['players', 'draft_state'])
   const pending = seasonPendingChanges('season-1').map((row) => row.table)
-  assert.deepEqual(pending, ['seasons', 'teams', 'games', 'standings'])
+  assert.deepEqual(pending, ['seasons', 'teams', 'games', 'standings', 'recruit_bids', 'recruit_offers'])
   assert.equal(pending.includes('players'), false)
 })
 

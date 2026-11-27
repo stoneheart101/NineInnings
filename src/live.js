@@ -9,6 +9,8 @@ export function seasonChanges(seasonId) {
     { table: 'draft_state', filter: season },
     { table: 'games', filter: season },
     { table: 'standings', filter: season },
+    { table: 'recruit_bids', filter: season },
+    { table: 'recruit_offers', filter: season },
   ]
 }
 
