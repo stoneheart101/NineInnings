@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { gameKind, historyPage, narrativeLead, playedGames, playedScore } from './played.js'
+import { gameKind, historyPage, narrativeLead, playedGames, playedScore, vsSides } from './played.js'
+
+test('the viewing coach comes first in a vs line', () => {
+  const away = { id: 'away', name: 'VISITORS' }
+  const home = { id: 'home', name: 'HOSTS' }
+  assert.deepEqual(vsSides(away, home, 'home').map((side) => side.name), ['HOSTS', 'VISITORS'])
+  assert.deepEqual(vsSides(away, home, 'away').map((side) => side.name), ['VISITORS', 'HOSTS'])
+  assert.deepEqual(vsSides(away, home, '').map((side) => side.name), ['VISITORS', 'HOSTS'])
+  assert.deepEqual(vsSides(away, home, 'other').map((side) => side.name), ['VISITORS', 'HOSTS'])
+})
 
 test('a played game is named by kind', () => {
   assert.equal(gameKind({ dev: true, is_practice: true }), 'DEV')

@@ -315,16 +315,12 @@ select:focus-visible {
   [role='link']:focus-visible .card-title,
   [role='link']:hover .season-name,
   [role='link']:focus-visible .season-name,
-  [role='link']:hover .mine,
-  [role='link']:focus-visible .mine,
   [role='link']:hover .game-date,
   [role='link']:focus-visible .game-date,
   button:not(:disabled):hover .season-status,
   button:not(:disabled):focus-visible .season-status,
   button:not(:disabled):hover .season-name,
   button:not(:disabled):focus-visible .season-name,
-  button:not(:disabled):hover .mine,
-  button:not(:disabled):focus-visible .mine,
   button:not(:disabled):hover .game-date,
   button:not(:disabled):focus-visible .game-date {
     color: #000;
@@ -591,10 +587,6 @@ input.num {
   display: grid;
   gap: clamp(14px, 2.4vw, 24px);
   width: 100%;
-}
-
-.schedule .mine {
-  color: #9ec9ff;
 }
 
 .played-card.scrimmage {

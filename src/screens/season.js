@@ -3,7 +3,7 @@ import { statChip } from '../stat-color.js'
 import { clockLabel, clockLabel12, dayKey, forecastShown, forecastWords, weatherReport } from '../forecast.js'
 import { neighborhoodPlayLabel, practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
-import { gameKind, historyPage, narrativeLead, playedGames, playedScore } from '../played.js'
+import { gameKind, historyPage, narrativeLead, playedGames, playedScore, vsSides } from '../played.js'
 import { rankStandings } from '../standings.js'
 import { closeDraft, renderDraft } from './draft.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
@@ -349,7 +349,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function detailsBlock() {
     const wrap = el('div', 'details')
-    wrap.append(el('p', 'section', 'DETAILS'))
     wrap.append(seasonBlock())
     return wrap
   }
@@ -596,17 +595,16 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
   function sideName(game, side) {
     const id = side === 'home' ? game.home_team_id : game.away_team_id
     const team = state.teams.find((item) => item.id === id)
-    if (team?.name) return { name: team.name, mine: team.coach_id === state.userId }
+    if (team?.name) return { id, name: team.name }
     const named = game.result?.[side]?.name
     const name = typeof named === 'string' && named.trim() ? named.trim() : 'TEAM'
-    return { name, mine: false }
+    return { id, name }
   }
 
   function matchTitle(game) {
     const title = el('span', 'card-title game-match')
-    const away = sideName(game, 'away')
-    const home = sideName(game, 'home')
-    title.append(el('span', away.mine ? 'mine' : '', away.name), document.createTextNode(' VS '), el('span', home.mine ? 'mine' : '', home.name))
+    const [first, second] = vsSides(sideName(game, 'away'), sideName(game, 'home'), myTeam()?.id || '')
+    title.append(document.createTextNode(`${first.name} VS ${second.name}`))
     return title
   }
 
@@ -756,7 +754,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function recruitingBlock() {
     const wrap = el('div', 'season-panel')
-    wrap.append(el('p', 'section', 'RECRUITS'))
     if (state.boardError) wrap.append(el('p', 'alert', state.boardError))
     if (!state.kids) {
       wrap.append(el('p', 'alert', 'THE BOARD DID NOT LOAD'))
@@ -793,12 +790,6 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     paint()
   }
 
-  function teamMark(id) {
-    const team = state.teams.find((item) => item.id === id)
-    const mine = team?.coach_id === state.userId
-    return el('span', mine ? 'mine' : '', team?.name || 'TEAM')
-  }
-
   function scheduleBlock() {
     const season = state.season
     if (!myTeam()) return el('p', '', 'YOU ARE NOT IN THIS SEASON')
@@ -825,9 +816,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         const open = () => onOpenGame?.(game.id)
         const card = linkCard('game-box', open)
         const head = el('div', 'card-head')
-        const title = el('span', 'card-title game-match')
-        title.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
-        head.append(title, cardAction('OPEN', open))
+        head.append(matchTitle(game), cardAction('OPEN', open))
         card.append(head)
         const when = new Date(game.starts_at)
         if (!Number.isNaN(when.getTime())) card.append(el('p', 'game-date', clockLabel(when)))

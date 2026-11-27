@@ -1,3 +1,10 @@
+export function vsSides(away, home, mineId) {
+  const left = away || { id: '', name: '' }
+  const right = home || { id: '', name: '' }
+  if (mineId && right.id === mineId && left.id !== mineId) return [right, left]
+  return [left, right]
+}
+
 export function gameKind(game) {
   if (game?.dev) return 'DEV'
   if (game?.is_practice) return 'PRACTICE'

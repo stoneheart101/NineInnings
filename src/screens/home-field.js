@@ -79,7 +79,6 @@ export function renderHomeField(prompt, { teamId, setTeam, onDesk, onOpen }) {
   function fieldBlock() {
     const wrap = el('div', 'home-field')
     const chosen = perkById(state.team?.home_perk)
-    wrap.append(el('p', 'section', 'HOME FIELD'))
     wrap.append(el('p', '', chosen ? `THIS CANNOT BE CHANGED. ${NOTE}` : `PICK ONE. IT CANNOT BE CHANGED. ${NOTE}`))
     if (state.rosterError) wrap.append(el('p', 'alert', state.rosterError))
     const list = el('div', 'shelf-list')

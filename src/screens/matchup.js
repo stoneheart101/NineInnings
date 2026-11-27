@@ -6,6 +6,7 @@ import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
 import { filledNine, filledOrder } from '../nine.js'
 import { WHY, lockReason } from '../why.js'
 import { homePerkForGame } from '../home-perk.js'
+import { vsSides } from '../played.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
 
@@ -176,7 +177,12 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     })
     if (fieldLine) matchNodes.push(el('p', '', fieldLine))
     const matchTitle = el('span', 'game-match')
-    matchTitle.append(teamMark(game.away_team_id), document.createTextNode(' VS '), teamMark(game.home_team_id))
+    const [first, second] = vsSides(
+      { id: game.away_team_id, name: sideName(game.away_team_id) },
+      { id: game.home_team_id, name: sideName(game.home_team_id) },
+      state.myTeam?.id || '',
+    )
+    matchTitle.append(document.createTextNode(`${first.name} VS ${second.name}`))
     box.append(headed('matchup-card', matchTitle, matchNodes))
 
     if (summary) {
@@ -246,12 +252,6 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     if (result?.away?.team_id === id && result.away.name) return result.away.name
     if (result?.home?.team_id === id && result.home.name) return result.home.name
     return 'TEAM'
-  }
-
-  function teamMark(id) {
-    const team = state.teams.find((item) => item.id === id)
-    const mine = team?.coach_id === state.userId
-    return el('span', mine ? 'mine' : '', sideName(id))
   }
 
   function armClock() {
