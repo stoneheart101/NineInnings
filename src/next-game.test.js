@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { nextOfficial } from './next-game.js'
+import { lockStatus, nextOfficial } from './next-game.js'
 
 const MINE = 'mine'
 const OTHER = 'other'
@@ -25,6 +25,14 @@ test('a coach with no team in this season has no next game', () => {
   ]
   assert.equal(nextOfficial(games, '', teams), null)
   assert.equal(nextOfficial([], MINE, teams), null)
+})
+
+test('the next game says who still has to lock', () => {
+  assert.equal(lockStatus({ locked: false, foeLocked: false }), 'YOU HAVE NOT LOCKED')
+  assert.equal(lockStatus({ locked: false, foeLocked: true }), 'YOU HAVE NOT LOCKED')
+  assert.equal(lockStatus({ locked: true, foeLocked: false }), 'WAITING ON THE OTHER COACH')
+  assert.equal(lockStatus({ locked: true, foeLocked: true }), '')
+  assert.equal(lockStatus({ locked: false, foeLocked: false, known: false }), '')
 })
 
 test('a hidden opponent is still named TEAM', () => {

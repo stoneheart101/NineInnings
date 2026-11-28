@@ -1,3 +1,11 @@
+// The next-game card names one open lock. This coach comes first.
+export function lockStatus({ locked = false, foeLocked = false, known = true } = {}) {
+  if (!known) return ''
+  if (!locked) return 'YOU HAVE NOT LOCKED'
+  if (!foeLocked) return 'WAITING ON THE OTHER COACH'
+  return ''
+}
+
 export function nextOfficial(games, teamId, teams) {
   if (!teamId) return null
   let best = null

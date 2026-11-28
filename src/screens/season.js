@@ -11,7 +11,7 @@ import { rankStandings } from '../standings.js'
 import { closeDraft, renderDraft } from './draft.js'
 import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { sameSeasonName } from '../season-name.js'
-import { nextOfficial } from '../next-game.js'
+import { lockStatus, nextOfficial } from '../next-game.js'
 import { draftComplete as draftIsComplete, setupRows, shouldAutoStart } from '../setup.js'
 import { dashboardShows, seasonSubtabs, showRecruitingTab } from '../season-view.js'
 import { bindChanges, seasonPendingChanges, seasonReadyChanges } from '../live.js'
@@ -408,12 +408,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const mine = myTeam()?.id || ''
     for (const label of ['', '', 'W', 'L', 'REP', 'BC']) node.append(el('span', 'score-h', label))
     for (const row of rows) {
-      node.append(el('span', 'score-n', String(row.rank)))
-      node.append(el('span', row.teamId === mine ? 'score-name recap-mine' : 'score-name', row.name))
-      node.append(el('span', 'score-n', String(row.wins)))
-      node.append(el('span', 'score-n', String(row.losses)))
-      node.append(el('span', 'score-n', String(row.reputation)))
-      node.append(el('span', 'score-n', String(row.bottlecaps)))
+      const tone = row.teamId === mine ? ' recap-mine' : ''
+      node.append(el('span', `score-n${tone}`, String(row.rank)))
+      node.append(el('span', `score-name${tone}`, row.name))
+      node.append(el('span', `score-n${tone}`, String(row.wins)))
+      node.append(el('span', `score-n${tone}`, String(row.losses)))
+      node.append(el('span', `score-n${tone}`, String(row.reputation)))
+      node.append(el('span', `score-n${tone}`, String(row.bottlecaps)))
     }
     return node
   }
@@ -510,7 +511,21 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     card.append(...stakeNodes(game))
     const words = deskForecast(game)
     if (words) card.append(el('p', 'game-forecast', words))
+    const note = nextLockNote(game)
+    if (note) card.append(el('p', 'why', note))
     return card
+  }
+
+  function nextLockNote(game) {
+    const team = myTeam()
+    if (!team) return ''
+    const foeId = game.home_team_id === team.id ? game.away_team_id : game.home_team_id
+    const rows = state.locks.filter((row) => row.game_id === game.id)
+    return lockStatus({
+      locked: rows.some((row) => row.team_id === team.id),
+      foeLocked: rows.some((row) => row.team_id === foeId),
+      known: !state.locksFailed,
+    })
   }
 
   function myTeam() {
@@ -833,11 +848,12 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       teamId: mineId,
       view: state.gamesView,
       dayKey,
+      now: Date.now(),
     })
     const wrap = el('div', 'schedule')
     wrap.append(scheduleFilter())
     if (!days.length) {
-      wrap.append(el('p', '', state.gamesView === 'mine' ? 'NO GAMES FOR YOUR TEAM' : 'NO GAMES YET'))
+      wrap.append(el('p', '', state.gamesView === 'mine' ? 'NO GAMES FOR YOUR TEAM' : 'NO GAMES COMING'))
       return wrap
     }
     for (const day of days) {
