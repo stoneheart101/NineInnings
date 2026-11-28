@@ -18,6 +18,7 @@ export function rankStandings(rows) {
       wins: count(row.wins),
       losses: count(row.losses),
       reputation: count(row.reputation),
+      bottlecaps: count(row.bottlecaps),
     }))
   list.sort((left, right) => {
     if (right.wins !== left.wins) return right.wins - left.wins

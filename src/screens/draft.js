@@ -3,7 +3,7 @@ import { fetchHeld } from '../held-purse.js'
 import { draftIsActive } from '../menu.js'
 import { statChip } from '../stat-color.js'
 import { draftedKids, draftedLine, poolPick } from '../draft-board.js'
-import { nameClass, perkLine } from '../home-perk.js'
+import { nameClass, perkHelp, perkLine } from '../home-perk.js'
 import { closePopup, popupKind } from '../popup.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 import { sortedByStat, statSortRow } from '../stat-sort.js'
@@ -129,6 +129,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
       stats: kid.base_stats,
       sex: kid.sex,
       perk: perkLine(kid.home_perk),
+      help: perkHelp(kid.home_perk),
       homeHelp: Boolean(perkLine(kid.home_perk)),
       onClose() { state.detailId = '' },
     })

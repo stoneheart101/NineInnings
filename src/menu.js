@@ -1,4 +1,4 @@
-// The signed-in menu is DASHBOARD, the open season, and this coach's team.
+// The signed-in menu is DASH, the open season, and this coach's team.
 export function draftIsActive(season, draft) {
   if (season?.status !== 'drafting') return false
   if (!draft) return true
@@ -21,7 +21,7 @@ export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', draft
   return [
     {
       id: 'dashboard',
-      label: 'DASHBOARD',
+      label: 'DASH',
       path: seasonPath,
       section: 'dashboard',
       on: onDashboard,

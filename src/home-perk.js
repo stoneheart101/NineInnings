@@ -63,6 +63,11 @@ export function perkLine(id) {
   return perk ? `BRINGS ${perk.label}` : ''
 }
 
+export function perkHelp(id) {
+  const perk = KID_PERKS.find((row) => row.id === id)
+  return perk ? perk.blurb : ''
+}
+
 export function nameClass(id, base = 'season-name') {
   return perkLine(id) ? `${base} home-help` : base
 }

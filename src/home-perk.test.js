@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { homeFieldLine, homePerkForGame, nameClass, perkChoices, perkLine } from './home-perk.js'
+import { homeFieldLine, homePerkForGame, nameClass, perkChoices, perkHelp, perkLine } from './home-perk.js'
 
 test('a perk names itself on the kid and on the home game', () => {
   assert.equal(perkLine('moms_muffins'), "BRINGS MOM'S MUFFINS")
+  assert.equal(perkHelp('moms_muffins'), 'MOM BAKES FOR THE GAME. THE CLUB HOLDS UP A LITTLE LONGER.')
+  assert.equal(perkHelp('brothers_van'), 'AN OLDER BROTHER DRIVES THEM OVER. HOME RUNNERS KEEP A LITTLE SPEED.')
+  assert.equal(perkHelp('short_fence'), '')
+  assert.equal(perkHelp(null), '')
   assert.equal(perkLine('short_fence'), '')
   assert.equal(perkLine(null), '')
   assert.equal(perkLine('not_a_perk'), '')

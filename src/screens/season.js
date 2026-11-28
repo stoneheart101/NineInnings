@@ -21,7 +21,8 @@ import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } fr
 import { coachesWaiting, compareRecruits, highBidNote, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
 import { heldPurse } from '../held-purse.js'
 import { placeLine, rewardLine, rewardVersions, rewardsReady, sideOf } from '../game-purse.js'
-import { nameClass, perkLine } from '../home-perk.js'
+import { nameClass, perkHelp, perkLine } from '../home-perk.js'
+import { CLUB_NAME_ERROR, CLUB_NAME_LIMIT, cleanClubName, clubNameOk } from '../club-name.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 import { sortedByStat, statSortRow } from '../stat-sort.js'
 
@@ -36,10 +37,6 @@ function el(tag, className, text) {
 
 function counted(value, one, many) {
   return `${value} ${value === 1 ? one : many}`
-}
-
-function cleanName(value) {
-  return value.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
 function draftComplete(season, draft) {
@@ -255,6 +252,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       stats: kid.base_stats,
       sex: kid.sex,
       perk: perkLine(kid.home_perk),
+      help: perkHelp(kid.home_perk),
       homeHelp: Boolean(perkLine(kid.home_perk)),
       onClose() { state.detailId = '' },
     })
@@ -391,6 +389,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         wins: row.wins,
         losses: row.losses,
         reputation: team.reputation,
+        bottlecaps: team.bottlecaps,
       }
     }).filter(Boolean))
     if (!rows.length) {
@@ -403,13 +402,15 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
 
   function standingsGrid(rows) {
     const node = el('div', 'standings-grid')
-    for (const label of ['', '', 'W', 'L', 'REP']) node.append(el('span', 'score-h', label))
+    const mine = myTeam()?.id || ''
+    for (const label of ['', '', 'W', 'L', 'REP', 'BC']) node.append(el('span', 'score-h', label))
     for (const row of rows) {
       node.append(el('span', 'score-n', String(row.rank)))
-      node.append(el('span', 'score-name', row.name))
+      node.append(el('span', row.teamId === mine ? 'score-name recap-mine' : 'score-name', row.name))
       node.append(el('span', 'score-n', String(row.wins)))
       node.append(el('span', 'score-n', String(row.losses)))
       node.append(el('span', 'score-n', String(row.reputation)))
+      node.append(el('span', 'score-n', String(row.bottlecaps)))
     }
     return node
   }
@@ -881,7 +882,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const name = document.createElement('input')
     name.name = 'team-name'
     name.required = true
-    name.maxLength = 40
+    name.maxLength = CLUB_NAME_LIMIT
     name.autocomplete = 'off'
     name.spellcheck = false
     name.value = state.name
@@ -1247,7 +1248,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const name = document.createElement('input')
     name.name = 'season-name'
     name.required = true
-    name.maxLength = 40
+    name.maxLength = CLUB_NAME_LIMIT
     name.autocomplete = 'off'
     name.spellcheck = false
     name.value = state.deleteTyped
@@ -1312,7 +1313,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     paint()
     const { error } = await supabase.rpc('delete_season', {
       season_id: seasonId,
-      season_name: cleanName(state.deleteTyped),
+      season_name: cleanClubName(state.deleteTyped),
     })
     if (host.dataset.paint !== token || !host.isConnected) return
     state.busy = false
@@ -1365,10 +1366,10 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     event.preventDefault()
     if (state.busy) return
     const data = new FormData(event.currentTarget)
-    const teamName = cleanName(String(data.get('team-name') || ''))
+    const teamName = cleanClubName(String(data.get('team-name') || ''))
     state.name = teamName
-    if (!/^[A-Z0-9][A-Z0-9 .'-]{0,39}$/.test(teamName)) {
-      state.error = "USE 1 TO 40 LETTERS, NUMBERS, SPACES, OR . ' -"
+    if (!clubNameOk(teamName)) {
+      state.error = CLUB_NAME_ERROR
       paint()
       return
     }

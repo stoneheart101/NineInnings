@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { closePopup, mountPopup } from './popup.js'
 import { WHY } from './why.js'
+import { CLUB_NAME_ERROR, CLUB_NAME_LIMIT, cleanClubName, clubNameOk } from './club-name.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const FORM_ID = 'open-season-form'
@@ -17,10 +18,6 @@ function whole(value, min, max) {
   const number = Number(value)
   if (number < min || number > max) return null
   return number
-}
-
-function cleanName(value) {
-  return value.trim().replace(/\s+/g, ' ').toUpperCase()
 }
 
 export function openSeasonPopup({ onOpened, onBack } = {}) {
@@ -56,7 +53,7 @@ export function openSeasonPopup({ onOpened, onBack } = {}) {
     const name = document.createElement('input')
     name.name = 'season-name'
     name.required = true
-    name.maxLength = 40
+    name.maxLength = CLUB_NAME_LIMIT
     name.autocomplete = 'off'
     name.spellcheck = false
     name.value = state.name
@@ -107,7 +104,7 @@ export function openSeasonPopup({ onOpened, onBack } = {}) {
     event.preventDefault()
     if (state.busy) return
     const data = new FormData(event.currentTarget)
-    const seasonName = cleanName(String(data.get('season-name') || ''))
+    const seasonName = cleanClubName(String(data.get('season-name') || ''))
     const officialWeekdays = data.getAll('day').map(Number)
     const practice = whole(String(data.get('practice') || ''), 1, 14)
     const weeks = whole(String(data.get('weeks') || ''), 1, 20)
@@ -117,8 +114,8 @@ export function openSeasonPopup({ onOpened, onBack } = {}) {
     state.practice = String(data.get('practice') || '')
     state.weeks = String(data.get('weeks') || '')
     state.rounds = String(data.get('rounds') || '')
-    if (!/^[A-Z0-9][A-Z0-9 .'-]{0,39}$/.test(seasonName)) {
-      state.error = "USE 1 TO 40 LETTERS, NUMBERS, SPACES, OR . ' -"
+    if (!clubNameOk(seasonName)) {
+      state.error = CLUB_NAME_ERROR
       show()
       return
     }

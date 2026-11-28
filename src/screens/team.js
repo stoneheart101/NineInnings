@@ -5,7 +5,7 @@ import { closePopup, mountPopup, popupKind } from '../popup.js'
 import { WHY } from '../why.js'
 import { hideToast, showToast } from '../toast.js'
 import { teamTabRow } from '../team-tabs.js'
-import { nameClass, perkLine } from '../home-perk.js'
+import { nameClass, perkHelp, perkLine } from '../home-perk.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 import { sortedByStat, statSortRow } from '../stat-sort.js'
 
@@ -196,6 +196,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       stats: kid.base_stats,
       sex: kid.sex,
       perk: perkLine(kid.home_perk),
+      help: perkHelp(kid.home_perk),
       homeHelp: Boolean(perkLine(kid.home_perk)),
       position: detailPosition(kid),
       onClose() { state.detailId = '' },

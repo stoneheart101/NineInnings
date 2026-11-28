@@ -59,7 +59,7 @@ export function sexWord(sex) {
   return ''
 }
 
-export function kidDetailBody({ stats, sex, perk, position }) {
+export function kidDetailBody({ stats, sex, perk, help, position }) {
   const body = document.createElement('div')
   body.className = 'kid-detail'
   const word = sexWord(sex)
@@ -72,6 +72,11 @@ export function kidDetailBody({ stats, sex, perk, position }) {
     const line = document.createElement('p')
     line.textContent = perk
     body.append(line)
+  }
+  if (help) {
+    const note = document.createElement('p')
+    note.textContent = help
+    body.append(note)
   }
   body.append(kidDetailBars(stats))
   if (position) body.append(position)
@@ -99,10 +104,10 @@ function markKidTitle(homeHelp) {
   heading.classList.toggle('home-help', Boolean(homeHelp))
 }
 
-export function showKidPopup({ id, name, stats, sex, perk, homeHelp, position, onClose }) {
+export function showKidPopup({ id, name, stats, sex, perk, help, homeHelp, position, onClose }) {
   const title = name || 'KID'
   const helped = Boolean(homeHelp)
-  const body = () => kidDetailBody({ stats, sex, perk, position })
+  const body = () => kidDetailBody({ stats, sex, perk, help, position })
   const open = document.querySelector('.popup')
   if (popupKind() === 'kid' && open?.dataset.kidId === id) {
     const heading = open.querySelector('.card-title')
