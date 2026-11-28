@@ -203,3 +203,20 @@ test('a game with no line has no recap', () => {
   assert.deepEqual(recapParts({ narrative: 'THE BOOTH CALLS THE DAY CLEAR.' }), [])
   assert.equal(recapClose({}), '')
 })
+
+test('a forfeit replaces the booth call', () => {
+  const game = {
+    weather: called.weather,
+    result: {
+      winner: 'home',
+      forfeit: 'away',
+      away: { team_id: away, name: 'Goonies', runs: 0 },
+      home: { team_id: home, name: 'River Rats', runs: 0 },
+      innings: [],
+      lines: [],
+      events: [],
+    },
+  }
+  assert.deepEqual(recapParts(game), ['GOONIES FORFEITS. RIVER RATS TAKES THE GAME, AND NOBODY EARNS A THING.'])
+  assert.equal(recapClose(game), 'GOONIES FORFEITS. RIVER RATS TAKES THE GAME, AND NOBODY EARNS A THING.')
+})

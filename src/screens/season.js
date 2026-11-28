@@ -4,6 +4,7 @@ import { clockLabel, clockLabel12, dayKey, deskForecast, weatherReport } from '.
 import { gameOpens, nextScheduleView, scheduleDays } from '../schedule-view.js'
 import { neighborhoodPlayLabel, practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
+import { forfeitCall } from '../forfeit.js'
 import { gameKind, historyPage, narrativeLead, playedGames, playedScore, vsSides } from '../played.js'
 import { recapClose } from '../recap.js'
 import { rankStandings } from '../standings.js'
@@ -848,10 +849,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         card.append(head)
         const when = new Date(game.starts_at)
         if (!Number.isNaN(when.getTime())) card.append(el('p', 'game-date', clockLabel(when)))
-        card.append(...stakeNodes(game))
-        const played = game.status === 'final' || Boolean(game.result)
-        const words = played ? weatherReport(game) : deskForecast(game)
-        if (words) card.append(el('p', 'game-forecast', words))
+        const forfeited = forfeitCall(game.result)
+        if (forfeited) {
+          const home = sideName(game, 'home')
+          card.append(el('p', 'game-stake', placeLine(home.name, sideOf(game, myTeam()?.id || '') === 'home')))
+          card.append(el('p', '', forfeited))
+        } else {
+          card.append(...stakeNodes(game))
+          const played = game.status === 'final' || Boolean(game.result)
+          const words = played ? weatherReport(game) : deskForecast(game)
+          if (words) card.append(el('p', 'game-forecast', words))
+        }
         block.append(card)
       }
       for (const team of day.byes) block.append(el('p', 'game-bye', `${team.name} HAS A BYE`))

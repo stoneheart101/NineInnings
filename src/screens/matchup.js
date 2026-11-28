@@ -6,6 +6,7 @@ import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
 import { filledNine, filledOrder } from '../nine.js'
 import { WHY, lockReason } from '../why.js'
 import { homePerkForGame, homePerkIdsForGame } from '../home-perk.js'
+import { forfeitCall } from '../forfeit.js'
 import { vsSides } from '../played.js'
 
 const LABELS = [null, 'MOUND', 'CATCHER', 'FIRST', 'SECOND', 'THIRD', 'SHORT', 'LEFT', 'CENTER', 'RIGHT']
@@ -192,7 +193,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
       : el('span', 'game-match', `${first.name} VS ${second.name}`)
     box.append(headed(summary ? 'matchup-card recap-card' : 'matchup-card', matchTitle, matchNodes))
 
-    if (summary) {
+    if (summary && !forfeitCall(game.result)) {
       box.append(headed('box-score', '', scoreNodes(game.result, state.myTeam?.id || '')))
       if (state.usedFailed) box.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
       else {

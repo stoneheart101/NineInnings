@@ -1,5 +1,6 @@
 import { usedGroups } from './box.js'
 import { forecastReport } from './forecast.js'
+import { forfeitCall } from './forfeit.js'
 import { perkById } from './home-perk.js'
 
 const INNING_NAME = [
@@ -290,6 +291,8 @@ function callLine(result) {
 export function recapParts(game, extras = {}) {
   const result = game?.result
   if (!result || typeof result !== 'object') return []
+  const forfeited = forfeitCall(result)
+  if (forfeited) return [forfeited]
   const weather = game?.weather
   const forecast = air(weather?.forecast)
   const opening = air(weather?.opening)
@@ -313,7 +316,7 @@ export function recapParts(game, extras = {}) {
 }
 
 export function recapClose(game) {
-  return callLine(game?.result)
+  return forfeitCall(game?.result) || callLine(game?.result)
 }
 
 function sideNames(result, teamId) {

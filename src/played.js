@@ -1,3 +1,5 @@
+import { forfeitCall } from './forfeit.js'
+
 export function vsSides(away, home, mineId) {
   const left = away || { id: '', name: '' }
   const right = home || { id: '', name: '' }
@@ -12,6 +14,7 @@ export function gameKind(game) {
 }
 
 export function playedScore(game) {
+  if (forfeitCall(game?.result)) return 'FORFEIT'
   const away = game?.result?.away?.runs
   const home = game?.result?.home?.runs
   if (!Number.isInteger(away) || !Number.isInteger(home)) return ''

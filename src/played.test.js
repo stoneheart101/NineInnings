@@ -21,6 +21,7 @@ test('a played game is named by kind', () => {
 test('the score line is away to home', () => {
   assert.equal(playedScore({ result: { away: { runs: 1 }, home: { runs: 0 } } }), '1 TO 0')
   assert.equal(playedScore({ result: { away: { runs: 4 } } }), '')
+  assert.equal(playedScore({ result: { forfeit: 'both', away: { runs: 0 }, home: { runs: 0 } } }), 'FORFEIT')
   assert.equal(playedScore(null), '')
 })
 

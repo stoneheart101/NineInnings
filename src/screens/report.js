@@ -3,6 +3,7 @@ import { fetchHeld } from '../held-purse.js'
 import { clockLabel } from '../forecast.js'
 import { headed, reviewNotes, scoreNodes, sidedTitle, usedNodes } from '../summary.js'
 import { homePerkForGame, homePerkIdsForGame } from '../home-perk.js'
+import { forfeitCall } from '../forfeit.js'
 import { vsSides } from '../played.js'
 
 function el(tag, className, text) {
@@ -101,7 +102,7 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
 
     if (!finished) {
       box.append(el('p', '', 'THIS GAME HAS NOT BEEN PLAYED'))
-    } else {
+    } else if (!forfeitCall(game.result)) {
       box.append(headed('box-score', '', scoreNodes(game.result, state.myTeam?.id || '')))
       if (state.usedFailed) box.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
       else {
