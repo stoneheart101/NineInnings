@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { actualLine, clockLabel, clockLabel12, dayKey, dayLabel, forecastLine, forecastReport, weatherReport } from './forecast.js'
+import { actualLine, clockLabel, clockLabel12, dayKey, dayLabel, daysAhead, deskForecast, forecastLine, forecastReport, weatherReport } from './forecast.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
@@ -98,6 +98,26 @@ test('a game already played reads a desk report from the stored sky, wind, and h
   assert.equal(line.includes('CLEAR'), false)
   assert.equal(weatherReport({ weather: { sentence: '  ' } }), '')
   assert.equal(weatherReport({}), '')
+})
+
+test('the weather desk shows a forecast out seven days', () => {
+  const now = new Date(2026, 10, 27, 8, 30)
+  const line = 'From the weather desk. Clear and mild.'
+  const game = (when) => ({
+    starts_at: when.toISOString(),
+    weather: { forecast: { report: line } },
+  })
+  const shown = (when) => deskForecast(game(when), now)
+  assert.equal(shown(new Date(2026, 10, 27, 19, 0)).includes('WEATHER DESK'), true)
+  assert.equal(shown(new Date(2026, 10, 26, 19, 0)).includes('WEATHER DESK'), true)
+  assert.equal(shown(new Date(2026, 11, 4, 23, 59)).includes('WEATHER DESK'), true)
+  assert.equal(shown(new Date(2026, 11, 5, 0, 1)), '')
+  assert.equal(deskForecast({ weather: { forecast: { report: line } } }, now), '')
+  assert.equal(deskForecast({ starts_at: 'nope', weather: { forecast: { report: line } } }, now), '')
+  assert.equal(forecastReport(game(new Date(2026, 11, 20, 19, 0))).includes('WEATHER DESK'), true)
+  assert.equal(daysAhead(new Date(2026, 2, 14, 19, 0), new Date(2026, 2, 7, 9, 0)), 7)
+  assert.equal(daysAhead(new Date(2026, 10, 7, 19, 0), new Date(2026, 9, 31, 9, 0)), 7)
+  assert.equal(daysAhead(new Date(2026, 10, 8, 0, 0), new Date(2026, 9, 31, 9, 0)), 8)
 })
 
 test('a review names the forecast and the park report apart', () => {

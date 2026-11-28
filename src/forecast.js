@@ -70,6 +70,20 @@ export function forecastReport(game) {
   return clean(game?.weather?.forecast?.report)
 }
 
+export function daysAhead(startsAt, now = new Date()) {
+  const start = startsAt instanceof Date ? startsAt : new Date(startsAt)
+  if (Number.isNaN(start.getTime()) || !(now instanceof Date) || Number.isNaN(now.getTime())) return null
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((startDay.getTime() - today.getTime()) / 86400000)
+}
+
+export function deskForecast(game, now = new Date()) {
+  const ahead = daysAhead(game?.starts_at, now)
+  if (ahead == null || ahead > 7) return ''
+  return forecastReport(game)
+}
+
 export function weatherReport(game) {
   const opening = clean(game?.weather?.opening?.report)
   if (opening) {

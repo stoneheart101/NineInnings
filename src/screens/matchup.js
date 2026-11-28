@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { fetchHeld } from '../held-purse.js'
-import { clockLabel, forecastReport } from '../forecast.js'
+import { clockLabel, deskForecast } from '../forecast.js'
 import { headed, reviewNotes, scoreNodes, sidedTitle, usedNodes } from '../summary.js'
 import { bindChanges, gameIsFinal, matchupChanges } from '../live.js'
 import { filledNine, filledOrder } from '../nine.js'
@@ -177,7 +177,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
         myTeamId: state.myTeam?.id || '',
       }))
     } else {
-      const words = forecastReport(game)
+      const words = deskForecast(game)
       if (words) matchNodes.push(el('p', 'game-forecast', words))
       const fieldLine = homePerkForGame(perkArgs)
       if (fieldLine) matchNodes.push(el('p', '', fieldLine))

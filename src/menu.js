@@ -15,7 +15,7 @@ export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', draft
   const shown = place === 'draft' ? 'draft' : place === 'recruiting' ? 'recruiting' : section
   const onDashboard = place === 'seasons' && (shown === 'dashboard' || shown === '')
   const onSeason = place === 'list' || place === 'draft' || (inSeason && !onDashboard && shown !== '')
-  const seasonSection = forming ? 'details' : drafting ? 'draft' : 'schedule'
+  const seasonSection = forming ? 'details' : drafting ? 'draft' : 'recruiting'
   const named = String(seasonName || '').trim()
   return [
     {
