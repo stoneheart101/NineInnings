@@ -440,10 +440,10 @@ input.num {
 .team-list,
 .kid-list {
   display: grid;
-  gap: clamp(14px, 2.4vw, 24px);
+  gap: clamp(7px, 1.2vw, 12px);
   width: 100%;
   justify-self: stretch;
-  margin: 12px 0 4px;
+  margin: 6px 0 4px;
 }
 
 .card,
@@ -504,7 +504,7 @@ input.num {
 
 .details {
   display: grid;
-  gap: clamp(14px, 2.4vw, 24px);
+  gap: clamp(7px, 1.2vw, 12px);
   width: 100%;
 }
 
@@ -536,20 +536,20 @@ input.num {
 .schedule,
 .game-day {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   width: 100%;
   justify-items: stretch;
 }
 
 .game-day {
-  margin-top: 0.75em;
+  margin-top: 0.375em;
 }
 
 .played-list {
   display: grid;
-  gap: clamp(14px, 2.4vw, 24px);
+  gap: clamp(7px, 1.2vw, 12px);
   width: 100%;
-  margin-top: 0.75em;
+  margin-top: 0.375em;
 }
 
 .game-date {
@@ -575,7 +575,7 @@ input.num {
 }
 
 .choices.dashboard > .played-list:first-child {
-  margin-top: 1em;
+  margin-top: 0.5em;
 }
 
 .choices.dashboard > .played-list > .section,
@@ -585,7 +585,7 @@ input.num {
 
 .standings-list {
   display: grid;
-  gap: clamp(14px, 2.4vw, 24px);
+  gap: clamp(7px, 1.2vw, 12px);
   width: 100%;
 }
 
@@ -597,7 +597,7 @@ input.num {
 .box-score,
 .used-items,
 .matchup-card {
-  margin-top: 0.75em;
+  margin-top: 0.375em;
 }
 
 .card.recap-card {
@@ -625,7 +625,7 @@ input.num {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  margin-top: 0.45em;
+  margin-top: 0.22em;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   border-top: 1px solid #d0d0d0;
@@ -673,7 +673,7 @@ input.num {
 }
 
 .score-zero {
-  color: #8d978f;
+  color: #45504a;
 }
 
 .side-actions {
@@ -697,7 +697,7 @@ button.action {
 .play-cards,
 .recruiting-list {
   display: grid;
-  gap: clamp(14px, 2.4vw, 24px);
+  gap: clamp(7px, 1.2vw, 12px);
   width: 100%;
 }
 
@@ -721,7 +721,7 @@ button.edge {
 }
 
 .choices.dashboard {
-  gap: clamp(14px, 2.4vw, 24px);
+  gap: clamp(7px, 1.2vw, 12px);
 }
 
 .card.tryout {
@@ -750,7 +750,7 @@ button.edge {
   justify-content: flex-start;
   gap: 2px 12px;
   width: 100%;
-  margin: 1em 0 0;
+  margin: 0.5em 0 0;
   border-bottom: 2px solid var(--mark);
 }
 
@@ -773,7 +773,7 @@ button.edge {
 
 .season-panel {
   display: grid;
-  gap: clamp(14px, 2.4vw, 24px);
+  gap: clamp(7px, 1.2vw, 12px);
   width: 100%;
 }
 
@@ -811,9 +811,9 @@ button.edge {
 
 .draft-list {
   display: grid;
-  gap: clamp(8px, 1.6vw, 14px);
+  gap: clamp(4px, 0.8vw, 7px);
   width: 100%;
-  margin: 8px 0 4px;
+  margin: 4px 0 4px;
 }
 
 .draft-pick.on-clock {
@@ -823,9 +823,9 @@ button.edge {
 .draft-roster,
 .draft-pool {
   display: grid;
-  gap: clamp(8px, 1.6vw, 14px);
+  gap: clamp(4px, 0.8vw, 7px);
   width: 100%;
-  margin: 8px 0 4px;
+  margin: 4px 0 4px;
 }
 
 .card-head,
@@ -1066,9 +1066,9 @@ button.edge {
 
 .shelf-list {
   display: grid;
-  gap: clamp(14px, 2.4vw, 24px);
+  gap: clamp(7px, 1.2vw, 12px);
   width: 100%;
-  margin: 4px 0 8px;
+  margin: 2px 0 8px;
 }
 
 .shelf-buy {
