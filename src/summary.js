@@ -1,4 +1,4 @@
-import { boxScore, usedGroups } from './box.js'
+import { boxCsv, boxScore, csvFileName, usedGroups } from './box.js'
 import { recapMarks, recapParts, recapPieces } from './recap.js'
 
 function el(tag, className, text) {
@@ -130,7 +130,29 @@ export function scoreNodes(result, myTeamId = '') {
     nodes.push(el('p', tone ? `section ${tone}` : 'section', group.name))
     nodes.push(statGrid(group.rows, myTeamId, awayId, homeId))
   }
+  nodes.push(exportRow(result))
   return nodes
+}
+
+function saveCsv(text, name) {
+  const file = new Blob([text], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(file)
+  const link = el('a')
+  link.href = url
+  link.download = name
+  document.body.append(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+function exportRow(result) {
+  const row = el('div', 'box-export')
+  const button = el('button', '', 'EXPORT')
+  button.type = 'button'
+  button.addEventListener('click', () => saveCsv(boxCsv(result), csvFileName(result)))
+  row.append(button)
+  return row
 }
 
 export function usedNodes(items, result) {

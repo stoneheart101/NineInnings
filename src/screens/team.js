@@ -75,6 +75,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     held: { bottlecaps: 0, reputation: 0 },
     detailId: '',
     sort: '',
+    games: [],
+    gamesFailed: false,
   }
 
   function dropped() {
@@ -199,6 +201,8 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       help: perkHelp(kid.home_perk),
       homeHelp: Boolean(perkLine(kid.home_perk)),
       position: detailPosition(kid),
+      games: state.games,
+      gamesFailed: state.gamesFailed,
       onClose() { state.detailId = '' },
     })
   }
@@ -472,17 +476,23 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
   function listen(seasonId) {
     if (room || !seasonId) return
     const channel = supabase.channel(`team:${teamId}`)
+    const refresh = () => {
+      if (prompt.dataset.paint !== token) {
+        supabase.removeChannel(channel)
+        if (room === channel) room = null
+        return
+      }
+      load()
+    }
     channel.on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'players', filter: `season_id=eq.${seasonId}` },
-      () => {
-        if (prompt.dataset.paint !== token) {
-          supabase.removeChannel(channel)
-          if (room === channel) room = null
-          return
-        }
-        load()
-      },
+      refresh,
+    )
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'games', filter: `season_id=eq.${seasonId}` },
+      refresh,
     )
     room = channel.subscribe()
   }
@@ -528,7 +538,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       paint()
       return
     }
-    const [kids, lineup, held] = await Promise.all([
+    const [kids, lineup, held, games] = await Promise.all([
       supabase
         .from('players')
         .select('id, team_id, given_name, family_name, nickname, sex, flavor, base_stats, tryout_status, offer, penalty_until_game_id, home_perk, created_at')
@@ -542,9 +552,15 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
         .eq('team_id', teamId)
         .order('slot', { ascending: true }),
       fetchHeld(supabase, teamId),
+      supabase
+        .from('games')
+        .select('id, result')
+        .eq('season_id', team.data.season_id),
     ])
     if (prompt.dataset.paint !== token) return
     state.held = held
+    state.gamesFailed = Boolean(games.error)
+    state.games = games.error ? [] : (games.data || [])
     if (kids.error) {
       state.error = (kids.error.message || 'THE KIDS DID NOT LOAD.').toUpperCase()
       state.kids = []

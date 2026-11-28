@@ -53,6 +53,8 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
     openClubs: {},
     held: { bottlecaps: 0, reputation: 0 },
     detailId: '',
+    games: [],
+    gamesFailed: false,
   }
 
   function teamName(id) {
@@ -131,6 +133,8 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
       perk: perkLine(kid.home_perk),
       help: perkHelp(kid.home_perk),
       homeHelp: Boolean(perkLine(kid.home_perk)),
+      games: state.games,
+      gamesFailed: state.gamesFailed,
       onClose() { state.detailId = '' },
     })
   }
@@ -310,7 +314,7 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
   }
 
   async function load() {
-    const [session, season, teams, draft, kids] = await Promise.all([
+    const [session, season, teams, draft, kids, games] = await Promise.all([
       supabase.auth.getSession(),
       supabase
         .from('seasons')
@@ -334,8 +338,14 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
         .order('family_name', { ascending: true })
         .order('given_name', { ascending: true })
         .order('id', { ascending: true }),
+      supabase
+        .from('games')
+        .select('id, result')
+        .eq('season_id', seasonId),
     ])
     if (prompt.dataset.paint !== token) return
+    state.gamesFailed = Boolean(games.error)
+    state.games = games.error ? [] : (games.data || [])
     const failed = season.error || teams.error || draft.error || kids.error
     if (failed) {
       state.error = (failed.message || 'THE DRAFT DID NOT LOAD.').toUpperCase()

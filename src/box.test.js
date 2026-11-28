@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { boxScore, usedGroups } from './box.js'
+import { boxCsv, boxScore, csvFileName, usedGroups } from './box.js'
 import { scoreNumberClass, scoreTone } from './summary.js'
 
 const AWAY = 'away-team'
@@ -70,6 +70,28 @@ test('this coach is blue on the line and a zero is dim', () => {
   assert.equal(scoreNumberClass('0'), 'score-n score-zero')
   assert.equal(scoreNumberClass('x'), 'score-n')
   assert.equal(scoreNumberClass(2), 'score-n')
+})
+
+test('the export lists the score grid and each stat grid', () => {
+  const game = result()
+  game.away.name = 'Visitors, Jr'
+  assert.equal(csvFileName(game), 'VISITORS-JR-VS-HOME.csv')
+  assert.equal(boxCsv(game), [
+    ',1,9,R,H,E',
+    '"Visitors, Jr",0,2,2,4,1',
+    'HOME,1,x,1,3,0',
+    '',
+    '"Visitors, Jr"',
+    ',AB,H,R,RBI,BB,K,OUTS',
+    'Sam,4,2,2,1,1,0,2',
+    '',
+    'HOME',
+    ',AB,H,R,RBI,BB,K,OUTS',
+    'Pat,3,1,1,0,0,1,0',
+    '',
+  ].join('\n'))
+  game.lines[0].h = '1'
+  assert.equal(boxCsv(game), '')
 })
 
 test('a game with no packed items has no used list', () => {

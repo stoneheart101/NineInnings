@@ -255,6 +255,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       perk: perkLine(kid.home_perk),
       help: perkHelp(kid.home_perk),
       homeHelp: Boolean(perkLine(kid.home_perk)),
+      games: state.games,
+      gamesFailed: state.gamesFailed,
       onClose() { state.detailId = '' },
     })
   }

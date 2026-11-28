@@ -32,6 +32,45 @@ function kid(row) {
   }
 }
 
+function csvCell(value) {
+  const text = value == null ? '' : String(value)
+  if (/[",\n\r]/.test(text)) return `"${text.replaceAll('"', '""')}"`
+  return text
+}
+
+function csvLine(cells) {
+  return cells.map(csvCell).join(',')
+}
+
+export function csvFileName(result) {
+  const piece = (name) => String(name || 'TEAM').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '') || 'TEAM'
+  return `${piece(result?.away?.name)}-VS-${piece(result?.home?.name)}.csv`
+}
+
+export function boxCsv(result) {
+  const box = boxScore(result)
+  if (!box) return ''
+  const rows = [[
+    '',
+    ...box.innings.map(String),
+    'R',
+    'H',
+    'E',
+  ]]
+  for (const side of box.sides) {
+    rows.push([side.name, ...side.marks, side.runs, side.hits, side.errors])
+  }
+  for (const group of box.groups) {
+    rows.push([])
+    rows.push([group.name])
+    rows.push(['', 'AB', 'H', 'R', 'RBI', 'BB', 'K', 'OUTS'])
+    for (const row of group.rows) {
+      rows.push([row.name, row.ab, row.h, row.r, row.rbi, row.bb, row.k, row.outs])
+    }
+  }
+  return `${rows.map(csvLine).join('\n')}\n`
+}
+
 export function boxScore(result) {
   const innings = Array.isArray(result?.innings) ? result.innings : null
   const lines = Array.isArray(result?.lines) ? result.lines : null

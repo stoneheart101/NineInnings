@@ -490,10 +490,18 @@ input.num {
 }
 
 .card-head .season-name,
-.card-head .card-title {
+.card-head .card-title,
+.card-head .kid-title,
+.card-head .game-match,
+.kid-head .season-name,
+.kid-head .card-title,
+.kid-head .kid-title {
   border-bottom: 0;
   padding-bottom: 0;
   margin-bottom: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: normal;
 }
 
 .season-title {
@@ -668,6 +676,20 @@ input.num {
   white-space: normal;
 }
 
+.stat-grid > .score-name {
+  overflow-wrap: normal;
+  word-break: normal;
+  text-align: left;
+  white-space: normal;
+}
+
+.box-export {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: 0.35em;
+}
+
 .box-score > .score-grid:first-child {
   margin-top: 0;
 }
@@ -835,10 +857,10 @@ button.edge {
 .card-head,
 .kid-head {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 12px;
+  gap: 4px 12px;
   width: 100%;
   border-bottom: 2px solid #000;
   padding-bottom: 2px;
@@ -854,6 +876,9 @@ button.edge {
   width: auto;
   max-width: 100%;
   min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: normal;
 }
 
 .kid-title {
@@ -864,23 +889,34 @@ button.edge {
   min-width: 0;
 }
 
+.kid-title > .season-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: normal;
+}
+
 .card-actions {
   display: flex;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 2px 10px;
   margin-left: auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .card-head button,
 .kid-head button {
   margin: 0;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  overflow-wrap: normal;
+  white-space: nowrap;
   text-align: right;
 }
 
