@@ -35,6 +35,16 @@ test('an open season with no team lands TEAM on DETAILS', () => {
   assert.equal(menu[2].on, false)
 })
 
+test('the team tab uses this coach team name', () => {
+  const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'roster', teamName: 'WEST SIDE' })
+  assert.equal(menu[2].label, 'WEST SIDE')
+  assert.equal(menu[2].shrink, true)
+  assert.equal(menu[2].path, `/teams/${TEAM}`)
+  const idle = deskMenu({ openSeasonId: SEASON, place: 'seasons', section: 'dashboard' })
+  assert.equal(idle[2].label, 'TEAM')
+  assert.equal(idle[2].shrink, false)
+})
+
 test('TEAM opens the roster, and the clubhouse is a subtab', () => {
   const menu = deskMenu({ openSeasonId: SEASON, teamId: TEAM, place: 'roster' })
   assert.equal(menu[2].label, 'TEAM')

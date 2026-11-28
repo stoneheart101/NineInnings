@@ -2,12 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { coachMenuBlocks, headerLines, seasonMenuLabel } from './header.js'
 
-test('the header names the team and the purse and leaves the season off', () => {
+test('the header shows reputation, then bottlecaps, and leaves the team and the season off', () => {
   const lines = headerLines({ name: 'WEST SIDE', season: 'SUMMER', bottlecaps: 20, reputation: 10 })
-  assert.deepEqual(lines.map((line) => line.role), ['name', 'purse'])
-  assert.equal(lines[0].text, 'WEST SIDE')
-  assert.equal(lines[1].text, '10 REP · 20 BC')
-  assert.equal(JSON.stringify(lines).includes('SUMMER'), false)
+  assert.deepEqual(lines.map((line) => line.role), ['reputation', 'bottlecaps'])
+  assert.equal(lines[0].text, '10 REP')
+  assert.equal(lines[1].text, '20 BC')
+  const packed = JSON.stringify(lines)
+  assert.equal(packed.includes('SUMMER'), false)
+  assert.equal(packed.includes('WEST SIDE'), false)
 })
 
 test('the seasons list leaves the header team spot empty', () => {
@@ -17,10 +19,11 @@ test('the seasons list leaves the header team spot empty', () => {
 
 test('a missing purse reads as zero', () => {
   const lines = headerLines({ name: 'WEST SIDE' })
-  assert.equal(lines[1].text, '0 REP · 0 BC')
+  assert.equal(lines[0].text, '0 REP')
+  assert.equal(lines[1].text, '0 BC')
 })
 
-test('a high bid stays in the header after the purse', () => {
+test('a high bid sits on the row for that purse', () => {
   const lines = headerLines({
     name: 'WEST SIDE',
     bottlecaps: 3,
@@ -28,9 +31,14 @@ test('a high bid stays in the header after the purse', () => {
     heldBottlecaps: 5,
     heldReputation: 4,
   })
-  assert.equal(lines[1].text, '2 REP 3 BC (4 REP 5 BC in bid)')
+  assert.equal(lines[0].text, '2 REP (4 in bids)')
+  assert.equal(lines[1].text, '3 BC (5 in bids)')
+  const capsOnly = headerLines({ name: 'WEST SIDE', bottlecaps: 3, reputation: 2, heldBottlecaps: 5, heldReputation: 0 })
+  assert.equal(capsOnly[0].text, '2 REP')
+  assert.equal(capsOnly[1].text, '3 BC (5 in bids)')
   const idle = headerLines({ name: 'WEST SIDE', bottlecaps: 3, reputation: 2, heldBottlecaps: 0, heldReputation: 0 })
-  assert.equal(idle[1].text, '2 REP · 3 BC')
+  assert.equal(idle[0].text, '2 REP')
+  assert.equal(idle[1].text, '3 BC')
 })
 
 test('the coach menu lists a season, and leaves the status off when it is active', () => {

@@ -83,7 +83,7 @@ export function drawField(root, { onSignOut } = {}) {
       return
     }
     teamInfo.hidden = false
-    const classes = { name: 'team-name', purse: 'team-purse' }
+    const classes = { reputation: 'team-purse', bottlecaps: 'team-purse' }
     for (const line of lines) teamInfo.append(el('p', classes[line.role], line.text))
   }
 

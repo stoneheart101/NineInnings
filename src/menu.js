@@ -1,4 +1,4 @@
-// The signed-in menu is DASHBOARD, SEASON, and TEAM on every screen.
+// The signed-in menu is DASHBOARD, the open season, and this coach's team.
 export function draftIsActive(season, draft) {
   if (season?.status !== 'drafting') return false
   if (!draft) return true
@@ -8,7 +8,7 @@ export function draftIsActive(season, draft) {
   return !complete
 }
 
-export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', drafting = false, forming = false, section = '', seasonName = '' } = {}) {
+export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', drafting = false, forming = false, section = '', seasonName = '', teamName = '' } = {}) {
   const seasonPath = openSeasonId ? `/seasons/${openSeasonId}` : '/seasons'
   const joined = openSeasonId ? { path: seasonPath, section: 'details' } : { path: '/seasons', section: '' }
   const inSeason = place === 'seasons' || place === 'draft' || place === 'recruiting'
@@ -17,6 +17,7 @@ export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', draft
   const onSeason = place === 'list' || place === 'draft' || (inSeason && !onDashboard && shown !== '')
   const seasonSection = forming ? 'details' : drafting ? 'draft' : 'recruiting'
   const named = String(seasonName || '').trim()
+  const club = String(teamName || '').trim()
   return [
     {
       id: 'dashboard',
@@ -35,7 +36,8 @@ export function deskMenu({ openSeasonId = '', teamId = '', place = 'list', draft
     },
     {
       id: 'team',
-      label: 'TEAM',
+      label: club || 'TEAM',
+      shrink: Boolean(club),
       ...(teamId ? { path: `/teams/${teamId}`, section: '' } : joined),
       on: place === 'roster' || place === 'clubhouse' || place === 'field',
     },

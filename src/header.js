@@ -1,23 +1,20 @@
-function headerPurse(info) {
-  const caps = Number(info?.bottlecaps)
-  const rep = Number(info?.reputation)
-  const shownCaps = Number.isFinite(caps) ? caps : 0
-  const shownRep = Number.isFinite(rep) ? rep : 0
-  const heldCaps = Number(info?.heldBottlecaps)
-  const heldRep = Number(info?.heldReputation)
-  const shownHeldCaps = Number.isFinite(heldCaps) ? heldCaps : 0
-  const shownHeldRep = Number.isFinite(heldRep) ? heldRep : 0
-  if (shownHeldCaps > 0 || shownHeldRep > 0) {
-    return `${shownRep} REP ${shownCaps} BC (${shownHeldRep} REP ${shownHeldCaps} BC in bid)`
-  }
-  return `${shownRep} REP · ${shownCaps} BC`
+function shownAmount(value) {
+  const amount = Number(value)
+  return Number.isFinite(amount) ? amount : 0
+}
+
+function purseLine(amount, held, unit) {
+  const line = `${shownAmount(amount)} ${unit}`
+  const tied = shownAmount(held)
+  if (tied <= 0) return line
+  return `${line} (${tied} in bids)`
 }
 
 export function headerLines(info) {
   if (!info?.name) return null
   return [
-    { role: 'name', text: info.name },
-    { role: 'purse', text: headerPurse(info) },
+    { role: 'reputation', text: purseLine(info.reputation, info.heldReputation, 'REP') },
+    { role: 'bottlecaps', text: purseLine(info.bottlecaps, info.heldBottlecaps, 'BC') },
   ]
 }
 

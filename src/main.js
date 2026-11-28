@@ -17,7 +17,7 @@ import { deskMenu, gameIdFromRoute, placeFromRoute, seasonIdFromRoute } from './
 import { supabase } from './supabase.js'
 
 const field = document.querySelector('#field')
-const { prompt, setCoach, setTeam, setTabs } = drawField(field, {
+const { prompt, setCoach, setTeam: paintTeam, setTabs } = drawField(field, {
   onSignOut: async () => {
     const { error } = await supabase.auth.signOut()
     if (!error) return ''
@@ -26,6 +26,7 @@ const { prompt, setCoach, setTeam, setTabs } = drawField(field, {
 })
 
 let coachName = ''
+let headerTeamName = ''
 let coachSeasons = null
 let seasonsRequest = 0
 let rememberedSeasonId = ''
@@ -96,6 +97,14 @@ function assignForming(seasonId, active) {
   return true
 }
 
+function setTeam(info) {
+  paintTeam(info)
+  const next = String(info?.name || '').trim()
+  if (next === headerTeamName) return
+  headerTeamName = next
+  if (coachName) applyTabs()
+}
+
 function applyTabs() {
   if (!coachName) return
   const route = routeFromHash(window.location.hash)
@@ -112,6 +121,7 @@ function applyTabs() {
     place,
     section,
     seasonName,
+    teamName: headerTeamName,
     drafting: openSeasonId !== '' && openSeasonId === draftingSeasonId && drafting,
     forming: openSeasonId !== '' && openSeasonId === formingSeasonId && forming,
   })
@@ -233,10 +243,11 @@ function renderDesk() {
     return
   }
   const route = routeFromHash(window.location.hash)
-  setTeam(null)
+  const place = placeFromRoute(route)
+  if (place === 'list') setTeam(null)
+  else paintTeam(null)
   setCoach(coachName, coachDetails())
   applyTabs()
-  const place = placeFromRoute(route)
   if (place === 'list' || place === 'seasons' || place === 'draft' || place === 'recruiting') {
     const section = place === 'draft' ? 'draft' : place === 'recruiting' ? 'recruiting' : nextSection
     nextSection = ''
