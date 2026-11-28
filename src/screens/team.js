@@ -7,6 +7,7 @@ import { hideToast, showToast } from '../toast.js'
 import { teamTabRow } from '../team-tabs.js'
 import { nameClass, perkLine } from '../home-perk.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
+import { sortedByStat, statSortRow } from '../stat-sort.js'
 
 const SLOTS = [
   [1, 'MOUND'],
@@ -73,6 +74,7 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
     loaded: false,
     held: { bottlecaps: 0, reputation: 0 },
     detailId: '',
+    sort: '',
   }
 
   function dropped() {
@@ -144,8 +146,13 @@ export function renderTeam(prompt, { teamId, setTeam, onDesk, onOpen }) {
       board.append(el('p', '', 'NO KIDS YET'))
     } else {
       board.append(el('p', '', counted(state.kids.length, 'KID', 'KIDS')))
+      board.append(statSortRow(state.sort, (sort) => {
+        state.sort = sort
+        paint()
+      }))
       const list = el('div', 'kid-list')
-      for (const kid of state.kids) list.append(kidCard(kid))
+      const kids = state.sort ? sortedByStat(state.kids, state.sort) : state.kids
+      for (const kid of kids) list.append(kidCard(kid))
       board.append(list)
     }
     prompt.append(board)

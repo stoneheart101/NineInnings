@@ -1,6 +1,7 @@
 import { supabase } from '../supabase.js'
 import { statChip } from '../stat-color.js'
 import { clockLabel, clockLabel12, dayKey, deskForecast, weatherReport } from '../forecast.js'
+import { gameOpens, nextScheduleView, scheduleDays } from '../schedule-view.js'
 import { neighborhoodPlayLabel, practiceGate } from '../practice-wait.js'
 import { draftIsActive } from '../menu.js'
 import { gameKind, historyPage, narrativeLead, playedGames, playedScore, vsSides } from '../played.js'
@@ -22,6 +23,7 @@ import { heldPurse } from '../held-purse.js'
 import { placeLine, rewardLine, rewardVersions, rewardsReady, sideOf } from '../game-purse.js'
 import { nameClass, perkLine } from '../home-perk.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
+import { sortedByStat, statSortRow } from '../stat-sort.js'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
@@ -144,6 +146,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     deleteTyped: '',
     deleteError: '',
     detailId: '',
+    recruitSort: '',
+    gamesView: 'all',
     section: chosenSection(section),
     loaded: false,
   }
@@ -778,11 +782,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       wrap.append(el('p', '', 'THE BOARD IS QUIET'))
       return wrap
     }
+    const ordered = state.recruitSort
+      ? sortedByStat(board, state.recruitSort)
+      : board.slice().sort((left, right) => compareRecruits(
+        { ...left, bidOpen: Boolean(openBid(left)), passed: myPass(left)?.choice === 'pass' },
+        { ...right, bidOpen: Boolean(openBid(right)), passed: myPass(right)?.choice === 'pass' },
+      ))
+    wrap.append(statSortRow(state.recruitSort, (sort) => {
+      state.recruitSort = sort
+      paint()
+    }))
     const list = el('div', 'recruiting-list')
-    const ordered = board.slice().sort((left, right) => compareRecruits(
-      { ...left, bidOpen: Boolean(openBid(left)), passed: myPass(left)?.choice === 'pass' },
-      { ...right, bidOpen: Boolean(openBid(right)), passed: myPass(right)?.choice === 'pass' },
-    ))
     for (const kid of ordered) list.append(kidCard(kid))
     wrap.append(list)
     return wrap
@@ -812,25 +822,28 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     }
     const games = (state.games || []).filter((game) => !game.is_practice)
     if (!games.length) return el('p', '', 'NO GAMES YET')
+    const mineId = myTeam().id
+    const days = scheduleDays({
+      games,
+      teams: state.teams,
+      teamId: mineId,
+      view: state.gamesView,
+      dayKey,
+    })
     const wrap = el('div', 'schedule')
-    const days = new Map()
-    for (const game of games) {
-      const when = new Date(game.starts_at)
-      if (Number.isNaN(when.getTime())) continue
-      const key = dayKey(when)
-      if (!days.has(key)) days.set(key, { when, games: [] })
-      days.get(key).games.push(game)
+    wrap.append(scheduleFilter())
+    if (!days.length) {
+      wrap.append(el('p', '', state.gamesView === 'mine' ? 'NO GAMES FOR YOUR TEAM' : 'NO GAMES YET'))
+      return wrap
     }
-    for (const day of days.values()) {
+    for (const day of days) {
       const block = el('div', 'game-day')
-      const playing = new Set()
       for (const game of day.games) {
-        playing.add(game.home_team_id)
-        playing.add(game.away_team_id)
         const open = () => onOpenGame?.(game.id)
         const card = linkCard('game-box', open)
         const head = el('div', 'card-head')
-        head.append(matchTitle(game), cardAction('OPEN', open))
+        head.append(matchTitle(game))
+        if (gameOpens(game, mineId)) head.append(cardAction('OPEN', open))
         card.append(head)
         const when = new Date(game.starts_at)
         if (!Number.isNaN(when.getTime())) card.append(el('p', 'game-date', clockLabel(when)))
@@ -840,12 +853,26 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         if (words) card.append(el('p', 'game-forecast', words))
         block.append(card)
       }
-      for (const team of state.teams) {
-        if (!playing.has(team.id)) block.append(el('p', 'game-bye', `${team.name} HAS A BYE`))
-      }
+      for (const team of day.byes) block.append(el('p', 'game-bye', `${team.name} HAS A BYE`))
       wrap.append(block)
     }
     return wrap
+  }
+
+  function scheduleFilter() {
+    const row = el('div', 'sort-row')
+    for (const [view, label] of [['mine', 'MY GAMES'], ['all', 'ALL GAMES']]) {
+      const on = (state.gamesView === 'mine' ? 'mine' : 'all') === view
+      const button = el('button', on ? 'on' : '', label)
+      button.type = 'button'
+      button.setAttribute('aria-pressed', on ? 'true' : 'false')
+      button.addEventListener('click', () => {
+        state.gamesView = nextScheduleView(state.gamesView, view)
+        paint()
+      })
+      row.append(button)
+    }
+    return row
   }
 
   function form() {

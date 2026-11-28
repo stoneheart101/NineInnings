@@ -6,6 +6,7 @@ import { draftedKids, draftedLine, poolPick } from '../draft-board.js'
 import { nameClass, perkLine } from '../home-perk.js'
 import { closePopup, popupKind } from '../popup.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
+import { sortedByStat, statSortRow } from '../stat-sort.js'
 
 function el(tag, className, text) {
   const node = document.createElement(tag)
@@ -226,29 +227,14 @@ export function renderDraft(prompt, { seasonId, setTeam, onDesk, heading = true 
 
   function sortedPool(pool) {
     if (!state.sort) return pool
-    const stat = state.sort
-    return pool.slice().sort((a, b) => {
-      const left = Number.isInteger(a.base_stats?.[stat]) ? a.base_stats[stat] : -1
-      const right = Number.isInteger(b.base_stats?.[stat]) ? b.base_stats[stat] : -1
-      if (left !== right) return right - left
-      return (a.family_name || '').localeCompare(b.family_name || '')
-        || (a.given_name || '').localeCompare(b.given_name || '')
-        || String(a.id).localeCompare(String(b.id))
-    })
+    return sortedByStat(pool, state.sort)
   }
 
   function sortRow() {
-    const row = el('div', 'sort-row')
-    for (const [stat, label] of KID_STATS) {
-      const link = el('button', state.sort === stat ? 'on' : '', label)
-      link.type = 'button'
-      link.addEventListener('click', () => {
-        state.sort = stat
-        paint()
-      })
-      row.append(link)
-    }
-    return row
+    return statSortRow(state.sort, (sort) => {
+      state.sort = sort
+      paint()
+    })
   }
 
   function draftedKid(kid) {
