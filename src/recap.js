@@ -113,7 +113,7 @@ function standouts(rows) {
     .slice(0, 2)
 }
 
-function highlightLine(result) {
+function highlightLines(result) {
   const lines = Array.isArray(result?.lines) ? result.lines : []
   const chunks = []
   for (const side of [result?.away, result?.home]) {
@@ -122,7 +122,7 @@ function highlightLine(result) {
     const kids = standouts(lines.filter((row) => row?.team_id === side.team_id)).map(stickLine).filter(Boolean)
     if (kids.length) chunks.push(`FOR ${name}, ${kids.join(' ')}`)
   }
-  return chunks.join(' ')
+  return chunks
 }
 
 function spoken(text) {
@@ -173,10 +173,47 @@ function advantageLine(result, used, perkIds) {
   return bits.join(' ')
 }
 
-function eventLine(event) {
+function pickLine(lines, key) {
+  let hash = 0
+  const text = String(key)
+  for (let i = 0; i < text.length; i += 1) hash = (hash * 33 + text.charCodeAt(i)) >>> 0
+  return lines[hash % lines.length]
+}
+
+function fadeSpeech(event, heard) {
+  const name = clean(event?.name)
+  const times = heard.get(name) || 0
+  if (times >= 2) return ''
+  heard.set(name, times + 1)
+  const spot = `${event?.inning}:${event?.half}`
+  if (times === 0) {
+    const bank = name
+      ? [
+        `${name} LOOKS FLAT IN THE LATE GOING.`,
+        `THE LATE INNINGS SIT HEAVY ON ${name}.`,
+        `${name} RUNS OUT OF GAS AFTER THE SIXTH.`,
+        `${name} IS A STEP BEHIND WHEN THE LIGHT GOES.`,
+      ]
+      : [
+        'SOMEBODY LOOKS FLAT IN THE LATE GOING.',
+        'THE LATE INNINGS COME ON HEAVY.',
+        'THE LEGS GET TIRED AFTER THE SIXTH.',
+        'THE LAST INNINGS ARE A GRIND.',
+      ]
+    return pickLine(bank, `fade:${name}:${spot}`)
+  }
+  return pickLine([
+    'THE TIRED STRETCH COMES BACK.',
+    'THE LEGS DO NOT COME BACK WITH THE INNING.',
+    'THAT LATE STRETCH SHOWS UP AGAIN.',
+    'ANOTHER INNING SITS HEAVY.',
+  ], `again:${name}:${spot}`)
+}
+
+function eventLine(event, heard) {
   const name = clean(event?.name)
   const tag = event?.tag
-  if (tag === 'late_fade') return name ? `${name} LOOKS FLAT IN THE LATE GOING.` : 'SOMEBODY LOOKS FLAT IN THE LATE GOING.'
+  if (tag === 'late_fade') return fadeSpeech(event, heard)
   if (tag === 'awkward_slide') return name ? `HERE COMES ${name}, AND THE SLIDE ARRIVES IN A TANGLE.` : 'HERE COMES A SLIDE, AND IT ARRIVES IN A TANGLE.'
   if (tag === 'fog_lost') return 'THE FOG TAKES ONE AWAY.'
   if (tag === 'rain_misplay') return 'A WET HOP GETS PAST THE GLOVE.'
@@ -193,12 +230,17 @@ function shiftNews(shift) {
   return `${change}.`
 }
 
-function halfCall(half, inning, mark, team, events, shift) {
+function halfCall(half, inning, mark, team, events, shift, heard) {
   const here = (events || []).filter((event) => Number(event?.inning) === inning && event?.half === half)
   const broke = shift && Number(shift.inning) === inning && shift.half === half
   const runs = Number.isInteger(mark) ? mark : null
   if (runs == null) return ''
-  if (!runs && !here.length && !broke) return ''
+  const spoken = []
+  for (const event of here) {
+    const line = eventLine(event, heard)
+    if (line) spoken.push(line)
+  }
+  if (!runs && !spoken.length && !broke) return ''
   const name = INNING_NAME[inning] || String(inning)
   const which = half === 'bottom' ? 'BOTTOM' : 'TOP'
   const bits = [`THE ${which} OF THE ${name}.`]
@@ -207,10 +249,7 @@ function halfCall(half, inning, mark, team, events, shift) {
     bits.push(news ? `WE BREAK IN. ${news}` : 'WE BREAK IN.')
   }
   if (runs > 0) bits.push(runs === 1 ? `${team} SCORES A RUN.` : `${team} SCORES ${runs} RUNS.`)
-  for (const event of here) {
-    const line = eventLine(event)
-    if (line) bits.push(line)
-  }
+  bits.push(...spoken)
   return bits.join(' ')
 }
 
@@ -219,12 +258,13 @@ function rundown(result, shift) {
   const events = Array.isArray(result?.events) ? result.events : []
   const away = clean(result?.away?.name) || 'THE VISITORS'
   const home = clean(result?.home?.name) || 'THE HOME CLUB'
+  const heard = new Map()
   const parts = []
   for (const inning of innings) {
     const number = Number(inning?.inning)
     if (!number) continue
-    const top = halfCall('top', number, inning.away, away, events, shift)
-    const bottom = halfCall('bottom', number, inning.home, home, events, shift)
+    const top = halfCall('top', number, inning.away, away, events, shift, heard)
+    const bottom = halfCall('bottom', number, inning.home, home, events, shift, heard)
     const line = [top, bottom].filter(Boolean).join(' ')
     if (line) parts.push(line)
   }
@@ -266,8 +306,7 @@ export function recapParts(game, extras = {}) {
   const advantages = advantageLine(result, extras.used, extras.perkIds)
   if (advantages) parts.push(advantages)
   parts.push(...rundown(result, shift))
-  const highlights = highlightLine(result)
-  if (highlights) parts.push(highlights)
+  parts.push(...highlightLines(result))
   const close = callLine(result)
   if (close) parts.push(close)
   return parts

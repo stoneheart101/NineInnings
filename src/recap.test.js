@@ -79,7 +79,8 @@ test('the recap starts with the forecast and says the break once', () => {
   assert.match(heard, /THE TOP OF THE FIRST\. GOONIES SCORES 2 RUNS\. PAT SMITH PUTS ONE UP AND THE WIND TAKES IT OUT\./)
   assert.equal(heard.includes('THE TOP OF THE SECOND'), false)
   assert.match(heard, /THE BOTTOM OF THE FOURTH\. RIVER RATS SCORES 2 RUNS\. HERE COMES SAM LEE, AND THE SLIDE ARRIVES IN A TANGLE\./)
-  assert.equal(parts.at(-2), 'FOR GOONIES, PAT SMITH FINISHES WITH 3 HITS, 2 DRIVEN IN, AND 1 RUN. FOR RIVER RATS, SAM LEE FINISHES WITH 2 HITS, 1 DRIVEN IN, AND 2 RUNS.')
+  assert.equal(parts.at(-3), 'FOR GOONIES, PAT SMITH FINISHES WITH 3 HITS, 2 DRIVEN IN, AND 1 RUN.')
+  assert.equal(parts.at(-2), 'FOR RIVER RATS, SAM LEE FINISHES WITH 2 HITS, 1 DRIVEN IN, AND 2 RUNS.')
   assert.equal(parts.at(-1), 'AND THAT IS YOUR BALLGAME. RIVER RATS TAKES IT AT HOME, 3 TO 2.')
   assert.equal(recapClose(called), parts.at(-1))
 })
@@ -106,6 +107,58 @@ test('several home advantages and packed items are each named once', () => {
   ].join(' '))
   assert.equal((heard.match(/THE HOME ADVANTAGE/g) || []).length, 1)
   assert.equal((heard.match(/PACKED/g) || []).length, 2)
+})
+
+test('a late fade is said when it shows and once more if it comes back', () => {
+  const fade = (inning, half, name) => ({ inning, half, tag: 'late_fade', name })
+  const game = {
+    result: {
+      winner: 'tie',
+      away: { team_id: away, name: 'Goonies', runs: 1, hits: 1, errors: 0 },
+      home: { team_id: home, name: 'River Rats', runs: 0, hits: 0, errors: 0 },
+      innings: [
+        { inning: 7, away: 0, home: 0 },
+        { inning: 8, away: 0, home: 0 },
+        { inning: 9, away: 1, home: 0 },
+      ],
+      lines: [],
+      events: [
+        fade(7, 'top', 'Pat Smith'),
+        fade(7, 'bottom', 'Sam Lee'),
+        fade(8, 'top', 'Pat Smith'),
+        fade(8, 'bottom', 'Pat Smith'),
+        fade(9, 'top', 'Pat Smith'),
+      ],
+    },
+  }
+  const first = [
+    'PAT SMITH LOOKS FLAT IN THE LATE GOING.',
+    'THE LATE INNINGS SIT HEAVY ON PAT SMITH.',
+    'PAT SMITH RUNS OUT OF GAS AFTER THE SIXTH.',
+    'PAT SMITH IS A STEP BEHIND WHEN THE LIGHT GOES.',
+  ]
+  const again = [
+    'THE TIRED STRETCH COMES BACK.',
+    'THE LEGS DO NOT COME BACK WITH THE INNING.',
+    'THAT LATE STRETCH SHOWS UP AGAIN.',
+    'ANOTHER INNING SITS HEAVY.',
+  ]
+  const sam = [
+    'SAM LEE LOOKS FLAT IN THE LATE GOING.',
+    'THE LATE INNINGS SIT HEAVY ON SAM LEE.',
+    'SAM LEE RUNS OUT OF GAS AFTER THE SIXTH.',
+    'SAM LEE IS A STEP BEHIND WHEN THE LIGHT GOES.',
+  ]
+  const parts = recapParts(game)
+  const heard = parts.join(' ')
+  assert.equal(parts.filter((part) => first.some((line) => part.includes(line))).length, 1)
+  assert.equal(parts.filter((part) => again.some((line) => part.includes(line))).length, 1)
+  assert.equal(parts.filter((part) => sam.some((line) => part.includes(line))).length, 1)
+  assert.equal((heard.match(/LOOKS FLAT IN THE LATE GOING/g) || []).length <= 2, true)
+  assert.equal(heard.includes('THE TOP OF THE NINTH'), true)
+  assert.match(heard, /THE TOP OF THE NINTH\. GOONIES SCORES A RUN\./)
+  assert.equal(heard.includes('THE BOTTOM OF THE EIGHTH'), false)
+  assert.deepEqual(recapParts(game), parts)
 })
 
 test('a stored day with no forecast is one park line', () => {
