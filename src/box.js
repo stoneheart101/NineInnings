@@ -20,6 +20,7 @@ function lineOk(row) {
 
 function kid(row) {
   return {
+    team_id: row.team_id || '',
     name: row.name.trim(),
     ab: row.ab,
     h: row.h,
@@ -46,6 +47,7 @@ export function boxScore(result) {
     return null
   }
   const side = (row, key) => ({
+    team_id: row.team_id || '',
     name: row.name.trim(),
     marks: innings.map((inn) => (inn[key] == null ? 'x' : String(inn[key]))),
     runs: row.runs,
@@ -53,13 +55,13 @@ export function boxScore(result) {
     errors: row.errors,
   })
   const groups = [
-    { name: away.name.trim(), rows: lines.filter((row) => row.team_id === away.team_id).map(kid) },
-    { name: home.name.trim(), rows: lines.filter((row) => row.team_id === home.team_id).map(kid) },
+    { team_id: away.team_id || '', name: away.name.trim(), rows: lines.filter((row) => row.team_id === away.team_id).map(kid) },
+    { team_id: home.team_id || '', name: home.name.trim(), rows: lines.filter((row) => row.team_id === home.team_id).map(kid) },
   ]
   const placed = groups[0].rows.length + groups[1].rows.length
   const shown = placed || !lines.length
     ? groups.filter((group) => group.rows.length)
-    : [{ name: 'THE LINE', rows: lines.map(kid) }]
+    : [{ team_id: '', name: 'THE LINE', rows: lines.map(kid) }]
   return {
     innings: innings.map((inn) => inn.inning),
     sides: [side(away, 'away'), side(home, 'home')],
@@ -94,5 +96,5 @@ export function usedGroups(items, result) {
   return order
     .map((id, index) => ({ id, index }))
     .sort((left, right) => rank(left.id) - rank(right.id) || left.index - right.index)
-    .map(({ id }) => ({ name: label(id), items: buckets.get(id) }))
+    .map(({ id }) => ({ id, name: label(id), items: buckets.get(id) }))
 }

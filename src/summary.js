@@ -12,48 +12,67 @@ function cell(className, text) {
   return el('span', className, text)
 }
 
-function lineGrid(box) {
+export function scoreTone(teamId, myTeamId, awayId, homeId) {
+  if (!myTeamId || (myTeamId !== awayId && myTeamId !== homeId)) return ''
+  if (teamId && teamId === myTeamId) return 'recap-mine'
+  if (teamId && (teamId === awayId || teamId === homeId)) return 'recap-foe'
+  return ''
+}
+
+export function scoreNumberClass(value) {
+  return String(value) === '0' ? 'score-n score-zero' : 'score-n'
+}
+
+function nameClass(teamId, myTeamId, awayId, homeId) {
+  const tone = scoreTone(teamId, myTeamId, awayId, homeId)
+  return tone ? `score-name ${tone}` : 'score-name'
+}
+
+function lineGrid(box, myTeamId, awayId, homeId) {
   const node = el('div', 'score-grid')
   node.style.setProperty('--score-cols', String(box.innings.length + 3))
   node.append(cell('score-h', ''))
   for (const inning of box.innings) node.append(cell('score-h', String(inning)))
   for (const label of ['R', 'H', 'E']) node.append(cell('score-h', label))
   for (const side of box.sides) {
-    node.append(cell('score-name', side.name))
-    for (const mark of side.marks) node.append(cell('score-n', mark))
-    node.append(cell('score-n', String(side.runs)))
-    node.append(cell('score-n', String(side.hits)))
-    node.append(cell('score-n', String(side.errors)))
+    node.append(cell(nameClass(side.team_id, myTeamId, awayId, homeId), side.name))
+    for (const mark of side.marks) node.append(cell(scoreNumberClass(mark), mark))
+    node.append(cell(scoreNumberClass(side.runs), String(side.runs)))
+    node.append(cell(scoreNumberClass(side.hits), String(side.hits)))
+    node.append(cell(scoreNumberClass(side.errors), String(side.errors)))
   }
   return node
 }
 
-function statGrid(rows) {
+function statGrid(rows, myTeamId, awayId, homeId) {
   const node = el('div', 'stat-grid')
   node.append(cell('score-h', ''))
   for (const label of ['AB', 'H', 'R', 'RBI', 'BB', 'K', 'OUTS']) node.append(cell('score-h', label))
   for (const row of rows) {
-    node.append(cell('score-name', row.name))
-    for (const key of ['ab', 'h', 'r', 'rbi', 'bb', 'k', 'outs']) node.append(cell('score-n', String(row[key])))
+    node.append(cell(nameClass(row.team_id, myTeamId, awayId, homeId), row.name))
+    for (const key of ['ab', 'h', 'r', 'rbi', 'bb', 'k', 'outs']) node.append(cell(scoreNumberClass(row[key]), String(row[key])))
   }
   return node
 }
 
 export function headed(className, title, nodes, action) {
   const card = el('div', `card ${className}`)
-  const head = el('div', 'card-head')
-  if (typeof title === 'string') head.append(el('span', 'card-title', title))
-  else {
-    const titleNode = el('span', 'card-title')
-    titleNode.append(title)
-    head.append(titleNode)
+  const titled = typeof title === 'string' ? title.trim() : title
+  if (titled || action) {
+    const head = el('div', 'card-head')
+    if (typeof title === 'string') head.append(el('span', 'card-title', title))
+    else if (title) {
+      const titleNode = el('span', 'card-title')
+      titleNode.append(title)
+      head.append(titleNode)
+    }
+    if (action) {
+      const actions = el('div', 'card-actions')
+      actions.append(action)
+      head.append(actions)
+    }
+    card.append(head)
   }
-  if (action) {
-    const actions = el('div', 'card-actions')
-    actions.append(action)
-    head.append(actions)
-  }
-  card.append(head)
   for (const node of nodes) if (node) card.append(node)
   return card
 }
@@ -100,13 +119,16 @@ export function reviewNotes(game, extras) {
   return [el('p', 'alert', 'THE WRITEUP DID NOT LOAD')]
 }
 
-export function scoreNodes(result) {
+export function scoreNodes(result, myTeamId = '') {
   const box = boxScore(result)
   if (!box) return [el('p', 'alert', 'THE LINE DID NOT LOAD')]
-  const nodes = [lineGrid(box)]
+  const awayId = result?.away?.team_id || ''
+  const homeId = result?.home?.team_id || ''
+  const nodes = [lineGrid(box, myTeamId, awayId, homeId)]
   for (const group of box.groups) {
-    nodes.push(el('p', 'section', group.name))
-    nodes.push(statGrid(group.rows))
+    const tone = scoreTone(group.team_id, myTeamId, awayId, homeId)
+    nodes.push(el('p', tone ? `section ${tone}` : 'section', group.name))
+    nodes.push(statGrid(group.rows, myTeamId, awayId, homeId))
   }
   return nodes
 }

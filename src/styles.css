@@ -664,8 +664,16 @@ input.num {
   white-space: normal;
 }
 
+.box-score > .score-grid:first-child {
+  margin-top: 0;
+}
+
 .score-h {
   color: var(--mark);
+}
+
+.score-zero {
+  color: #8d978f;
 }
 
 .side-actions {

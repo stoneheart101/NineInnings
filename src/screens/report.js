@@ -102,7 +102,7 @@ export function renderReport(prompt, { gameId, setTeam, onDesk }) {
     if (!finished) {
       box.append(el('p', '', 'THIS GAME HAS NOT BEEN PLAYED'))
     } else {
-      box.append(headed('box-score', 'LINE', scoreNodes(game.result)))
+      box.append(headed('box-score', '', scoreNodes(game.result, state.myTeam?.id || '')))
       if (state.usedFailed) box.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
       else {
         const used = usedNodes(state.used, game.result)

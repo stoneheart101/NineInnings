@@ -125,22 +125,50 @@ function highlightLine(result) {
   return chunks.join(' ')
 }
 
+function spoken(text) {
+  const line = clean(text).replace(/\.+$/, '')
+  return line ? `${line}.` : ''
+}
+
+function packedItems(group) {
+  const items = []
+  for (const item of group?.items || []) {
+    const name = clean(item)
+    if (!name) continue
+    items.push({ name, blurb: spoken(ITEM_BLURB[name]) })
+  }
+  return items
+}
+
+function packedLead(team, items) {
+  return `${team} PACKED ${joinBits(items.map((item) => item.name))}.`
+}
+
 function advantageLine(result, used, perkIds) {
   const homeName = clean(result?.home?.name) || 'THE HOME CLUB'
-  const bits = []
+  const homeId = result?.home?.team_id || ''
+  const perks = []
   for (const id of perkIds || []) {
     const perk = perkById(id)
-    if (!perk) continue
-    bits.push(`THE HOME ADVANTAGE FOR ${homeName} IS ${perk.label}. ${clean(perk.blurb)}`)
+    if (perk) perks.push(perk)
   }
-  for (const group of usedGroups(used, result)) {
-    const team = clean(group.name) || 'A CLUB'
-    for (const item of group.items) {
-      const name = clean(item)
-      if (!name) continue
-      const blurb = ITEM_BLURB[name]
-      bits.push(blurb ? `${team} PACKED ${name}. ${blurb}` : `${team} PACKED ${name}.`)
-    }
+  const groups = usedGroups(used, result)
+  const homeItems = packedItems(groups.find((group) => group.id === homeId))
+  const bits = []
+  if (perks.length === 1) bits.push(`THE HOME ADVANTAGE FOR ${homeName} IS ${clean(perks[0].label)}.`)
+  else if (perks.length) bits.push(`THE HOME ADVANTAGES FOR ${homeName} ARE ${joinBits(perks.map((perk) => clean(perk.label)))}.`)
+  for (const perk of perks) {
+    const note = spoken(perk.blurb)
+    if (note) bits.push(note)
+  }
+  if (homeItems.length) bits.push(perks.length ? `THEY PACKED ${joinBits(homeItems.map((item) => item.name))}.` : packedLead(homeName, homeItems))
+  for (const item of homeItems) if (item.blurb) bits.push(item.blurb)
+  for (const group of groups) {
+    if (group.id === homeId) continue
+    const items = packedItems(group)
+    if (!items.length) continue
+    bits.push(packedLead(clean(group.name) || 'A CLUB', items))
+    for (const item of items) if (item.blurb) bits.push(item.blurb)
   }
   return bits.join(' ')
 }

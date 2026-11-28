@@ -73,13 +73,39 @@ test('the recap starts with the forecast and says the break once', () => {
   assert.match(heard, /FOR GOONIES, PAT SMITH FINISHES WITH 3 HITS, 2 DRIVEN IN, AND 1 RUN\./)
   assert.match(heard, /FOR RIVER RATS, SAM LEE FINISHES WITH 2 HITS, 1 DRIVEN IN, AND 2 RUNS\./)
   assert.match(heard, /THE HOME ADVANTAGE FOR RIVER RATS IS SHORT FENCE\. THE PARK PLAYS SMALL\./)
-  assert.match(heard, /RIVER RATS PACKED ICE POPS\. THE KIDS HOLD THEIR STAMINA THROUGH THE HEAT\./)
+  assert.match(heard, /THEY PACKED ICE POPS\. THE KIDS HOLD THEIR STAMINA THROUGH THE HEAT\./)
+  assert.equal((heard.match(/THE HOME ADVANTAGE FOR/g) || []).length, 1)
+  assert.equal((heard.match(/PACKED/g) || []).length, 1)
   assert.match(heard, /THE TOP OF THE FIRST\. GOONIES SCORES 2 RUNS\. PAT SMITH PUTS ONE UP AND THE WIND TAKES IT OUT\./)
   assert.equal(heard.includes('THE TOP OF THE SECOND'), false)
   assert.match(heard, /THE BOTTOM OF THE FOURTH\. RIVER RATS SCORES 2 RUNS\. HERE COMES SAM LEE, AND THE SLIDE ARRIVES IN A TANGLE\./)
   assert.equal(parts.at(-2), 'FOR GOONIES, PAT SMITH FINISHES WITH 3 HITS, 2 DRIVEN IN, AND 1 RUN. FOR RIVER RATS, SAM LEE FINISHES WITH 2 HITS, 1 DRIVEN IN, AND 2 RUNS.')
   assert.equal(parts.at(-1), 'AND THAT IS YOUR BALLGAME. RIVER RATS TAKES IT AT HOME, 3 TO 2.')
   assert.equal(recapClose(called), parts.at(-1))
+})
+
+test('several home advantages and packed items are each named once', () => {
+  const parts = recapParts(called, {
+    used: [
+      { team_id: home, name: 'Ice Pops' },
+      { team_id: home, name: 'Extra Baseballs' },
+      { team_id: away, name: 'Borrowed Gloves' },
+    ],
+    perkIds: ['short_fence', 'moms_muffins'],
+  })
+  const heard = parts[1]
+  assert.equal(heard, [
+    'THE HOME ADVANTAGES FOR RIVER RATS ARE SHORT FENCE AND MOM\'S MUFFINS.',
+    'THE PARK PLAYS SMALL. HOME HITTERS GAIN A LITTLE POWER.',
+    'MOM BAKES FOR THE GAME. THE CLUB HOLDS UP A LITTLE LONGER.',
+    'THEY PACKED ICE POPS AND EXTRA BASEBALLS.',
+    'THE KIDS HOLD THEIR STAMINA THROUGH THE HEAT.',
+    'A SPARE BALL STAYS IN THE BAG SO PLAY DOES NOT STOP FOR A LOST ONE.',
+    'GOONIES PACKED BORROWED GLOVES.',
+    'THE FIELDERS GET A SURE HAND ON THE BALL.',
+  ].join(' '))
+  assert.equal((heard.match(/THE HOME ADVANTAGE/g) || []).length, 1)
+  assert.equal((heard.match(/PACKED/g) || []).length, 2)
 })
 
 test('a stored day with no forecast is one park line', () => {

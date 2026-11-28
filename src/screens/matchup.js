@@ -193,7 +193,7 @@ export function renderMatchup(prompt, { gameId, setTeam, onDesk }) {
     box.append(headed(summary ? 'matchup-card recap-card' : 'matchup-card', matchTitle, matchNodes))
 
     if (summary) {
-      box.append(headed('box-score', 'LINE', scoreNodes(game.result)))
+      box.append(headed('box-score', '', scoreNodes(game.result, state.myTeam?.id || '')))
       if (state.usedFailed) box.append(el('p', 'alert', 'THE ITEMS DID NOT LOAD'))
       else {
         const used = usedNodes(state.used, game.result)

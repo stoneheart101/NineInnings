@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { boxScore, usedGroups } from './box.js'
+import { scoreNumberClass, scoreTone } from './summary.js'
 
 const AWAY = 'away-team'
 const HOME = 'home-team'
@@ -23,11 +24,12 @@ function result() {
 test('the line score keeps each inning and the totals', () => {
   const box = boxScore(result())
   assert.deepEqual(box.innings, [1, 9])
-  assert.deepEqual(box.sides[0], { name: 'VISITORS', marks: ['0', '2'], runs: 2, hits: 4, errors: 1 })
+  assert.deepEqual(box.sides[0], { team_id: AWAY, name: 'VISITORS', marks: ['0', '2'], runs: 2, hits: 4, errors: 1 })
   assert.equal(box.sides[1].marks[1], 'x')
   assert.deepEqual(box.groups.map((group) => group.name), ['VISITORS', 'HOME'])
+  assert.equal(box.groups[0].team_id, AWAY)
   assert.deepEqual(box.groups[0].rows[0], {
-    name: 'Sam', ab: 4, h: 2, r: 2, rbi: 1, bb: 1, k: 0, outs: 2,
+    team_id: AWAY, name: 'Sam', ab: 4, h: 2, r: 2, rbi: 1, bb: 1, k: 0, outs: 2,
   })
 })
 
@@ -54,9 +56,20 @@ test('used items stay with the team that packed them', () => {
     { team_id: HOME, name: '' },
   ], result())
   assert.deepEqual(groups, [
-    { name: 'VISITORS', items: ['TARP AND CHALK'] },
-    { name: 'HOME', items: ['ICE POPS', 'ITEM'] },
+    { id: AWAY, name: 'VISITORS', items: ['TARP AND CHALK'] },
+    { id: HOME, name: 'HOME', items: ['ICE POPS', 'ITEM'] },
   ])
+})
+
+test('this coach is blue on the line and a zero is dim', () => {
+  assert.equal(scoreTone(HOME, HOME, AWAY, HOME), 'recap-mine')
+  assert.equal(scoreTone(AWAY, HOME, AWAY, HOME), 'recap-foe')
+  assert.equal(scoreTone(AWAY, 'stranger', AWAY, HOME), '')
+  assert.equal(scoreTone('', HOME, AWAY, HOME), '')
+  assert.equal(scoreNumberClass(0), 'score-n score-zero')
+  assert.equal(scoreNumberClass('0'), 'score-n score-zero')
+  assert.equal(scoreNumberClass('x'), 'score-n')
+  assert.equal(scoreNumberClass(2), 'score-n')
 })
 
 test('a game with no packed items has no used list', () => {
