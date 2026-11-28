@@ -19,6 +19,7 @@ import { WHY, deleteReason, scrimmageReason } from '../why.js'
 import { bidLabel, coverDue, raiseCost, raiseDue, recruitPrice, standingDue } from '../recruit-price.js'
 import { coachesWaiting, compareRecruits, highBidNote, leaveLabel, tryoutWaitLine } from '../recruit-board.js'
 import { heldPurse } from '../held-purse.js'
+import { placeLine, rewardLine, rewardVersions, rewardsReady, sideOf } from '../game-purse.js'
 import { nameClass, perkLine } from '../home-perk.js'
 import { KID_STATS, detailsButton, showKidPopup } from '../kid-details.js'
 
@@ -130,6 +131,8 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     bidsFailed: false,
     strengths: {},
     strengthFailed: false,
+    rewards: {},
+    rewardsFailed: false,
     bidBusy: false,
     bidError: '',
     bidKid: '',
@@ -496,6 +499,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     const foe = game.opponent || 'TEAM'
     head.append(el('span', 'card-title', `NEXT GAME VS ${foe}`), cardAction('OPEN', open))
     card.append(head, el('p', 'game-date', clockLabel(when)))
+    card.append(...stakeNodes(game))
     const words = deskForecast(game)
     if (words) card.append(el('p', 'game-forecast', words))
     return card
@@ -589,6 +593,17 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       return
     }
     onOpenReport?.(data)
+  }
+
+  function stakeNodes(game) {
+    const mine = myTeam()?.id || ''
+    const home = sideName(game, 'home')
+    const side = sideOf(game, mine)
+    const rewards = state.rewardsFailed ? null : state.rewards[String(game.settings_version)]
+    return [
+      el('p', 'game-stake', placeLine(home.name, side === 'home')),
+      el('p', 'game-stake', rewardLine(rewards, side)),
+    ]
   }
 
   function sideName(game, side) {
@@ -819,6 +834,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         card.append(head)
         const when = new Date(game.starts_at)
         if (!Number.isNaN(when.getTime())) card.append(el('p', 'game-date', clockLabel(when)))
+        card.append(...stakeNodes(game))
         const played = game.status === 'final' || Boolean(game.result)
         const words = played ? weatherReport(game) : deskForecast(game)
         if (words) card.append(el('p', 'game-forecast', words))
@@ -1419,6 +1435,28 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
     state.strengths = Object.fromEntries(rows.map((row) => [row.version, Number(row.data)]))
   }
 
+  async function loadRewards(games, ticket) {
+    const versions = rewardVersions(games)
+    if (!versions.length) {
+      if (ticket !== pull) return
+      state.rewards = {}
+      state.rewardsFailed = false
+      return
+    }
+    const rows = await Promise.all(versions.map(async (version) => {
+      const { data, error } = await supabase.rpc('game_rewards', { settings_version: version })
+      return { version, data, error }
+    }))
+    if (ticket !== pull) return
+    if (rows.some((row) => row.error || !rewardsReady(row.data))) {
+      state.rewardsFailed = true
+      state.rewards = {}
+      return
+    }
+    state.rewardsFailed = false
+    state.rewards = Object.fromEntries(rows.map((row) => [String(row.version), row.data]))
+  }
+
   async function load() {
     const mine = ++pull
     const [session, season, teams, kids, draft, games, standings, lineup, locks, bids, offers, passes] = await Promise.all([
@@ -1442,7 +1480,7 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
         .maybeSingle(),
       supabase
         .from('games')
-        .select('id, home_team_id, away_team_id, starts_at, status, weather, is_practice, dev, result, narrative')
+        .select('id, home_team_id, away_team_id, starts_at, status, weather, is_practice, dev, result, narrative, settings_version')
         .eq('season_id', seasonId)
         .order('starts_at', { ascending: true })
         .order('id', { ascending: true }),
@@ -1528,6 +1566,13 @@ export function renderSeason(host, { seasonId, section, onOpenDraft, onOpenGame,
       } else {
         state.kids = kids.data || []
         await loadStrengths(state.kids, mine)
+      }
+      if (mine !== pull) return
+      if (state.gamesFailed) {
+        state.rewards = {}
+        state.rewardsFailed = false
+      } else {
+        await loadRewards(state.games, mine)
       }
     }
     if (mine !== pull || host.dataset.paint !== token || !host.isConnected) return

@@ -557,7 +557,8 @@ input.num {
 }
 
 .game-match,
-.game-forecast {
+.game-forecast,
+.game-stake {
   width: 100%;
   overflow-wrap: anywhere;
 }
